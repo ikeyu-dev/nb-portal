@@ -1,0 +1,29 @@
+# Next.js
+
+.next/\*\*
+
+# Node.js
+
+node_modules/\*\*
+
+# TypeScript
+
+_.ts
+_.tsx
+
+# JSON (appsscript.json は除外しない)
+
+\*.json
+!appsscript.json
+
+# Git
+
+.git/\*\*
+.gitignore
+
+# その他
+
+.env
+.env._
+README.md
+_.md
