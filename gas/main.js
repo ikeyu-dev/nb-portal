@@ -162,7 +162,7 @@ const sendEmail = (formData) => {
     bodyText += `\n\n`;
     bodyText += `送信日時: ${formData.timestamp}\n`;
 
-    MailApp.sendEmail(email, subject, bodyText);
+    MailApp.sendEmail(email, subject, bodyText, { name: "欠席連絡システム" });
 };
 
 // メイン
