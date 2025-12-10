@@ -1,0 +1,14 @@
+@import url("https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Zen+Maru+Gothic&display=swap");
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* daisyUIテーマ設定 */
+@theme {
+    --daisyui-themes: light, dark;
+}
+
+div {
+    font-family: "Zen Maru Gothic";
+    font-style: normal;
+    font-weight: 500;
+}
