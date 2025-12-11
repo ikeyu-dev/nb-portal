@@ -11,6 +11,9 @@ interface ScheduleCardProps {
     absences: Absence[];
     dateLabel?: string;
     timeLabel?: string;
+    defaultOpen?: boolean;
+    onClose?: () => void;
+    hideCard?: boolean;
 }
 
 export default function ScheduleCard({
@@ -21,8 +24,16 @@ export default function ScheduleCard({
     absences,
     dateLabel,
     timeLabel,
+    defaultOpen = false,
+    onClose,
+    hideCard = false,
 }: ScheduleCardProps) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(defaultOpen);
+
+    const handleClose = () => {
+        setIsModalOpen(false);
+        onClose?.();
+    };
 
     // 詳細を10文字までに切り詰める関数
     const truncateDetail = (text: string, maxLength: number = 10) => {
@@ -32,6 +43,7 @@ export default function ScheduleCard({
 
     return (
         <>
+            {!hideCard && (
             <div
                 onClick={() => setIsModalOpen(true)}
                 className="p-5 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
@@ -111,13 +123,14 @@ export default function ScheduleCard({
                     )}
                 </div>
             </div>
+            )}
 
             {/* Modal */}
             {isModalOpen && (
                 <dialog className="modal modal-open">
                     <div className="modal-box max-w-2xl bg-base-100">
                         <button
-                            onClick={() => setIsModalOpen(false)}
+                            onClick={handleClose}
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
                         >
                             ✕
@@ -242,7 +255,7 @@ export default function ScheduleCard({
                         method="dialog"
                         className="modal-backdrop"
                     >
-                        <button onClick={() => setIsModalOpen(false)}>
+                        <button onClick={handleClose}>
                             close
                         </button>
                     </form>
