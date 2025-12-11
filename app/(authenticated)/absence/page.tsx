@@ -96,12 +96,16 @@ function AbsenceFormContent() {
 
             <div className="card bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body">
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form
+                        onSubmit={handleSubmit}
+                        className="space-y-6"
+                    >
                         {/* 学籍番号 */}
                         <div className="form-control">
                             <label className="label">
                                 <span className="label-text font-semibold">
-                                    学籍番号 <span className="text-error">*</span>
+                                    学籍番号{" "}
+                                    <span className="text-error">*</span>
                                 </span>
                             </label>
                             <input
@@ -249,7 +253,8 @@ function AbsenceFormContent() {
                                         onChange={(e) =>
                                             setFormData({
                                                 ...formData,
-                                                timeLeavingEarly: e.target.value,
+                                                timeLeavingEarly:
+                                                    e.target.value,
                                             })
                                         }
                                     />
@@ -268,7 +273,10 @@ function AbsenceFormContent() {
                             >
                                 {isSubmitting ? "送信中..." : "送信"}
                             </button>
-                            <a href="/home" className="btn btn-ghost flex-1">
+                            <a
+                                href="/home"
+                                className="btn btn-ghost flex-1"
+                            >
                                 キャンセル
                             </a>
                         </div>
@@ -284,7 +292,9 @@ export default function AbsencePage() {
         <Suspense
             fallback={
                 <div className="p-6 max-w-3xl mx-auto">
-                    <h1 className="text-3xl font-bold mb-6 max-lg:hidden">欠席連絡</h1>
+                    <h1 className="text-3xl font-bold mb-6 max-lg:hidden">
+                        欠席連絡
+                    </h1>
                     <div className="card bg-base-100 shadow-xl border border-base-300">
                         <div className="card-body">
                             <div className="flex justify-center">
