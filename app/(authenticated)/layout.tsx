@@ -13,9 +13,11 @@ export default function AuthenticatedLayout({
             <Sidebar>{children}</Sidebar>
 
             {/* 小画面用のコンテンツラッパー */}
-            <div className="lg:hidden flex flex-col min-h-screen pb-20">
+            <div className="lg:hidden flex flex-col min-h-dvh">
                 <Header />
-                {children}
+                <div className="flex-1 pb-16">
+                    {children}
+                </div>
             </div>
 
             {/* Bottom dock - 小画面のみ表示 */}
