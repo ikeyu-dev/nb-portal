@@ -9,21 +9,24 @@ export default async function ItemsPage() {
         const itemsRes = await getItems();
         items = itemsRes.data || [];
     } catch (err) {
-        error = err instanceof Error ? err.message : "データの取得に失敗しました";
+        error =
+            err instanceof Error ? err.message : "データの取得に失敗しました";
     }
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
             <h1 className="text-3xl font-bold mb-6 max-lg:hidden">物品管理</h1>
-                {error && (
-                    <div className="alert alert-error mb-6">
-                        <span>{error}</span>
-                    </div>
-                )}
+            {error && (
+                <div className="alert alert-error mb-6">
+                    <span>{error}</span>
+                </div>
+            )}
 
-                {/* 物品一覧 */}
-                <section className="mb-8">
-                <h2 className="text-2xl font-bold mb-4 max-lg:hidden">物品一覧</h2>
+            {/* 物品一覧 */}
+            <section className="mb-8">
+                <h2 className="text-2xl font-bold mb-4 max-lg:hidden">
+                    物品一覧
+                </h2>
                 <div className="overflow-x-auto">
                     <table className="table table-zebra w-full">
                         <thead>

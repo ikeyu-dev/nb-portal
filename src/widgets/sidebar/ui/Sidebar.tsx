@@ -11,7 +11,11 @@ export default async function Sidebar({ children }: SidebarProps) {
     const session = await auth();
     return (
         <div className="drawer lg:drawer-open max-lg:hidden">
-            <input id="drawer" type="checkbox" className="drawer-toggle" />
+            <input
+                id="drawer"
+                type="checkbox"
+                className="drawer-toggle"
+            />
             <div className="drawer-content flex flex-col min-h-screen">
                 {children}
             </div>
@@ -34,7 +38,10 @@ export default async function Sidebar({ children }: SidebarProps) {
                         />
                     </div>
                     {/* Menu */}
-                    <ul className="menu p-4 flex-1" style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1rem)' }}>
+                    <ul
+                        className="menu p-4 flex-1"
+                        style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}
+                    >
                         <li>
                             <Link href="/home">
                                 <svg
@@ -98,10 +105,22 @@ export default async function Sidebar({ children }: SidebarProps) {
                                     </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-medium truncate" style={{ fontSize: 'clamp(0.75rem, 1.2vw, 0.875rem)' }}>
+                                    <p
+                                        className="font-medium truncate"
+                                        style={{
+                                            fontSize:
+                                                "clamp(0.75rem, 1.2vw, 0.875rem)",
+                                        }}
+                                    >
                                         {session.user.name}
                                     </p>
-                                    <p className="text-base-content/60 truncate" style={{ fontSize: 'clamp(0.625rem, 1vw, 0.75rem)' }}>
+                                    <p
+                                        className="text-base-content/60 truncate"
+                                        style={{
+                                            fontSize:
+                                                "clamp(0.625rem, 1vw, 0.75rem)",
+                                        }}
+                                    >
                                         {session.user.email}
                                     </p>
                                 </div>

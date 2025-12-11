@@ -29,13 +29,16 @@ export default function AnalogClock() {
     const minutes = time.getMinutes();
     const seconds = time.getSeconds();
 
-    const hourDegrees = (hours * 30) + (minutes * 0.5);
+    const hourDegrees = hours * 30 + minutes * 0.5;
     const minuteDegrees = minutes * 6;
     const secondDegrees = seconds * 6;
 
     return (
         <div className="relative w-64 h-64 mx-auto">
-            <svg viewBox="0 0 200 200" className="w-full h-full">
+            <svg
+                viewBox="0 0 200 200"
+                className="w-full h-full"
+            >
                 {/* Clock face */}
                 <circle
                     cx="100"

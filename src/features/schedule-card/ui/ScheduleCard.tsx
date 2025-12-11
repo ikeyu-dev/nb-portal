@@ -44,85 +44,107 @@ export default function ScheduleCard({
     return (
         <>
             {!hideCard && (
-            <div
-                onClick={() => setIsModalOpen(true)}
-                className="p-5 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
-            >
-                <div className="flex flex-col lg:flex-row gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                        <div className="shrink-0 mt-1.5">
-                            <div className="w-3 h-3 bg-primary rounded-full"></div>
-                        </div>
-                        <div className="flex-1">
-                            <div className="font-bold mb-2 flex items-center gap-2" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}>
-                                {title}
-                                {timeLabel && (
-                                    <span className="font-normal text-base-content/70" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
-                                        {timeLabel}
-                                    </span>
-                                )}
+                <div
+                    onClick={() => setIsModalOpen(true)}
+                    className="p-5 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                >
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="flex items-start gap-3 flex-1">
+                            <div className="shrink-0 mt-1.5">
+                                <div className="w-3 h-3 bg-primary rounded-full"></div>
                             </div>
-                            {(where || dateLabel) && (
-                                <div className="flex items-center gap-4 text-base-content/80" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
-                                    {dateLabel && (
-                                        <div className="flex items-center gap-1">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-4 w-4 text-primary"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                />
-                                            </svg>
-                                            <span className="font-medium">
-                                                {dateLabel}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {where && (
-                                        <div className="flex items-center gap-1">
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-4 w-4 text-primary"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                />
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                />
-                                            </svg>
-                                            <span className="font-medium">
-                                                {where}
-                                            </span>
-                                        </div>
+                            <div className="flex-1">
+                                <div
+                                    className="font-bold mb-2 flex items-center gap-2"
+                                    style={{
+                                        fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+                                    }}
+                                >
+                                    {title}
+                                    {timeLabel && (
+                                        <span
+                                            className="font-normal text-base-content/70"
+                                            style={{
+                                                fontSize:
+                                                    "clamp(0.875rem, 2vw, 1rem)",
+                                            }}
+                                        >
+                                            {timeLabel}
+                                        </span>
                                     )}
                                 </div>
-                            )}
+                                {(where || dateLabel) && (
+                                    <div
+                                        className="flex items-center gap-4 text-base-content/80"
+                                        style={{
+                                            fontSize:
+                                                "clamp(0.75rem, 1.5vw, 1rem)",
+                                        }}
+                                    >
+                                        {dateLabel && (
+                                            <div className="flex items-center gap-1">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-4 w-4 text-primary"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                    />
+                                                </svg>
+                                                <span className="font-medium">
+                                                    {dateLabel}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {where && (
+                                            <div className="flex items-center gap-1">
+                                                <svg
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                    className="h-4 w-4 text-primary"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                    />
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                    />
+                                                </svg>
+                                                <span className="font-medium">
+                                                    {where}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
+                        {detail && (
+                            <div
+                                className="max-lg:hidden lg:w-1/3 text-base-content/80 leading-relaxed lg:border-l lg:border-base-300 lg:pl-4"
+                                style={{
+                                    fontSize: "clamp(0.75rem, 1.5vw, 1rem)",
+                                }}
+                            >
+                                {truncateDetail(detail)}
+                            </div>
+                        )}
                     </div>
-                    {detail && (
-                        <div className="max-lg:hidden lg:w-1/3 text-base-content/80 leading-relaxed lg:border-l lg:border-base-300 lg:pl-4" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
-                            {truncateDetail(detail)}
-                        </div>
-                    )}
                 </div>
-            </div>
             )}
 
             {/* Modal */}
@@ -135,16 +157,30 @@ export default function ScheduleCard({
                         >
                             ✕
                         </button>
-                        <h3 className="font-bold mb-4 flex items-center gap-3" style={{ fontSize: 'clamp(1.25rem, 3vw, 1.5rem)' }}>
+                        <h3
+                            className="font-bold mb-4 flex items-center gap-3"
+                            style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
+                        >
                             {title}
                             {timeLabel && (
-                                <span className="font-normal text-base-content/70" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)' }}>
+                                <span
+                                    className="font-normal text-base-content/70"
+                                    style={{
+                                        fontSize:
+                                            "clamp(1rem, 2.5vw, 1.125rem)",
+                                    }}
+                                >
                                     {timeLabel}
                                 </span>
                             )}
                         </h3>
                         {(where || dateLabel) && (
-                            <div className="flex items-center gap-4 text-base-content/80 mb-4" style={{ fontSize: 'clamp(0.875rem, 2vw, 1.125rem)' }}>
+                            <div
+                                className="flex items-center gap-4 text-base-content/80 mb-4"
+                                style={{
+                                    fontSize: "clamp(0.875rem, 2vw, 1.125rem)",
+                                }}
+                            >
                                 {dateLabel && (
                                     <div className="flex items-center gap-2">
                                         <svg
@@ -197,10 +233,21 @@ export default function ScheduleCard({
                         )}
                         {detail && (
                             <div className="py-4">
-                                <h4 className="font-semibold mb-2" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)' }}>
+                                <h4
+                                    className="font-semibold mb-2"
+                                    style={{
+                                        fontSize:
+                                            "clamp(1rem, 2.5vw, 1.125rem)",
+                                    }}
+                                >
                                     詳細
                                 </h4>
-                                <p className="text-base-content/80 leading-relaxed whitespace-pre-wrap break-words" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                <p
+                                    className="text-base-content/80 leading-relaxed whitespace-pre-wrap break-words"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
                                     {detail}
                                 </p>
                             </div>
@@ -208,7 +255,12 @@ export default function ScheduleCard({
 
                         {/* 欠席者セクション */}
                         <div className="py-4 border-t border-base-300">
-                            <h4 className="font-semibold mb-2" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)' }}>
+                            <h4
+                                className="font-semibold mb-2"
+                                style={{
+                                    fontSize: "clamp(1rem, 2.5vw, 1.125rem)",
+                                }}
+                            >
                                 欠席申請
                             </h4>
                             {absences.length > 0 ? (
@@ -225,7 +277,13 @@ export default function ScheduleCard({
                                                 key={index}
                                                 className="p-3 bg-base-200/50 rounded-lg border border-base-300"
                                             >
-                                                <div className="font-medium text-base-content" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                                <div
+                                                    className="font-medium text-base-content"
+                                                    style={{
+                                                        fontSize:
+                                                            "clamp(0.875rem, 2vw, 1rem)",
+                                                    }}
+                                                >
                                                     {name}{" "}
                                                     <span className="badge badge-primary badge-sm ml-2">
                                                         {type}
@@ -236,7 +294,12 @@ export default function ScheduleCard({
                                     })}
                                 </div>
                             ) : (
-                                <p className="text-base-content/60" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                <p
+                                    className="text-base-content/60"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
                                     欠席者はいません
                                 </p>
                             )}
@@ -255,9 +318,7 @@ export default function ScheduleCard({
                         method="dialog"
                         className="modal-backdrop"
                     >
-                        <button onClick={handleClose}>
-                            close
-                        </button>
+                        <button onClick={handleClose}>close</button>
                     </form>
                 </dialog>
             )}

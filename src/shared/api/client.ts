@@ -1,9 +1,4 @@
-import type {
-    ApiResponse,
-    Item,
-    Schedule,
-    Absence,
-} from "../types/api";
+import type { ApiResponse, Item, Schedule, Absence } from "../types/api";
 
 const API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
@@ -12,7 +7,10 @@ if (!API_URL) {
 }
 
 // 共通のfetch関数
-async function fetchFromGAS<T>(path: string, params?: Record<string, string>): Promise<ApiResponse<T>> {
+async function fetchFromGAS<T>(
+    path: string,
+    params?: Record<string, string>
+): Promise<ApiResponse<T>> {
     const url = new URL(API_URL as string);
     url.searchParams.append("path", path);
 
@@ -54,18 +52,24 @@ export async function getSchedules(): Promise<ApiResponse<Schedule[]>> {
 }
 
 // Absences取得API
-export async function getAbsences(date?: string): Promise<ApiResponse<Absence[]>> {
+export async function getAbsences(
+    date?: string
+): Promise<ApiResponse<Absence[]>> {
     const params = date ? { date } : undefined;
     return fetchFromGAS<Absence[]>("absences", params);
 }
 
 // 特定イベントの欠席者取得API
-export async function getEventAbsences(eventId: string): Promise<ApiResponse<Absence[]>> {
+export async function getEventAbsences(
+    eventId: string
+): Promise<ApiResponse<Absence[]>> {
     return fetchFromGAS<Absence[]>("event-absences", { eventId });
 }
 
 // Health check API
-export async function checkHealth(): Promise<ApiResponse<{ message: string; timestamp: string }>> {
+export async function checkHealth(): Promise<
+    ApiResponse<{ message: string; timestamp: string }>
+> {
     return fetchFromGAS("health");
 }
 
@@ -82,13 +86,15 @@ export interface AbsenceSubmitData {
 }
 
 // 欠席連絡送信API（Next.js API Route経由）
-export async function submitAbsence(data: AbsenceSubmitData): Promise<ApiResponse<{
-    timestamp: string;
-    eventId: string;
-    studentNumber: string;
-    name: string;
-    type: string;
-}>> {
+export async function submitAbsence(data: AbsenceSubmitData): Promise<
+    ApiResponse<{
+        timestamp: string;
+        eventId: string;
+        studentNumber: string;
+        name: string;
+        type: string;
+    }>
+> {
     try {
         const response = await fetch("/api/absence", {
             method: "POST",
