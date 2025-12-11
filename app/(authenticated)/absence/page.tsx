@@ -80,7 +80,12 @@ function AbsenceFormContent() {
 
     return (
         <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-            <h1 className="font-bold mb-6 max-lg:hidden" style={{ fontSize: 'clamp(1.5rem, 4vw, 1.875rem)' }}>欠席連絡</h1>
+            <h1
+                className="font-bold mb-6 max-lg:hidden"
+                style={{ fontSize: "clamp(1.5rem, 4vw, 1.875rem)" }}
+            >
+                欠席連絡
+            </h1>
 
             {submitStatus.type && (
                 <div
@@ -103,7 +108,12 @@ function AbsenceFormContent() {
                         {/* 学籍番号 */}
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                <span
+                                    className="label-text font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
                                     学籍番号{" "}
                                     <span className="text-error">*</span>
                                 </span>
@@ -126,7 +136,12 @@ function AbsenceFormContent() {
                         {/* 氏名 または あだ名 */}
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                <span
+                                    className="label-text font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
                                     氏名 または あだ名{" "}
                                     <span className="text-error">*</span>
                                 </span>
@@ -149,7 +164,12 @@ function AbsenceFormContent() {
                         {/* 種別 */}
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                <span
+                                    className="label-text font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
                                     種別 <span className="text-error">*</span>
                                 </span>
                             </label>
@@ -175,7 +195,12 @@ function AbsenceFormContent() {
                         {/* 理由 */}
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text font-semibold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+                                <span
+                                    className="label-text font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
                                     理由 <span className="text-error">*</span>
                                 </span>
                             </label>
@@ -196,7 +221,14 @@ function AbsenceFormContent() {
                         {/* 中抜けの場合 */}
                         {formData.type === "中抜け" && (
                             <div className="space-y-4 p-4 bg-base-200/50 rounded-lg border border-base-300">
-                                <h3 className="font-semibold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>中抜け情報</h3>
+                                <h3
+                                    className="font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
+                                    中抜け情報
+                                </h3>
                                 <div className="form-control">
                                     <label className="label">
                                         <span className="label-text">
@@ -239,7 +271,14 @@ function AbsenceFormContent() {
                         {/* 早退の場合 */}
                         {formData.type === "早退" && (
                             <div className="space-y-4 p-4 bg-base-200/50 rounded-lg border border-base-300">
-                                <h3 className="font-semibold" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>早退情報</h3>
+                                <h3
+                                    className="font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
+                                    早退情報
+                                </h3>
                                 <div className="form-control">
                                     <label className="label">
                                         <span className="label-text">
@@ -292,7 +331,10 @@ export default function AbsencePage() {
         <Suspense
             fallback={
                 <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-                    <h1 className="font-bold mb-6 max-lg:hidden" style={{ fontSize: 'clamp(1.5rem, 4vw, 1.875rem)' }}>
+                    <h1
+                        className="font-bold mb-6 max-lg:hidden"
+                        style={{ fontSize: "clamp(1.5rem, 4vw, 1.875rem)" }}
+                    >
                         欠席連絡
                     </h1>
                     <div className="card bg-base-100 shadow-xl border border-base-300">
