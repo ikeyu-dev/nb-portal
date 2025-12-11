@@ -34,7 +34,7 @@ export default async function Sidebar({ children }: SidebarProps) {
                         />
                     </div>
                     {/* Menu */}
-                    <ul className="menu p-4 flex-1">
+                    <ul className="menu p-4 flex-1" style={{ fontSize: 'clamp(0.875rem, 1.5vw, 1rem)' }}>
                         <li>
                             <Link href="/home">
                                 <svg
@@ -98,10 +98,10 @@ export default async function Sidebar({ children }: SidebarProps) {
                                     </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate">
+                                    <p className="font-medium truncate" style={{ fontSize: 'clamp(0.75rem, 1.2vw, 0.875rem)' }}>
                                         {session.user.name}
                                     </p>
-                                    <p className="text-xs text-base-content/60 truncate">
+                                    <p className="text-base-content/60 truncate" style={{ fontSize: 'clamp(0.625rem, 1vw, 0.75rem)' }}>
                                         {session.user.email}
                                     </p>
                                 </div>

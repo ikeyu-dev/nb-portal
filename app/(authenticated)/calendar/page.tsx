@@ -198,23 +198,23 @@ export default function CalendarPage() {
 
     if (isLoading) {
         return (
-            <div className="p-10 max-w-full min-h-screen flex items-center justify-center">
+            <div className="p-4 lg:p-6 w-full h-full flex items-center justify-center">
                 <span className="loading loading-spinner loading-lg"></span>
             </div>
         );
     }
 
     return (
-        <div className="p-10 max-w-full min-h-screen flex flex-col items-center justify-center">
+        <div className="p-4 lg:p-6 w-full h-full flex flex-col">
             {error && (
-                <div className="alert alert-error mb-6 w-full max-w-3xl">
+                <div className="alert alert-error mb-4 w-full">
                     <span>{error}</span>
                 </div>
             )}
 
             {/* カレンダーカード */}
-            <div className="card bg-base-100 shadow-xl border border-base-300 w-full max-w-3xl">
-                <div className="card-body">
+            <div className="card bg-base-100 shadow-xl border border-base-300 w-full flex-1 flex flex-col">
+                <div className="card-body p-3 sm:p-4 lg:p-6 flex-1 flex flex-col">
                     {/* ヘッダー：月切り替え */}
                     <div className="flex items-center justify-between mb-4">
                         <button
@@ -237,7 +237,7 @@ export default function CalendarPage() {
                             </svg>
                         </button>
                         <div className="flex items-center gap-2">
-                            <h2 className="text-xl font-bold">
+                            <h2 className="font-bold" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)' }}>
                                 {currentDate.getFullYear()}年
                                 {currentDate.getMonth() + 1}月
                             </h2>
@@ -270,17 +270,18 @@ export default function CalendarPage() {
                     </div>
 
                     {/* 曜日ヘッダー */}
-                    <div className="grid grid-cols-7 gap-1 mb-2 bg-base-200 rounded-lg sticky top-0">
+                    <div className="grid grid-cols-7 gap-1 mb-2 bg-base-200 rounded-lg">
                         {weekDays.map((day, index) => (
                             <div
                                 key={day}
-                                className={`text-center text-base font-bold py-3 ${
+                                className={`text-center font-bold py-2 ${
                                     index === 0
                                         ? "text-error"
                                         : index === 6
                                         ? "text-info"
                                         : ""
                                 }`}
+                                style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
                             >
                                 {day}
                             </div>
@@ -288,7 +289,7 @@ export default function CalendarPage() {
                     </div>
 
                     {/* カレンダーグリッド */}
-                    <div className="grid grid-cols-7 gap-1">
+                    <div className="grid grid-cols-7 gap-1 flex-1">
                         {days.map((day, index) => {
                             const dayOfWeek = day.date.getDay();
                             const hasEvents = day.activityCount > 0;
@@ -300,7 +301,7 @@ export default function CalendarPage() {
                                         handleDateClick(day.date, day.dateStr)
                                     }
                                     className={`
-                                        relative h-12 lg:h-14 flex flex-col items-center justify-center rounded-lg
+                                        relative flex flex-col items-center justify-center rounded-lg
                                         ${
                                             hasEvents
                                                 ? "cursor-pointer hover:bg-base-200"
@@ -332,7 +333,7 @@ export default function CalendarPage() {
                                         }
                                     `}
                                 >
-                                    <span className="text-sm lg:text-base -mt-5">
+                                    <span style={{ fontSize: 'clamp(0.875rem, 2vw, 1.5rem)' }}>
                                         {day.date.getDate()}
                                     </span>
                                     {hasEvents && (
@@ -371,7 +372,7 @@ export default function CalendarPage() {
                     </div>
 
                     {/* 凡例 */}
-                    <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-base-300 text-sm text-base-content/70">
+                    <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-base-300 text-base-content/70" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
                         <div className="flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full bg-primary"></span>
                             <span>1件</span>
