@@ -54,16 +54,16 @@ export default function ScheduleCard({
                             <div className="w-3 h-3 bg-primary rounded-full"></div>
                         </div>
                         <div className="flex-1">
-                            <div className="font-bold text-xl mb-2 flex items-center gap-2">
+                            <div className="font-bold mb-2 flex items-center gap-2" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.25rem)' }}>
                                 {title}
                                 {timeLabel && (
-                                    <span className="text-base font-normal text-base-content/70">
+                                    <span className="font-normal text-base-content/70" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
                                         {timeLabel}
                                     </span>
                                 )}
                             </div>
                             {(where || dateLabel) && (
-                                <div className="flex items-center gap-4 text-base text-base-content/80">
+                                <div className="flex items-center gap-4 text-base-content/80" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
                                     {dateLabel && (
                                         <div className="flex items-center gap-1">
                                             <svg
@@ -117,7 +117,7 @@ export default function ScheduleCard({
                         </div>
                     </div>
                     {detail && (
-                        <div className="max-lg:hidden lg:w-1/3 text-base text-base-content/80 leading-relaxed lg:border-l lg:border-base-300 lg:pl-4">
+                        <div className="max-lg:hidden lg:w-1/3 text-base-content/80 leading-relaxed lg:border-l lg:border-base-300 lg:pl-4" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
                             {truncateDetail(detail)}
                         </div>
                     )}
@@ -135,16 +135,16 @@ export default function ScheduleCard({
                         >
                             ✕
                         </button>
-                        <h3 className="font-bold text-2xl mb-4 flex items-center gap-3">
+                        <h3 className="font-bold mb-4 flex items-center gap-3" style={{ fontSize: 'clamp(1.25rem, 3vw, 1.5rem)' }}>
                             {title}
                             {timeLabel && (
-                                <span className="text-lg font-normal text-base-content/70">
+                                <span className="font-normal text-base-content/70" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)' }}>
                                     {timeLabel}
                                 </span>
                             )}
                         </h3>
                         {(where || dateLabel) && (
-                            <div className="flex items-center gap-4 text-lg text-base-content/80 mb-4">
+                            <div className="flex items-center gap-4 text-base-content/80 mb-4" style={{ fontSize: 'clamp(0.875rem, 2vw, 1.125rem)' }}>
                                 {dateLabel && (
                                     <div className="flex items-center gap-2">
                                         <svg
@@ -197,10 +197,10 @@ export default function ScheduleCard({
                         )}
                         {detail && (
                             <div className="py-4">
-                                <h4 className="font-semibold text-lg mb-2">
+                                <h4 className="font-semibold mb-2" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)' }}>
                                     詳細
                                 </h4>
-                                <p className="text-base text-base-content/80 leading-relaxed whitespace-pre-wrap break-words">
+                                <p className="text-base-content/80 leading-relaxed whitespace-pre-wrap break-words" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
                                     {detail}
                                 </p>
                             </div>
@@ -208,7 +208,7 @@ export default function ScheduleCard({
 
                         {/* 欠席者セクション */}
                         <div className="py-4 border-t border-base-300">
-                            <h4 className="font-semibold text-lg mb-2">
+                            <h4 className="font-semibold mb-2" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.125rem)' }}>
                                 欠席申請
                             </h4>
                             {absences.length > 0 ? (
@@ -225,7 +225,7 @@ export default function ScheduleCard({
                                                 key={index}
                                                 className="p-3 bg-base-200/50 rounded-lg border border-base-300"
                                             >
-                                                <div className="font-medium text-base text-base-content">
+                                                <div className="font-medium text-base-content" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
                                                     {name}{" "}
                                                     <span className="badge badge-primary badge-sm ml-2">
                                                         {type}
@@ -236,7 +236,7 @@ export default function ScheduleCard({
                                     })}
                                 </div>
                             ) : (
-                                <p className="text-base text-base-content/60">
+                                <p className="text-base-content/60" style={{ fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
                                     欠席者はいません
                                 </p>
                             )}
