@@ -11,6 +11,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             issuer: `https://login.microsoftonline.com/${tenantId}/v2.0`,
         }),
     ],
+    session: {
+        maxAge: 180 * 24 * 60 * 60, // 半年（180日）
+    },
     pages: {
         signIn: "/login",
     },

@@ -135,7 +135,7 @@ export default function CalendarPage() {
             dateStr: string;
             isCurrentMonth: boolean;
             isToday: boolean;
-            activityCount: number;
+            events: Schedule[];
         }[] = [];
 
         // 前月の日を追加
@@ -150,7 +150,7 @@ export default function CalendarPage() {
                 dateStr,
                 isCurrentMonth: false,
                 isToday: false,
-                activityCount: activityCounts.get(dateStr) || 0,
+                events: eventsByDate.get(dateStr) || [],
             });
         }
 
@@ -170,7 +170,7 @@ export default function CalendarPage() {
                     today.getFullYear() === year &&
                     today.getMonth() === month &&
                     today.getDate() === day,
-                activityCount: activityCounts.get(dateStr) || 0,
+                events: eventsByDate.get(dateStr) || [],
             });
         }
 
@@ -186,7 +186,7 @@ export default function CalendarPage() {
                 dateStr,
                 isCurrentMonth: false,
                 isToday: false,
-                activityCount: activityCounts.get(dateStr) || 0,
+                events: eventsByDate.get(dateStr) || [],
             });
         }
 
@@ -195,6 +195,31 @@ export default function CalendarPage() {
 
     const days = generateCalendarDays();
     const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
+
+    // イベントのタイトルを取得
+    const getEventTitle = (event: Schedule): string => {
+        const values = Object.values(event);
+        return String(values[6] ?? "予定");
+    };
+
+    // イベントの時刻を取得
+    const getEventTime = (event: Schedule): string | null => {
+        const values = Object.values(event);
+        const rawTimeHH = values[4];
+        const rawTimeMM = values[5];
+        const hasTime =
+            rawTimeHH !== "" &&
+            rawTimeHH !== null &&
+            rawTimeHH !== undefined &&
+            rawTimeMM !== "" &&
+            rawTimeMM !== null &&
+            rawTimeMM !== undefined;
+        return hasTime
+            ? `${String(rawTimeHH).padStart(2, "0")}:${String(
+                  rawTimeMM
+              ).padStart(2, "0")}`
+            : null;
+    };
 
     if (isLoading) {
         return (
@@ -205,20 +230,23 @@ export default function CalendarPage() {
     }
 
     return (
-        <div className="p-4 lg:p-6 w-full h-full flex flex-col">
+        <div className="max-lg:p-0 lg:p-6 w-full lg:h-full flex flex-col lg:items-stretch items-center bg-base-100 lg:overflow-hidden">
             {error && (
-                <div className="alert alert-error mb-4 w-full">
+                <div className="alert alert-error mb-4 w-full max-w-4xl lg:hidden">
                     <span>{error}</span>
                 </div>
             )}
 
-            {/* カレンダーカード */}
-            <div className="card bg-base-100 shadow-xl border border-base-300 w-full flex-1 flex flex-col">
-                <div className="card-body p-3 sm:p-4 lg:p-6 flex-1 flex flex-col">
-                    {/* ヘッダー：月切り替え */}
-                    <div className="flex items-center justify-between mb-4">
+            {/* ===== モバイル版 Google Calendar App 月表示風 ===== */}
+            <div
+                className="lg:hidden w-full flex flex-col overflow-hidden"
+                style={{ height: "calc(100dvh - 160px)" }}
+            >
+                {/* ヘッダー：年月表示 + 今日ボタン */}
+                <div className="flex items-center justify-between px-3 py-2 border-b border-base-300 shrink-0">
+                    <div className="flex items-center gap-2">
                         <button
-                            className="btn btn-ghost btn-sm"
+                            className="btn btn-ghost btn-sm btn-circle"
                             onClick={() => changeMonth(-1)}
                         >
                             <svg
@@ -236,20 +264,12 @@ export default function CalendarPage() {
                                 />
                             </svg>
                         </button>
-                        <div className="flex items-center gap-2">
-                            <h2 className="font-bold" style={{ fontSize: 'clamp(1rem, 2.5vw, 1.5rem)' }}>
-                                {currentDate.getFullYear()}年
-                                {currentDate.getMonth() + 1}月
-                            </h2>
-                            <button
-                                className="btn btn-ghost btn-xs"
-                                onClick={goToToday}
-                            >
-                                今月
-                            </button>
-                        </div>
+                        <span className="font-medium text-lg min-w-[120px] text-center">
+                            {currentDate.getFullYear()}年
+                            {currentDate.getMonth() + 1}月
+                        </span>
                         <button
-                            className="btn btn-ghost btn-sm"
+                            className="btn btn-ghost btn-sm btn-circle"
                             onClick={() => changeMonth(1)}
                         >
                             <svg
@@ -268,31 +288,41 @@ export default function CalendarPage() {
                             </svg>
                         </button>
                     </div>
+                    <button
+                        className="btn btn-ghost btn-sm text-primary font-medium"
+                        onClick={goToToday}
+                    >
+                        今日
+                    </button>
+                </div>
 
-                    {/* 曜日ヘッダー */}
-                    <div className="grid grid-cols-7 gap-1 mb-2 bg-base-200 rounded-lg">
-                        {weekDays.map((day, index) => (
-                            <div
-                                key={day}
-                                className={`text-center font-bold py-2 ${
-                                    index === 0
-                                        ? "text-error"
-                                        : index === 6
-                                        ? "text-info"
-                                        : ""
-                                }`}
-                                style={{ fontSize: 'clamp(0.875rem, 2vw, 1.25rem)' }}
-                            >
-                                {day}
-                            </div>
-                        ))}
-                    </div>
+                {/* 曜日ヘッダー */}
+                <div className="grid grid-cols-7 border-b border-base-300 shrink-0">
+                    {weekDays.map((day, index) => (
+                        <div
+                            key={day}
+                            className={`text-center text-xs py-2 font-medium ${
+                                index === 0
+                                    ? "text-error"
+                                    : index === 6
+                                    ? "text-info"
+                                    : "text-base-content/60"
+                            }`}
+                        >
+                            {day}
+                        </div>
+                    ))}
+                </div>
 
-                    {/* カレンダーグリッド */}
-                    <div className="grid grid-cols-7 gap-1 flex-1">
+                {/* カレンダー本体（月表示・イベントチップ付き） */}
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="grid grid-cols-7 grid-rows-6 h-full">
                         {days.map((day, index) => {
                             const dayOfWeek = day.date.getDay();
-                            const hasEvents = day.activityCount > 0;
+                            const hasEvents = day.events.length > 0;
+                            const rowIndex = Math.floor(index / 7);
+                            const isLastRow = rowIndex === 5;
+
                             return (
                                 <div
                                     key={index}
@@ -301,103 +331,261 @@ export default function CalendarPage() {
                                         handleDateClick(day.date, day.dateStr)
                                     }
                                     className={`
-                                        relative flex flex-col items-center justify-center rounded-lg
+                                        relative flex flex-col border-r border-b border-base-300
+                                        ${isLastRow ? "border-b-0" : ""}
+                                        ${index % 7 === 6 ? "border-r-0" : ""}
                                         ${
                                             hasEvents
-                                                ? "cursor-pointer hover:bg-base-200"
+                                                ? "cursor-pointer active:bg-base-200/50"
                                                 : ""
                                         }
                                         ${
-                                            day.isCurrentMonth
-                                                ? ""
-                                                : "opacity-30"
-                                        }
-                                        ${
-                                            day.isToday
-                                                ? "bg-primary text-primary-content font-bold hover:bg-primary/80"
-                                                : ""
-                                        }
-                                        ${
-                                            !day.isToday &&
-                                            day.isCurrentMonth &&
-                                            dayOfWeek === 0
-                                                ? "text-error"
-                                                : ""
-                                        }
-                                        ${
-                                            !day.isToday &&
-                                            day.isCurrentMonth &&
-                                            dayOfWeek === 6
-                                                ? "text-info"
-                                                : ""
+                                            !day.isCurrentMonth
+                                                ? "bg-base-200/30"
+                                                : "bg-base-100"
                                         }
                                     `}
                                 >
-                                    <span style={{ fontSize: 'clamp(0.875rem, 2vw, 1.5rem)' }}>
-                                        {day.date.getDate()}
-                                    </span>
-                                    {hasEvents && (
-                                        <div className="absolute bottom-2 flex gap-0.5 ">
-                                            {Array.from({
-                                                length: Math.min(
-                                                    day.activityCount,
-                                                    3
-                                                ),
-                                            }).map((_, i) => (
-                                                <span
-                                                    key={i}
-                                                    className={`w-1.5 h-1.5 rounded-full ${
-                                                        day.isToday
-                                                            ? "bg-primary-content"
-                                                            : "bg-primary"
-                                                    }`}
-                                                ></span>
-                                            ))}
-                                            {day.activityCount > 3 && (
-                                                <span
-                                                    className={`text-xs leading-none ${
-                                                        day.isToday
-                                                            ? "text-primary-content"
-                                                            : "text-primary"
-                                                    }`}
-                                                >
-                                                    +
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* 日付 */}
+                                    <div className="p-1">
+                                        <span
+                                            className={`
+                                                inline-flex items-center justify-center w-6 h-6 text-xs
+                                                ${
+                                                    day.isToday
+                                                        ? "bg-primary text-primary-content rounded-full font-bold"
+                                                        : ""
+                                                }
+                                                ${
+                                                    !day.isToday &&
+                                                    day.isCurrentMonth &&
+                                                    dayOfWeek === 0
+                                                        ? "text-error"
+                                                        : ""
+                                                }
+                                                ${
+                                                    !day.isToday &&
+                                                    day.isCurrentMonth &&
+                                                    dayOfWeek === 6
+                                                        ? "text-info"
+                                                        : ""
+                                                }
+                                                ${
+                                                    !day.isCurrentMonth
+                                                        ? "text-base-content/30"
+                                                        : ""
+                                                }
+                                            `}
+                                        >
+                                            {day.date.getDate()}
+                                        </span>
+                                    </div>
+
+                                    {/* イベントチップ */}
+                                    <div className="flex flex-col gap-0.5 px-0.5 pb-0.5 overflow-hidden flex-1">
+                                        {day.events
+                                            .slice(0, 3)
+                                            .map((event, eventIndex) => {
+                                                const title =
+                                                    getEventTitle(event);
+                                                return (
+                                                    <div
+                                                        key={eventIndex}
+                                                        className="text-[9px] leading-tight bg-primary/90 text-primary-content px-1 py-0.5 rounded truncate"
+                                                    >
+                                                        {title}
+                                                    </div>
+                                                );
+                                            })}
+                                        {day.events.length > 3 && (
+                                            <div className="text-[9px] text-base-content/60 px-0.5">
+                                                +{day.events.length - 3}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })}
                     </div>
+                </div>
+            </div>
 
-                    {/* 凡例 */}
-                    <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-base-300 text-base-content/70" style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
-                        <div className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-primary"></span>
-                            <span>1件</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <div className="flex gap-0.5">
-                                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                            </div>
-                            <span>2件</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <div className="flex gap-0.5">
-                                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                                <span className="w-2 h-2 rounded-full bg-primary"></span>
-                                <span className="text-xs text-primary">+</span>
-                            </div>
-                            <span>4件以上</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <span className="w-4 h-4 rounded bg-primary"></span>
-                            <span>今日</span>
-                        </div>
+            {/* ===== PC版 Google Calendar Web風 ===== */}
+            {/* Google Calendar風ヘッダー */}
+            <div className="hidden lg:flex items-center justify-start mb-4 px-2 w-full">
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <button
+                        className="btn btn-sm btn-outline"
+                        onClick={goToToday}
+                    >
+                        今日
+                    </button>
+                    <div className="flex items-center">
+                        <button
+                            className="btn btn-ghost btn-sm btn-circle"
+                            onClick={() => changeMonth(-1)}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 19l-7-7 7-7"
+                                />
+                            </svg>
+                        </button>
+                        <button
+                            className="btn btn-ghost btn-sm btn-circle"
+                            onClick={() => changeMonth(1)}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                />
+                            </svg>
+                        </button>
                     </div>
+                    <h2
+                        className="font-normal text-base-content"
+                        style={{ fontSize: "clamp(1.125rem, 3vw, 1.5rem)" }}
+                    >
+                        {currentDate.getFullYear()}年
+                        {currentDate.getMonth() + 1}月
+                    </h2>
+                </div>
+            </div>
+
+            {/* カレンダーグリッド（PC版） */}
+            <div className="hidden lg:flex flex-col flex-1 border border-base-300 rounded-lg overflow-hidden w-full">
+                {/* 曜日ヘッダー */}
+                <div className="grid grid-cols-7 border-b border-base-300">
+                    {weekDays.map((day, index) => (
+                        <div
+                            key={day}
+                            className={`text-center py-2 text-xs sm:text-sm font-medium border-r border-base-300 last:border-r-0 ${
+                                index === 0
+                                    ? "text-error"
+                                    : index === 6
+                                    ? "text-info"
+                                    : "text-base-content/70"
+                            }`}
+                        >
+                            {day}
+                        </div>
+                    ))}
+                </div>
+
+                {/* カレンダー本体 */}
+                <div className="grid grid-cols-7 grid-rows-6 flex-1">
+                    {days.map((day, index) => {
+                        const dayOfWeek = day.date.getDay();
+                        const hasEvents = day.events.length > 0;
+                        const rowIndex = Math.floor(index / 7);
+                        const isLastRow = rowIndex === 5;
+
+                        return (
+                            <div
+                                key={index}
+                                onClick={() =>
+                                    hasEvents &&
+                                    handleDateClick(day.date, day.dateStr)
+                                }
+                                className={`
+                                    relative flex flex-col border-r border-b border-base-300 last:border-r-0
+                                    ${isLastRow ? "border-b-0" : ""}
+                                    ${index % 7 === 6 ? "border-r-0" : ""}
+                                    ${
+                                        hasEvents
+                                            ? "cursor-pointer hover:bg-base-200/50"
+                                            : ""
+                                    }
+                                    ${
+                                        !day.isCurrentMonth
+                                            ? "bg-base-200/30"
+                                            : "bg-base-100"
+                                    }
+                                `}
+                            >
+                                {/* 日付 */}
+                                <div className="p-2">
+                                    <span
+                                        className={`
+                                            inline-flex items-center justify-center w-7 h-7 text-sm
+                                            ${
+                                                day.isToday
+                                                    ? "bg-primary text-primary-content rounded-full font-bold"
+                                                    : ""
+                                            }
+                                            ${
+                                                !day.isToday &&
+                                                day.isCurrentMonth &&
+                                                dayOfWeek === 0
+                                                    ? "text-error"
+                                                    : ""
+                                            }
+                                            ${
+                                                !day.isToday &&
+                                                day.isCurrentMonth &&
+                                                dayOfWeek === 6
+                                                    ? "text-info"
+                                                    : ""
+                                            }
+                                            ${
+                                                !day.isCurrentMonth
+                                                    ? "text-base-content/40"
+                                                    : ""
+                                            }
+                                        `}
+                                    >
+                                        {day.date.getDate()}
+                                    </span>
+                                </div>
+
+                                {/* イベントチップ */}
+                                <div className="flex flex-col gap-0.5 px-1 pb-1 overflow-hidden flex-1">
+                                    {day.events
+                                        .slice(0, 2)
+                                        .map((event, eventIndex) => {
+                                            const time = getEventTime(event);
+                                            const title = getEventTitle(event);
+                                            return (
+                                                <div
+                                                    key={eventIndex}
+                                                    className="text-xs bg-primary/90 text-primary-content px-1.5 py-0.5 rounded truncate leading-tight"
+                                                >
+                                                    {time && (
+                                                        <span className="font-medium mr-1">
+                                                            {time}
+                                                        </span>
+                                                    )}
+                                                    {title}
+                                                </div>
+                                            );
+                                        })}
+                                    {day.events.length > 2 && (
+                                        <div className="text-xs text-base-content/60 px-1">
+                                            +{day.events.length - 2}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
