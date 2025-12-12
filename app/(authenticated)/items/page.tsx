@@ -14,9 +14,42 @@ const CATEGORY_MAP: Record<string, string> = {
     CAB: "ケーブル",
 };
 
+const CACHE_KEY = "nb-portal-items-cache";
+const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2時間（ミリ秒）
+
+interface CachedData {
+    items: Item[];
+    timestamp: number;
+}
+
 const getCategoryFromItemId = (itemId: string): string => {
     const prefix = String(itemId).substring(0, 3).toUpperCase();
     return CATEGORY_MAP[prefix] || "その他";
+};
+
+const getCache = (): CachedData | null => {
+    if (typeof window === "undefined") return null;
+    try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (!cached) return null;
+        return JSON.parse(cached) as CachedData;
+    } catch {
+        return null;
+    }
+};
+
+const setCache = (items: Item[]): void => {
+    if (typeof window === "undefined") return;
+    try {
+        const data: CachedData = { items, timestamp: Date.now() };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    } catch {
+        // localStorage容量超過時は無視
+    }
+};
+
+const isCacheValid = (cache: CachedData): boolean => {
+    return Date.now() - cache.timestamp < CACHE_DURATION;
 };
 
 export default function ItemsPage() {
@@ -27,22 +60,38 @@ export default function ItemsPage() {
 
     useEffect(() => {
         const fetchData = async () => {
+            // キャッシュをチェック
+            const cache = getCache();
+            if (cache && isCacheValid(cache)) {
+                setItems(cache.items);
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 const res = await fetch(
                     `${process.env.NEXT_PUBLIC_GAS_API_URL}?path=items`
                 );
                 const data = await res.json();
                 if (data.success) {
-                    setItems(data.data || []);
+                    const fetchedItems = data.data || [];
+                    setItems(fetchedItems);
+                    setCache(fetchedItems);
                 } else {
                     setError(data.error || "データの取得に失敗しました");
                 }
             } catch (err) {
-                setError(
-                    err instanceof Error
-                        ? err.message
-                        : "データの取得に失敗しました"
-                );
+                // エラー時はキャッシュがあれば使用
+                const cache = getCache();
+                if (cache) {
+                    setItems(cache.items);
+                } else {
+                    setError(
+                        err instanceof Error
+                            ? err.message
+                            : "データの取得に失敗しました"
+                    );
+                }
             } finally {
                 setIsLoading(false);
             }
