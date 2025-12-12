@@ -14,6 +14,14 @@ interface SelectedDateInfo {
     events: Schedule[];
 }
 
+interface AddEventForm {
+    title: string;
+    where: string;
+    detail: string;
+    timeHH: string;
+    timeMM: string;
+}
+
 export default function CalendarPage() {
     const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [absences, setAbsences] = useState<Absence[]>([]);
@@ -24,6 +32,15 @@ export default function CalendarPage() {
         null
     );
     const [selectedEvent, setSelectedEvent] = useState<Schedule | null>(null);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [addForm, setAddForm] = useState<AddEventForm>({
+        title: "",
+        where: "",
+        detail: "",
+        timeHH: "",
+        timeMM: "",
+    });
 
     useEffect(() => {
         const fetchData = async () => {
@@ -82,15 +99,95 @@ export default function CalendarPage() {
     // 日付クリック時のハンドラー
     const handleDateClick = (date: Date, dateStr: string) => {
         const events = eventsByDate.get(dateStr) || [];
-        if (events.length > 0) {
-            setSelectedDate({ date, dateStr, events });
-        }
+        setSelectedDate({ date, dateStr, events });
     };
 
     // モーダルを閉じる
     const closeModal = () => {
         setSelectedDate(null);
         setSelectedEvent(null);
+        setShowAddModal(false);
+        setAddForm({
+            title: "",
+            where: "",
+            detail: "",
+            timeHH: "",
+            timeMM: "",
+        });
+    };
+
+    // 追加モーダルを開く
+    const openAddModal = () => {
+        setShowAddModal(true);
+    };
+
+    // 追加モーダルを閉じる（一覧に戻る）
+    const closeAddModal = () => {
+        setShowAddModal(false);
+        setAddForm({
+            title: "",
+            where: "",
+            detail: "",
+            timeHH: "",
+            timeMM: "",
+        });
+    };
+
+    // イベント追加の送信
+    const handleAddSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedDate || !addForm.title.trim()) return;
+
+        setIsSubmitting(true);
+        try {
+            const response = await fetch("/api/schedule", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    year: selectedDate.date.getFullYear(),
+                    month: selectedDate.date.getMonth() + 1,
+                    date: selectedDate.date.getDate(),
+                    timeHH: addForm.timeHH || undefined,
+                    timeMM: addForm.timeMM || undefined,
+                    title: addForm.title.trim(),
+                    where: addForm.where.trim(),
+                    detail: addForm.detail.trim(),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // 新しいスケジュールをローカル状態に追加
+                const newSchedule: Schedule = {
+                    EVENT_ID: data.data.eventId,
+                    YYYY: data.data.year,
+                    MM: data.data.month,
+                    DD: data.data.date,
+                    TIME_HH: data.data.timeHH || "",
+                    TIME_MM: data.data.timeMM || "",
+                    TITLE: data.data.title,
+                    WHERE: data.data.where,
+                    DETAIL: data.data.detail,
+                };
+                setSchedules((prev) => [...prev, newSchedule]);
+
+                // モーダルを閉じる
+                closeModal();
+            } else {
+                setError(data.error || "スケジュールの追加に失敗しました");
+            }
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "スケジュールの追加に失敗しました"
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // 一覧からイベントを選択
@@ -327,18 +424,12 @@ export default function CalendarPage() {
                                 <div
                                     key={index}
                                     onClick={() =>
-                                        hasEvents &&
                                         handleDateClick(day.date, day.dateStr)
                                     }
                                     className={`
-                                        relative flex flex-col border-r border-b border-base-300
+                                        relative flex flex-col border-r border-b border-base-300 cursor-pointer active:bg-base-200/50
                                         ${isLastRow ? "border-b-0" : ""}
                                         ${index % 7 === 6 ? "border-r-0" : ""}
-                                        ${
-                                            hasEvents
-                                                ? "cursor-pointer active:bg-base-200/50"
-                                                : ""
-                                        }
                                         ${
                                             !day.isCurrentMonth
                                                 ? "bg-base-200/30"
@@ -502,18 +593,12 @@ export default function CalendarPage() {
                             <div
                                 key={index}
                                 onClick={() =>
-                                    hasEvents &&
                                     handleDateClick(day.date, day.dateStr)
                                 }
                                 className={`
-                                    relative flex flex-col border-r border-b border-base-300 last:border-r-0
+                                    relative flex flex-col border-r border-b border-base-300 last:border-r-0 cursor-pointer hover:bg-base-200/50
                                     ${isLastRow ? "border-b-0" : ""}
                                     ${index % 7 === 6 ? "border-r-0" : ""}
-                                    ${
-                                        hasEvents
-                                            ? "cursor-pointer hover:bg-base-200/50"
-                                            : ""
-                                    }
                                     ${
                                         !day.isCurrentMonth
                                             ? "bg-base-200/30"
@@ -589,88 +674,37 @@ export default function CalendarPage() {
                 </div>
             </div>
 
-            {/* イベント詳細モーダル - 1件の場合は直接ScheduleCardモーダルを表示 */}
-            {selectedDate &&
-                selectedDate.events.length === 1 &&
-                (() => {
-                    const event = selectedDate.events[0];
-                    const values = Object.values(event);
-                    const eventId = String(values[0] ?? "");
-                    const year = Number(values[1]);
-                    const month = Number(values[2]);
-                    const date = Number(values[3]);
-                    const rawTimeHH = values[4];
-                    const rawTimeMM = values[5];
-                    const title = String(values[6] ?? "予定");
-                    const where = String(values[7] ?? "");
-                    const detail = String(values[8] ?? "");
-
-                    const scheduleDate = new Date(year, month - 1, date);
-                    const scheduleDayOfWeek = [
-                        "日",
-                        "月",
-                        "火",
-                        "水",
-                        "木",
-                        "金",
-                        "土",
-                    ][scheduleDate.getDay()];
-                    const dateLabel = `${month}/${date}(${scheduleDayOfWeek})`;
-
-                    const hasTime =
-                        rawTimeHH !== "" &&
-                        rawTimeHH !== null &&
-                        rawTimeHH !== undefined &&
-                        rawTimeMM !== "" &&
-                        rawTimeMM !== null &&
-                        rawTimeMM !== undefined;
-                    const timeLabel = hasTime
-                        ? `${String(rawTimeHH).padStart(2, "0")}:${String(
-                              rawTimeMM
-                          ).padStart(2, "0")}`
-                        : undefined;
-
-                    const eventAbsences = absences.filter((absence) => {
-                        const absenceValues = Object.values(absence);
-                        return absenceValues[1] === eventId;
-                    });
-
-                    return (
-                        <ScheduleCard
-                            eventId={eventId}
-                            title={title}
-                            where={where}
-                            detail={detail}
-                            absences={eventAbsences}
-                            dateLabel={dateLabel}
-                            timeLabel={timeLabel}
-                            defaultOpen={true}
-                            onClose={closeModal}
-                            hideCard={true}
-                        />
-                    );
-                })()}
-
-            {/* イベント詳細モーダル - 複数件の場合は一覧表示 */}
-            {selectedDate &&
-                selectedDate.events.length > 1 &&
-                !selectedEvent && (
-                    <dialog className="modal modal-open modal-middle">
-                        <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)]">
+            {/* イベント一覧モーダル */}
+            {selectedDate && !selectedEvent && !showAddModal && (
+                <dialog className="modal modal-open modal-middle">
+                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)]">
+                        <div className="flex items-center gap-2 absolute right-2 top-2">
+                            <button
+                                onClick={openAddModal}
+                                className="btn btn-sm btn-primary"
+                            >
+                                追加
+                            </button>
                             <button
                                 onClick={closeModal}
-                                className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                                className="btn btn-sm btn-circle btn-ghost"
                             >
                                 ✕
                             </button>
-                            <h3 className="font-bold text-xl mb-4">
-                                {selectedDate.date.getFullYear()}年
-                                {selectedDate.date.getMonth() + 1}月
-                                {selectedDate.date.getDate()}日の予定
-                                <span className="badge badge-primary ml-2">
-                                    {selectedDate.events.length}件
-                                </span>
-                            </h3>
+                        </div>
+                        <h3 className="font-bold text-xl mb-4">
+                            {selectedDate.date.getFullYear()}年
+                            {selectedDate.date.getMonth() + 1}月
+                            {selectedDate.date.getDate()}日の予定
+                            <span className="badge badge-primary ml-2">
+                                {selectedDate.events.length}件
+                            </span>
+                        </h3>
+                        {selectedDate.events.length === 0 ? (
+                            <div className="text-center py-8 text-base-content/60">
+                                この日の予定はありません
+                            </div>
+                        ) : (
                             <div className="space-y-3">
                                 {selectedDate.events.map((event, index) => {
                                     const values = Object.values(event);
@@ -740,19 +774,153 @@ export default function CalendarPage() {
                                     );
                                 })}
                             </div>
-                        </div>
-                        <form
-                            method="dialog"
-                            className="modal-backdrop"
+                        )}
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button onClick={closeModal}>close</button>
+                    </form>
+                </dialog>
+            )}
+
+            {/* イベント追加モーダル */}
+            {selectedDate && showAddModal && (
+                <dialog className="modal modal-open modal-middle">
+                    <div className="modal-box max-w-md">
+                        <button
+                            onClick={closeAddModal}
+                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
                         >
-                            <button onClick={closeModal}>close</button>
+                            ✕
+                        </button>
+                        <h3 className="font-bold text-xl mb-4">
+                            {selectedDate.date.getFullYear()}年
+                            {selectedDate.date.getMonth() + 1}月
+                            {selectedDate.date.getDate()}日に予定を追加
+                        </h3>
+                        <form onSubmit={handleAddSubmit} className="space-y-4">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        タイトル{" "}
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="予定のタイトル"
+                                    className="input input-bordered w-full"
+                                    value={addForm.title}
+                                    onChange={(e) =>
+                                        setAddForm({
+                                            ...addForm,
+                                            title: e.target.value,
+                                        })
+                                    }
+                                    required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">時刻</span>
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="時"
+                                        min="0"
+                                        max="23"
+                                        className="input input-bordered w-20"
+                                        value={addForm.timeHH}
+                                        onChange={(e) =>
+                                            setAddForm({
+                                                ...addForm,
+                                                timeHH: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <span>:</span>
+                                    <input
+                                        type="number"
+                                        placeholder="分"
+                                        min="0"
+                                        max="59"
+                                        className="input input-bordered w-20"
+                                        value={addForm.timeMM}
+                                        onChange={(e) =>
+                                            setAddForm({
+                                                ...addForm,
+                                                timeMM: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">場所</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="場所"
+                                    className="input input-bordered w-full"
+                                    value={addForm.where}
+                                    onChange={(e) =>
+                                        setAddForm({
+                                            ...addForm,
+                                            where: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">詳細</span>
+                                </label>
+                                <textarea
+                                    placeholder="詳細"
+                                    className="textarea textarea-bordered w-full"
+                                    rows={3}
+                                    value={addForm.detail}
+                                    onChange={(e) =>
+                                        setAddForm({
+                                            ...addForm,
+                                            detail: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="modal-action">
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={closeAddModal}
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                    disabled={
+                                        isSubmitting || !addForm.title.trim()
+                                    }
+                                >
+                                    {isSubmitting ? (
+                                        <span className="loading loading-spinner loading-sm"></span>
+                                    ) : (
+                                        "追加"
+                                    )}
+                                </button>
+                            </div>
                         </form>
-                    </dialog>
-                )}
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button onClick={closeAddModal}>close</button>
+                    </form>
+                </dialog>
+            )}
 
             {/* 選択されたイベントの詳細モーダル */}
             {selectedDate &&
-                selectedDate.events.length > 1 &&
                 selectedEvent &&
                 (() => {
                     const values = Object.values(selectedEvent);
