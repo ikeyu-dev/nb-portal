@@ -309,6 +309,8 @@ function doPost(e) {
         switch (path) {
             case "absences":
                 return handlePostAbsence(postData);
+            case "schedules":
+                return handlePostSchedule(postData);
             default:
                 return createErrorResponse("Invalid endpoint", 404);
         }
@@ -508,10 +510,13 @@ const handleGetEventAbsences = (e) => {
         const headers = sheet.getRange(1, 1, 1, 9).getValues()[0];
 
         // EVENT_IDのカラムインデックスを見つける (B列 = index 1)
-        const eventIdIndex = headers.findIndex(h => h === "EVENT_ID");
+        const eventIdIndex = headers.findIndex((h) => h === "EVENT_ID");
 
         if (eventIdIndex === -1) {
-            return createErrorResponse("EVENT_ID column not found in absence_data sheet", 500);
+            return createErrorResponse(
+                "EVENT_ID column not found in absence_data sheet",
+                500
+            );
         }
 
         const absences = [];
@@ -532,6 +537,70 @@ const handleGetEventAbsences = (e) => {
             success: true,
             data: absences,
             count: absences.length,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// スケジュール登録API
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL
+const handlePostSchedule = (postData) => {
+    try {
+        const { year, month, date, timeHH, timeMM, title, where, detail } =
+            postData;
+
+        // 必須フィールドの検証
+        if (!year || !month || !date || !title) {
+            return createErrorResponse(
+                "Missing required fields (year, month, date, title)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("schedules");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'schedules' not found", 404);
+        }
+
+        // EVENT_IDを生成（E-XX形式、行番号-1、最低2桁で0埋め）
+        const lastRow = sheet.getLastRow();
+        const newRowNumber = lastRow + 1;
+        const eventIdNumber = newRowNumber - 1;
+        const eventId = "E-" + String(eventIdNumber).padStart(2, "0");
+
+        // データを追加
+        // A: EVENT_ID, B: YYYY, C: MM, D: DD, E: TIME_HH, F: TIME_MM, G: TITLE, H: WHERE, I: DETAIL
+        const rowData = [
+            eventId,
+            Number(year),
+            Number(month),
+            Number(date),
+            timeHH !== undefined && timeHH !== "" ? Number(timeHH) : "",
+            timeMM !== undefined && timeMM !== "" ? Number(timeMM) : "",
+            title,
+            where || "",
+            detail || "",
+        ];
+
+        sheet.appendRow(rowData);
+
+        return createResponse({
+            success: true,
+            message: "Schedule created successfully",
+            data: {
+                eventId,
+                year: Number(year),
+                month: Number(month),
+                date: Number(date),
+                timeHH: timeHH || null,
+                timeMM: timeMM || null,
+                title,
+                where: where || "",
+                detail: detail || "",
+            },
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
@@ -575,6 +644,7 @@ const handlePostAbsence = (postData) => {
         // データを追加（A列: タイムスタンプ, B列以降: フォームデータ）
         // absence_data シートの列構成に合わせる:
         // A: タイムスタンプ, B: EVENT_ID, C: 学籍番号, D: 氏名, E: 種別, F: 理由, G: 早退時間, H: 抜ける時間, I: 戻る時間
+        // A: TIMESTAMP, B: EVENT_ID, C: STUDENT_NUMBER, D: NAME, E: TYPE, F: REASON, G: TimeLeavingEarly, H: TimeStepOut, I: TimeReturn
         const rowData = [
             timestamp,
             eventId,
@@ -631,7 +701,9 @@ const handlePostAbsence = (postData) => {
             bodyText += `\n理由: ${reason}\n`;
             bodyText += `\n送信日時: ${timestamp}\n`;
 
-            MailApp.sendEmail(email, subject, bodyText, { name: "欠席連絡システム" });
+            MailApp.sendEmail(email, subject, bodyText, {
+                name: "欠席連絡システム",
+            });
         }
 
         return createResponse({
