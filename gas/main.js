@@ -267,6 +267,8 @@ function doGet(e) {
                 return handleGetAbsences(e);
             case "event-absences":
                 return handleGetEventAbsences(e);
+            case "verify-member":
+                return handleVerifyMember(e);
             case "health":
                 return createResponse({
                     success: true,
@@ -283,6 +285,7 @@ function doGet(e) {
                         schedules: "?path=schedules",
                         absences: "?path=absences&date=YYYY-MM-DD",
                         eventAbsences: "?path=event-absences&eventId=EVENT_ID",
+                        verifyMember: "?path=verify-member&identifier=STUDENT_NUMBER",
                         health: "?path=health",
                     },
                 });
@@ -537,6 +540,54 @@ const handleGetEventAbsences = (e) => {
             success: true,
             data: absences,
             count: absences.length,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// 部員確認API (members シートのA列と照合)
+const handleVerifyMember = (e) => {
+    try {
+        const identifier = e.parameter.identifier;
+
+        if (!identifier) {
+            return createErrorResponse("identifier parameter is required", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("members");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'members' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createResponse({
+                success: true,
+                isMember: false,
+                message: "No members found",
+            });
+        }
+
+        // A列（学籍番号）を取得
+        const range = sheet.getRange(2, 1, lastRow - 1, 1);
+        const values = range.getValues();
+
+        // 識別子を正規化（小文字化、トリム）
+        const normalizedIdentifier = String(identifier).toLowerCase().trim();
+
+        // A列の値と比較
+        const isMember = values.some((row) => {
+            const studentId = String(row[0]).toLowerCase().trim();
+            return studentId === normalizedIdentifier;
+        });
+
+        return createResponse({
+            success: true,
+            isMember: isMember,
+            identifier: identifier,
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
