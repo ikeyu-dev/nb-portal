@@ -66,7 +66,7 @@ export default function ScheduleCard({
                                             className="font-normal text-base-content/70"
                                             style={{
                                                 fontSize:
-                                                    "clamp(0.875rem, 2vw, 1rem)",
+                                                    "clamp(1.25rem, 3vw, 1.5rem)",
                                             }}
                                         >
                                             {timeLabel}
