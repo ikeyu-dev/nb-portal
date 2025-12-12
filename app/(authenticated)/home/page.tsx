@@ -287,7 +287,7 @@ export default async function HomePage() {
                         <div className="flex items-center gap-2 mb-4 h-8">
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
-                                className="h-6 w-6 text-primary"
+                                className="h-5 w-5 text-primary"
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
@@ -302,7 +302,7 @@ export default async function HomePage() {
                             <h2
                                 className="card-title"
                                 style={{
-                                    fontSize: "clamp(1.25rem, 3vw, 1.5rem)",
+                                    fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
                                 }}
                             >
                                 本日の欠席者
