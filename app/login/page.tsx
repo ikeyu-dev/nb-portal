@@ -1,5 +1,6 @@
 import { signIn } from "@/src/auth";
 import Image from "next/image";
+import { LoginButton } from "./LoginButton";
 
 export default function LoginPage() {
     return (
@@ -31,22 +32,7 @@ export default function LoginPage() {
                             });
                         }}
                     >
-                        <button
-                            type="submit"
-                            className="btn btn-primary gap-2"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 23 23"
-                                className="w-5 h-5"
-                            >
-                                <path
-                                    fill="currentColor"
-                                    d="M0 0h11v11H0zM12 0h11v11H12zM0 12h11v11H0zM12 12h11v11H12z"
-                                />
-                            </svg>
-                            Microsoftでログイン
-                        </button>
+                        <LoginButton />
                     </form>
                 </div>
             </div>
