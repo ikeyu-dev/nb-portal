@@ -42,6 +42,23 @@ export default async function HomePage() {
         todayDate
     ).getTime();
 
+    // 今日のスケジュールのEVENT_IDを取得
+    const todayEventIds = schedules
+        .filter((schedule) => {
+            const values = Object.values(schedule);
+            const year = Number(values[1]);
+            const month = Number(values[2]);
+            const date = Number(values[3]);
+            return year === todayYear && month === todayMonth && date === todayDate;
+        })
+        .map((schedule) => String(Object.values(schedule)[0]));
+
+    // 本日の欠席者をフィルタリング（今日のイベントに紐づく欠席者のみ）
+    const todayAbsences = absences.filter((absence) => {
+        const absenceEventId = String(Object.values(absence)[1]); // B列のEVENT_ID
+        return todayEventIds.includes(absenceEventId);
+    });
+
     const upcomingSchedules = schedules
         .filter((schedule) => {
             const values = Object.values(schedule);
@@ -85,7 +102,7 @@ export default async function HomePage() {
             {/* Cards Grid - モバイル: スケジュール→欠席者→時計天気, デスクトップ: 2列グリッド */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Schedule Card - モバイル: 1番目, デスクトップ: 左上 */}
-                <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow border border-base-300 h-[420px] order-1">
+                <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-1">
                     <div className="card-body pt-5 flex flex-col overflow-hidden">
                         <div className="flex items-center gap-2 mb-4 h-8 shrink-0">
                             <svg
@@ -227,7 +244,7 @@ export default async function HomePage() {
                 </div>
 
                 {/* Weather & Clock Combined Card - モバイル: 3番目, デスクトップ: 右上 */}
-                <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow border border-base-300 h-[420px] order-3 lg:order-2">
+                <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-3 lg:order-2">
                     <div className="card-body pt-5 flex flex-col overflow-hidden">
                         <div className="flex items-center gap-2 mb-2 h-8 shrink-0">
                             <svg
@@ -265,7 +282,7 @@ export default async function HomePage() {
                 </div>
 
                 {/* Absences Section - モバイル: 2番目, デスクトップ: 下段全幅 */}
-                <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow border border-base-300 order-2 lg:order-3 lg:col-span-2">
+                <div className="card bg-base-100 shadow-xl border border-base-300 order-2 lg:order-3 lg:col-span-2">
                     <div className="card-body pt-5">
                         <div className="flex items-center gap-2 mb-4 h-8">
                             <svg
@@ -291,7 +308,7 @@ export default async function HomePage() {
                                 本日の欠席者
                             </h2>
                         </div>
-                        {absences.length > 0 ? (
+                        {todayAbsences.length > 0 ? (
                             <div className="overflow-x-auto">
                                 <table
                                     className="table table-zebra w-full"
@@ -309,7 +326,7 @@ export default async function HomePage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {absences.map((absence, index) => {
+                                        {todayAbsences.map((absence, index) => {
                                             const values =
                                                 Object.values(absence);
                                             // A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
@@ -387,29 +404,49 @@ export default async function HomePage() {
                                 </table>
                             </div>
                         ) : (
-                            <div className="text-center py-12">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-20 w-20 mx-auto mb-4 text-success"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                                <p
-                                    className="text-base-content/60"
+                            <div className="overflow-x-auto">
+                                <table
+                                    className="table table-zebra w-full"
                                     style={{
-                                        fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+                                        fontSize:
+                                            "clamp(0.875rem, 2vw, 1.125rem)",
                                     }}
                                 >
-                                    本日の欠席者はいません
-                                </p>
+                                    <thead>
+                                        <tr>
+                                            <th>学籍番号</th>
+                                            <th>氏名</th>
+                                            <th>種別</th>
+                                            <th>時間</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td
+                                                colSpan={4}
+                                                className="text-center text-base-content/60"
+                                            >
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="h-5 w-5 text-success"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                        />
+                                                    </svg>
+                                                    本日の欠席者はいません
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </div>
