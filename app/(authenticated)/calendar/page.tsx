@@ -14,12 +14,15 @@ interface SelectedDateInfo {
     events: Schedule[];
 }
 
-interface AddEventForm {
+interface EventForm {
     title: string;
     where: string;
     detail: string;
     timeHH: string;
     timeMM: string;
+    year: string;
+    month: string;
+    date: string;
 }
 
 export default function CalendarPage() {
@@ -33,13 +36,29 @@ export default function CalendarPage() {
     );
     const [selectedEvent, setSelectedEvent] = useState<Schedule | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [addForm, setAddForm] = useState<AddEventForm>({
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [addForm, setAddForm] = useState<EventForm>({
         title: "",
         where: "",
         detail: "",
         timeHH: "",
         timeMM: "",
+        year: "",
+        month: "",
+        date: "",
+    });
+    const [editForm, setEditForm] = useState<EventForm>({
+        title: "",
+        where: "",
+        detail: "",
+        timeHH: "",
+        timeMM: "",
+        year: "",
+        month: "",
+        date: "",
     });
 
     useEffect(() => {
@@ -107,12 +126,26 @@ export default function CalendarPage() {
         setSelectedDate(null);
         setSelectedEvent(null);
         setShowAddModal(false);
+        setShowEditModal(false);
         setAddForm({
             title: "",
             where: "",
             detail: "",
             timeHH: "",
             timeMM: "",
+            year: "",
+            month: "",
+            date: "",
+        });
+        setEditForm({
+            title: "",
+            where: "",
+            detail: "",
+            timeHH: "",
+            timeMM: "",
+            year: "",
+            month: "",
+            date: "",
         });
     };
 
@@ -130,6 +163,9 @@ export default function CalendarPage() {
             detail: "",
             timeHH: "",
             timeMM: "",
+            year: "",
+            month: "",
+            date: "",
         });
     };
 
@@ -198,6 +234,165 @@ export default function CalendarPage() {
     // 詳細モーダルを閉じて一覧に戻る
     const closeEventModal = () => {
         setSelectedEvent(null);
+    };
+
+    // 編集モーダルを開く
+    const openEditModal = () => {
+        if (!selectedEvent) return;
+        const values = Object.values(selectedEvent);
+        const rawTimeHH = values[4];
+        const rawTimeMM = values[5];
+        setEditForm({
+            title: String(values[6] ?? ""),
+            where: String(values[7] ?? ""),
+            detail: String(values[8] ?? ""),
+            timeHH:
+                rawTimeHH !== "" &&
+                rawTimeHH !== null &&
+                rawTimeHH !== undefined
+                    ? String(rawTimeHH)
+                    : "",
+            timeMM:
+                rawTimeMM !== "" &&
+                rawTimeMM !== null &&
+                rawTimeMM !== undefined
+                    ? String(rawTimeMM)
+                    : "",
+            year: String(values[1] ?? ""),
+            month: String(values[2] ?? ""),
+            date: String(values[3] ?? ""),
+        });
+        setShowEditModal(true);
+    };
+
+    // 編集モーダルを閉じる
+    const closeEditModal = () => {
+        setShowEditModal(false);
+        setShowDeleteConfirm(false);
+        setEditForm({
+            title: "",
+            where: "",
+            detail: "",
+            timeHH: "",
+            timeMM: "",
+            year: "",
+            month: "",
+            date: "",
+        });
+    };
+
+    // イベント削除の処理
+    const handleDeleteSubmit = async () => {
+        if (!selectedEvent) return;
+
+        setIsDeleting(true);
+        try {
+            const values = Object.values(selectedEvent);
+            const eventId = String(values[0]);
+
+            const response = await fetch("/api/schedule", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ eventId }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // ローカル状態から削除
+                setSchedules((prev) =>
+                    prev.filter((schedule) => {
+                        const scheduleValues = Object.values(schedule);
+                        return String(scheduleValues[0]) !== eventId;
+                    })
+                );
+
+                // モーダルを閉じる
+                closeEditModal();
+                closeModal();
+            } else {
+                setError(data.error || "スケジュールの削除に失敗しました");
+            }
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "スケジュールの削除に失敗しました"
+            );
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // イベント編集の送信
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedEvent || !editForm.title.trim()) return;
+
+        setIsSubmitting(true);
+        try {
+            const values = Object.values(selectedEvent);
+            const eventId = String(values[0]);
+
+            const response = await fetch("/api/schedule", {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    eventId,
+                    year: Number(editForm.year),
+                    month: Number(editForm.month),
+                    date: Number(editForm.date),
+                    timeHH: editForm.timeHH || undefined,
+                    timeMM: editForm.timeMM || undefined,
+                    title: editForm.title.trim(),
+                    where: editForm.where.trim(),
+                    detail: editForm.detail.trim(),
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // ローカル状態を更新
+                setSchedules((prev) =>
+                    prev.map((schedule) => {
+                        const scheduleValues = Object.values(schedule);
+                        if (String(scheduleValues[0]) === eventId) {
+                            return {
+                                ...schedule,
+                                YYYY: data.data.year,
+                                MM: data.data.month,
+                                DD: data.data.date,
+                                TITLE: data.data.title,
+                                WHERE: data.data.where,
+                                DETAIL: data.data.detail,
+                                TIME_HH: data.data.timeHH || "",
+                                TIME_MM: data.data.timeMM || "",
+                            };
+                        }
+                        return schedule;
+                    })
+                );
+
+                // 編集モーダルと詳細モーダルを閉じる（日付が変わった可能性があるため）
+                closeEditModal();
+                closeModal();
+            } else {
+                setError(data.error || "スケジュールの更新に失敗しました");
+            }
+        } catch (err) {
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "スケジュールの更新に失敗しました"
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     // カレンダーの月を変更
@@ -776,7 +971,10 @@ export default function CalendarPage() {
                             </div>
                         )}
                     </div>
-                    <form method="dialog" className="modal-backdrop">
+                    <form
+                        method="dialog"
+                        className="modal-backdrop"
+                    >
                         <button onClick={closeModal}>close</button>
                     </form>
                 </dialog>
@@ -797,7 +995,10 @@ export default function CalendarPage() {
                             {selectedDate.date.getMonth() + 1}月
                             {selectedDate.date.getDate()}日に予定を追加
                         </h3>
-                        <form onSubmit={handleAddSubmit} className="space-y-4">
+                        <form
+                            onSubmit={handleAddSubmit}
+                            className="space-y-4"
+                        >
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
@@ -913,7 +1114,10 @@ export default function CalendarPage() {
                             </div>
                         </form>
                     </div>
-                    <form method="dialog" className="modal-backdrop">
+                    <form
+                        method="dialog"
+                        className="modal-backdrop"
+                    >
                         <button onClick={closeAddModal}>close</button>
                     </form>
                 </dialog>
@@ -975,10 +1179,252 @@ export default function CalendarPage() {
                             timeLabel={timeLabel}
                             defaultOpen={true}
                             onClose={closeEventModal}
+                            onEdit={openEditModal}
                             hideCard={true}
                         />
                     );
                 })()}
+
+            {/* イベント編集モーダル */}
+            {selectedEvent && showEditModal && (
+                <dialog className="modal modal-open modal-middle">
+                    <div className="modal-box max-w-md">
+                        <button
+                            onClick={closeEditModal}
+                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                        >
+                            ✕
+                        </button>
+                        <h3 className="font-bold text-xl mb-4">予定を編集</h3>
+                        <form
+                            onSubmit={handleEditSubmit}
+                            className="space-y-4"
+                        >
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        タイトル{" "}
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="予定のタイトル"
+                                    className="input input-bordered w-full"
+                                    value={editForm.title}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            title: e.target.value,
+                                        })
+                                    }
+                                    required
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        日付{" "}
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="年"
+                                        min="2020"
+                                        max="2100"
+                                        className="input input-bordered w-24"
+                                        value={editForm.year}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                year: e.target.value,
+                                            })
+                                        }
+                                        required
+                                    />
+                                    <span>年</span>
+                                    <input
+                                        type="number"
+                                        placeholder="月"
+                                        min="1"
+                                        max="12"
+                                        className="input input-bordered w-20"
+                                        value={editForm.month}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                month: e.target.value,
+                                            })
+                                        }
+                                        required
+                                    />
+                                    <span>月</span>
+                                    <input
+                                        type="number"
+                                        placeholder="日"
+                                        min="1"
+                                        max="31"
+                                        className="input input-bordered w-20"
+                                        value={editForm.date}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                date: e.target.value,
+                                            })
+                                        }
+                                        required
+                                    />
+                                    <span>日</span>
+                                </div>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">時刻</span>
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        placeholder="時"
+                                        min="0"
+                                        max="23"
+                                        className="input input-bordered w-20"
+                                        value={editForm.timeHH}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                timeHH: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <span>:</span>
+                                    <input
+                                        type="number"
+                                        placeholder="分"
+                                        min="0"
+                                        max="59"
+                                        className="input input-bordered w-20"
+                                        value={editForm.timeMM}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                timeMM: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">場所</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="場所"
+                                    className="input input-bordered w-full"
+                                    value={editForm.where}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            where: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">詳細</span>
+                                </label>
+                                <textarea
+                                    placeholder="詳細"
+                                    className="textarea textarea-bordered w-full"
+                                    rows={3}
+                                    value={editForm.detail}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            detail: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                            {/* 削除確認 */}
+                            {showDeleteConfirm ? (
+                                <div className="bg-error/10 border border-error rounded-lg p-4">
+                                    <p className="text-sm text-error mb-3">
+                                        この予定を削除しますか？この操作は取り消せません。
+                                    </p>
+                                    <div className="flex gap-2 justify-end">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-ghost"
+                                            onClick={() =>
+                                                setShowDeleteConfirm(false)
+                                            }
+                                        >
+                                            キャンセル
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-error"
+                                            onClick={handleDeleteSubmit}
+                                            disabled={isDeleting}
+                                        >
+                                            {isDeleting ? (
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                            ) : (
+                                                "削除する"
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="modal-action justify-between">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline btn-error"
+                                        onClick={() =>
+                                            setShowDeleteConfirm(true)
+                                        }
+                                    >
+                                        削除
+                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost"
+                                            onClick={closeEditModal}
+                                        >
+                                            キャンセル
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            className="btn btn-primary"
+                                            disabled={
+                                                isSubmitting ||
+                                                !editForm.title.trim()
+                                            }
+                                        >
+                                            {isSubmitting ? (
+                                                <span className="loading loading-spinner loading-sm"></span>
+                                            ) : (
+                                                "保存"
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </form>
+                    </div>
+                    <form
+                        method="dialog"
+                        className="modal-backdrop"
+                    >
+                        <button onClick={closeEditModal}>close</button>
+                    </form>
+                </dialog>
+            )}
         </div>
     );
 }

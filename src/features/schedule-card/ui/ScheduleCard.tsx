@@ -13,6 +13,7 @@ interface ScheduleCardProps {
     timeLabel?: string;
     defaultOpen?: boolean;
     onClose?: () => void;
+    onEdit?: () => void;
     hideCard?: boolean;
 }
 
@@ -26,6 +27,7 @@ export default function ScheduleCard({
     timeLabel,
     defaultOpen = false,
     onClose,
+    onEdit,
     hideCard = false,
 }: ScheduleCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(defaultOpen);
@@ -306,6 +308,14 @@ export default function ScheduleCard({
                         </div>
 
                         <div className="modal-action">
+                            {onEdit && (
+                                <button
+                                    onClick={onEdit}
+                                    className="btn btn-outline btn-primary"
+                                >
+                                    編集
+                                </button>
+                            )}
                             <a
                                 href={`/absence?eventId=${eventId}`}
                                 className="btn btn-primary"

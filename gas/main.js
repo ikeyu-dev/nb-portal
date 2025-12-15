@@ -1,4 +1,7 @@
-// 定数定義
+// ============================================
+// 欠席連絡フォーム処理 - フィールドマッピング定義
+// Googleフォームのヘッダー名から内部フィールド名へ変換するための設定
+// ============================================
 const FIELD_MAPPING = [
     {
         keywords: ["タイムスタンプ", "timestamp"],
@@ -18,11 +21,23 @@ const FIELD_MAPPING = [
     },
 ];
 
-// Dateオブジェクトかどうかを判定
+// ============================================
+// ユーティリティ関数
+// ============================================
+
+/**
+ * 値がDateオブジェクトかどうかを判定
+ * @param {*} value - 判定する値
+ * @returns {boolean} Dateオブジェクトならtrue
+ */
 const isDate = (value) =>
     Object.prototype.toString.call(value) === "[object Date]";
 
-// 時刻をhh:mm形式にフォーマット
+/**
+ * 時刻をHH:MM形式にフォーマット
+ * @param {Date|string} timeValue - 時刻値（Dateオブジェクトまたは文字列）
+ * @returns {string} "HH:MM"形式の文字列
+ */
 const formatTime = (timeValue) => {
     if (!timeValue) return "";
 
@@ -40,7 +55,11 @@ const formatTime = (timeValue) => {
     return String(timeValue);
 };
 
-// 日時をYYYY/MM/DD HH:MM形式にフォーマット
+/**
+ * 日時をYYYY/MM/DD HH:MM形式にフォーマット
+ * @param {Date|string} dateValue - 日時値（Dateオブジェクトまたは文字列）
+ * @returns {string} "YYYY/MM/DD HH:MM"形式の文字列
+ */
 const formatDateTime = (dateValue) => {
     if (!dateValue) return "";
 
@@ -56,14 +75,29 @@ const formatDateTime = (dateValue) => {
     return String(dateValue);
 };
 
-// 値をフォーマット
+/**
+ * フォーマットタイプに応じて値を整形
+ * @param {*} value - 整形する値
+ * @param {string} formatType - "time" | "datetime" | undefined
+ * @returns {*} 整形後の値
+ */
 const formatValue = (value, formatType) => {
     if (formatType === "time") return formatTime(value);
     if (formatType === "datetime") return formatDateTime(value);
     return value;
 };
 
-// スプレッドシートからフォームデータを取得
+// ============================================
+// Googleフォーム送信時のトリガー処理
+// フォーム送信 → Discord通知 + メール送信
+// ============================================
+
+/**
+ * スプレッドシートの新規行からフォームデータを取得
+ * FIELD_MAPPINGを使用してヘッダー名からフィールドを特定
+ * @param {Object} e - フォーム送信イベントオブジェクト
+ * @returns {Object} フィールド名をキーとしたフォームデータ
+ */
 const getFormData = (e) => {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
     const row = e.range.getRow();
@@ -92,7 +126,12 @@ const getFormData = (e) => {
     return formData;
 };
 
-// メッセージ本文を構築
+/**
+ * Discord通知用のメッセージ本文を構築
+ * @param {Object} formData - フォームデータ
+ * @param {boolean} includeTimestamp - タイムスタンプを含めるか
+ * @returns {string} Markdown形式のメッセージ本文
+ */
 const buildMessageBody = (formData, includeTimestamp = true) => {
     let body = "";
 
@@ -102,7 +141,7 @@ const buildMessageBody = (formData, includeTimestamp = true) => {
 
     body += `**氏名**: ${formData.name}\n`;
 
-    // 種別の後ろに時間情報を追加
+    // 種別に応じて時間情報を付加（早退→早退時間、中抜け→開始〜終了時間）
     let typeText = `**種別**: ${formData.type}`;
 
     if (formData.type === "早退" && formData.leaveTime) {
@@ -119,7 +158,11 @@ const buildMessageBody = (formData, includeTimestamp = true) => {
     return body;
 };
 
-// Discordにメッセージを送信
+/**
+ * Discord Webhookにメッセージを送信
+ * @param {string} webhookURL - Discord Webhook URL（スクリプトプロパティから取得）
+ * @param {string} body - 送信するメッセージ本文
+ */
 const sendToDiscord = (webhookURL, body) => {
     const message = {
         content: body,
@@ -135,7 +178,11 @@ const sendToDiscord = (webhookURL, body) => {
     UrlFetchApp.fetch(webhookURL, param);
 };
 
-// メール送信
+/**
+ * フォーム送信者にメールで送信完了通知を送る
+ * 送信先: 学籍番号@NIT_DOMAIN（スクリプトプロパティで設定）
+ * @param {Object} formData - フォームデータ
+ */
 const sendEmail = (formData) => {
     if (!formData.studentId) return;
 
@@ -165,7 +212,13 @@ const sendEmail = (formData) => {
     MailApp.sendEmail(email, subject, bodyText, { name: "欠席連絡システム" });
 };
 
-// メイン
+/**
+ * Googleフォーム送信時のメインハンドラ（トリガーで呼び出し）
+ * 1. フォームデータを取得
+ * 2. Discord Webhookに通知
+ * 3. 送信者にメール送信
+ * @param {Object} e - フォーム送信イベントオブジェクト
+ */
 function onSubmit(e) {
     const webhookURL =
         PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
@@ -176,7 +229,17 @@ function onSubmit(e) {
     sendEmail(formData);
 }
 
-// スプレッドシートの特定行からフォームデータを取得
+// ============================================
+// 日次まとめ通知（手動実行または時間トリガー用）
+// ============================================
+
+/**
+ * 指定行からフォームデータを取得（一括取得用）
+ * @param {Sheet} sheet - スプレッドシートのシートオブジェクト
+ * @param {number} row - 行番号
+ * @param {Array} headers - ヘッダー配列
+ * @returns {Object} フィールド名をキーとしたフォームデータ
+ */
 const getFormDataFromRow = (sheet, row, headers) => {
     const values = sheet
         .getRange(row, 1, 1, sheet.getLastColumn())
@@ -199,7 +262,10 @@ const getFormDataFromRow = (sheet, row, headers) => {
     return formData;
 };
 
-// 全ての欠席・遅刻・早退・中抜けをまとめて送信
+/**
+ * 当日の全欠席・遅刻・早退・中抜けをまとめてDiscordに送信
+ * 手動実行または時間トリガーで毎日の活動開始前に実行想定
+ */
 function sendAllAbsece() {
     const webhookURL =
         PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
@@ -209,7 +275,7 @@ function sendAllAbsece() {
         .getRange(1, 1, 1, sheet.getLastColumn())
         .getValues()[0];
 
-    // 現在の日付を取得
+    // 現在の日付でタイトルを生成
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -225,23 +291,34 @@ function sendAllAbsece() {
         allMessages.push(body);
     }
 
-    // タイトルと最初のメッセージを区切り線なしで結合、その後は区切り線あり
+    // タイトルと全メッセージを区切り線で結合して送信
     const combinedBody = title + allMessages.join("-------------\n\n");
     sendToDiscord(webhookURL, combinedBody);
 }
 
 // ============================================
 // Web API エンドポイント
+// Next.jsフロントエンドからのHTTPリクエストを処理
 // ============================================
 
-// CORSヘッダーを設定したレスポンスを作成
+/**
+ * JSONレスポンスを作成
+ * @param {Object} data - レスポンスデータ
+ * @param {number} statusCode - HTTPステータスコード（未使用、GASでは常に200）
+ * @returns {TextOutput} JSON形式のレスポンス
+ */
 const createResponse = (data, statusCode = 200) => {
     const output = ContentService.createTextOutput(JSON.stringify(data));
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
 };
 
-// エラーレスポンスを作成
+/**
+ * エラーレスポンスを作成
+ * @param {string} message - エラーメッセージ
+ * @param {number} statusCode - HTTPステータスコード（レスポンスに含める）
+ * @returns {TextOutput} JSON形式のエラーレスポンス
+ */
 const createErrorResponse = (message, statusCode = 400) => {
     return createResponse(
         {
@@ -252,12 +329,16 @@ const createErrorResponse = (message, statusCode = 400) => {
     );
 };
 
-// GET リクエストのハンドラ
+/**
+ * GETリクエストのメインハンドラ（GAS Web App必須関数）
+ * pathパラメータでエンドポイントを振り分け
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} JSON形式のレスポンス
+ */
 function doGet(e) {
     try {
         const path = e.parameter.path || "";
 
-        // ルーティング
         switch (path) {
             case "items":
                 return handleGetItems(e);
@@ -269,6 +350,8 @@ function doGet(e) {
                 return handleGetEventAbsences(e);
             case "verify-member":
                 return handleVerifyMember(e);
+            case "notifications":
+                return handleGetNotifications(e);
             case "health":
                 return createResponse({
                     success: true,
@@ -276,6 +359,7 @@ function doGet(e) {
                     timestamp: new Date().toISOString(),
                 });
             default:
+                // パス未指定時はAPI情報を返す
                 return createResponse({
                     success: true,
                     message: "NB Portal API",
@@ -286,6 +370,7 @@ function doGet(e) {
                         absences: "?path=absences&date=YYYY-MM-DD",
                         eventAbsences: "?path=event-absences&eventId=EVENT_ID",
                         verifyMember: "?path=verify-member&identifier=STUDENT_NUMBER",
+                        notifications: "?path=notifications&limit=N",
                         health: "?path=health",
                     },
                 });
@@ -295,25 +380,37 @@ function doGet(e) {
     }
 }
 
-// OPTIONS リクエストのハンドラ（CORS preflight対応）
+/**
+ * OPTIONSリクエストのハンドラ（CORS preflight対応）
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} 空のレスポンス
+ */
 function doOptions(e) {
     const output = ContentService.createTextOutput("");
     output.setMimeType(ContentService.MimeType.JSON);
     return output;
 }
 
-// POST リクエストのハンドラ
+/**
+ * POSTリクエストのメインハンドラ（GAS Web App必須関数）
+ * pathパラメータでエンドポイントを振り分け
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} JSON形式のレスポンス
+ */
 function doPost(e) {
     try {
         const path = e.parameter.path || "";
         const postData = JSON.parse(e.postData.contents || "{}");
 
-        // ルーティング
         switch (path) {
             case "absences":
                 return handlePostAbsence(postData);
             case "schedules":
                 return handlePostSchedule(postData);
+            case "schedules/update":
+                return handleUpdateSchedule(postData);
+            case "schedules/delete":
+                return handleDeleteSchedule(postData);
             default:
                 return createErrorResponse("Invalid endpoint", 404);
         }
@@ -322,7 +419,17 @@ function doPost(e) {
     }
 }
 
-// Itemsデータ取得API (A2:C)
+// ============================================
+// API: 機材一覧取得
+// シート名: items
+// 列構成: A:機材名, B:数量, C:備考
+// ============================================
+
+/**
+ * 機材一覧を取得
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} { success, data: [{機材名, 数量, 備考}], count }
+ */
 const handleGetItems = (e) => {
     try {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -341,14 +448,14 @@ const handleGetItems = (e) => {
             });
         }
 
-        // A2:Cの範囲を取得
+        // A2:C（2行目以降、3列）のデータを取得
         const range = sheet.getRange(2, 1, lastRow - 1, 3);
         const values = range.getValues();
 
-        // ヘッダーを取得（A1:C1）
+        // ヘッダー行（A1:C1）を取得
         const headers = sheet.getRange(1, 1, 1, 3).getValues()[0];
 
-        // データを整形
+        // ヘッダーをキーとしたオブジェクト配列に変換
         const items = values.map((row) => {
             const item = {};
             headers.forEach((header, index) => {
@@ -367,8 +474,17 @@ const handleGetItems = (e) => {
     }
 };
 
-// Schedulesデータ取得API (A2:I)
+// ============================================
+// API: スケジュール一覧取得
+// シート名: schedules
 // 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL
+// ============================================
+
+/**
+ * スケジュール一覧を取得
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} { success, data: [{EVENT_ID, YYYY, MM, DD, ...}], count }
+ */
 const handleGetSchedules = (e) => {
     try {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -387,14 +503,14 @@ const handleGetSchedules = (e) => {
             });
         }
 
-        // A2:Iの範囲を取得（9列）
+        // A2:I（2行目以降、9列）のデータを取得
         const range = sheet.getRange(2, 1, lastRow - 1, 9);
         const values = range.getValues();
 
-        // ヘッダーを取得（A1:I1）
+        // ヘッダー行（A1:I1）を取得
         const headers = sheet.getRange(1, 1, 1, 9).getValues()[0];
 
-        // データを整形
+        // ヘッダーをキーとしたオブジェクト配列に変換
         const schedules = values.map((row) => {
             const schedule = {};
             headers.forEach((header, index) => {
@@ -413,8 +529,18 @@ const handleGetSchedules = (e) => {
     }
 };
 
-// Absencesデータ取得API (absence_data シート: A2:I)
+// ============================================
+// API: 欠席データ一覧取得
+// シート名: absence_data
 // 列構成: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
+// クエリパラメータ: date=YYYY/MM/DD（任意、日付でフィルタ）
+// ============================================
+
+/**
+ * 欠席データ一覧を取得（日付フィルタ対応）
+ * @param {Object} e - リクエストイベントオブジェクト（e.parameter.dateで日付指定可）
+ * @returns {TextOutput} { success, data: [{タイムスタンプ, EVENT_ID, 学籍番号, ...}], count }
+ */
 const handleGetAbsences = (e) => {
     try {
         const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
@@ -433,27 +559,25 @@ const handleGetAbsences = (e) => {
             });
         }
 
-        // A2:Iの範囲を取得
+        // A2:I（2行目以降、9列）のデータを取得
         const range = sheet.getRange(2, 1, lastRow - 1, 9);
         const values = range.getValues();
 
-        // ヘッダーを取得（A1:I1）
+        // ヘッダー行（A1:I1）を取得
         const headers = sheet.getRange(1, 1, 1, 9).getValues()[0];
 
         const dateParam = e.parameter.date;
         const absences = [];
 
-        // データを整形
         values.forEach((row) => {
             const absence = {};
             headers.forEach((header, index) => {
                 absence[header] = row[index];
             });
 
-            // 日付フィルタリング（指定されている場合）
+            // 日付パラメータが指定されている場合、タイムスタンプの日付部分と照合
             if (dateParam) {
-                // タイムスタンプから日付部分を抽出
-                const timestamp = absence[headers[0]]; // A列がタイムスタンプと仮定
+                const timestamp = absence[headers[0]]; // A列=タイムスタンプ
                 if (timestamp) {
                     const recordDate =
                         typeof timestamp === "string"
@@ -479,8 +603,18 @@ const handleGetAbsences = (e) => {
     }
 };
 
-// 特定イベントの欠席者取得API (absence_data シート)
+// ============================================
+// API: 特定イベントの欠席者取得
+// シート名: absence_data
 // 列構成: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
+// クエリパラメータ: eventId（必須）
+// ============================================
+
+/**
+ * 特定イベントIDに紐づく欠席者を取得
+ * @param {Object} e - リクエストイベントオブジェクト（e.parameter.eventIdが必須）
+ * @returns {TextOutput} { success, data: [{タイムスタンプ, EVENT_ID, 学籍番号, ...}], count }
+ */
 const handleGetEventAbsences = (e) => {
     try {
         const eventId = e.parameter.eventId;
@@ -505,14 +639,14 @@ const handleGetEventAbsences = (e) => {
             });
         }
 
-        // A2:Iの範囲を取得
+        // A2:I（2行目以降、9列）のデータを取得
         const range = sheet.getRange(2, 1, lastRow - 1, 9);
         const values = range.getValues();
 
-        // ヘッダーを取得（A1:I1）
+        // ヘッダー行（A1:I1）を取得
         const headers = sheet.getRange(1, 1, 1, 9).getValues()[0];
 
-        // EVENT_IDのカラムインデックスを見つける (B列 = index 1)
+        // B列のEVENT_IDカラムのインデックスを特定
         const eventIdIndex = headers.findIndex((h) => h === "EVENT_ID");
 
         if (eventIdIndex === -1) {
@@ -524,9 +658,8 @@ const handleGetEventAbsences = (e) => {
 
         const absences = [];
 
-        // データを整形してフィルタリング
+        // EVENT_IDが一致する行のみ抽出
         values.forEach((row) => {
-            // EVENT_IDが一致する行のみ処理
             if (row[eventIdIndex] === eventId) {
                 const absence = {};
                 headers.forEach((header, index) => {
@@ -546,7 +679,20 @@ const handleGetEventAbsences = (e) => {
     }
 };
 
-// 部員確認API (members シートのA列と照合)
+// ============================================
+// API: 部員認証
+// シート名: members
+// 列構成: A:学籍番号
+// クエリパラメータ: identifier（必須、学籍番号の先頭7文字）
+// 用途: ログイン時にMicrosoftアカウントのメールアドレスから学籍番号を抽出し、
+//       membersシートに登録されているか確認する
+// ============================================
+
+/**
+ * 学籍番号がmembersシートに存在するか確認
+ * @param {Object} e - リクエストイベントオブジェクト（e.parameter.identifierが必須）
+ * @returns {TextOutput} { success, isMember: boolean, identifier }
+ */
 const handleVerifyMember = (e) => {
     try {
         const identifier = e.parameter.identifier;
@@ -571,14 +717,13 @@ const handleVerifyMember = (e) => {
             });
         }
 
-        // A列（学籍番号）を取得
+        // A列（学籍番号）の2行目以降を取得
         const range = sheet.getRange(2, 1, lastRow - 1, 1);
         const values = range.getValues();
 
-        // 識別子を正規化（小文字化、トリム）
+        // 大文字小文字を区別せず、前後の空白を除去して比較
         const normalizedIdentifier = String(identifier).toLowerCase().trim();
 
-        // A列の値と比較
         const isMember = values.some((row) => {
             const studentId = String(row[0]).toLowerCase().trim();
             return studentId === normalizedIdentifier;
@@ -594,14 +739,25 @@ const handleVerifyMember = (e) => {
     }
 };
 
-// スケジュール登録API
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL
+// ============================================
+// API: スケジュール登録（POST）
+// シート名: schedules
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT
+// リクエストボディ: { year, month, date, timeHH?, timeMM?, title, where?, detail?, createdBy? }
+// EVENT_IDは自動採番（E-01, E-02, ...）
+// ============================================
+
+/**
+ * 新規スケジュールを登録
+ * @param {Object} postData - リクエストボディ { year, month, date, title, timeHH?, timeMM?, where?, detail?, createdBy? }
+ * @returns {TextOutput} { success, message, data: {作成されたスケジュール情報} }
+ */
 const handlePostSchedule = (postData) => {
     try {
-        const { year, month, date, timeHH, timeMM, title, where, detail } =
+        const { year, month, date, timeHH, timeMM, title, where, detail, createdBy } =
             postData;
 
-        // 必須フィールドの検証
+        // 必須フィールドの検証（年月日とタイトルは必須）
         if (!year || !month || !date || !title) {
             return createErrorResponse(
                 "Missing required fields (year, month, date, title)",
@@ -616,14 +772,21 @@ const handlePostSchedule = (postData) => {
             return createErrorResponse("Sheet 'schedules' not found", 404);
         }
 
-        // EVENT_IDを生成（E-XX形式、行番号-1、最低2桁で0埋め）
+        // EVENT_IDを自動生成（E-XX形式、行番号-1で0埋め2桁）
         const lastRow = sheet.getLastRow();
         const newRowNumber = lastRow + 1;
         const eventIdNumber = newRowNumber - 1;
         const eventId = "E-" + String(eventIdNumber).padStart(2, "0");
 
-        // データを追加
-        // A: EVENT_ID, B: YYYY, C: MM, D: DD, E: TIME_HH, F: TIME_MM, G: TITLE, H: WHERE, I: DETAIL
+        // 作成日時を生成
+        const now = new Date();
+        const createdAt = Utilities.formatDate(
+            now,
+            Session.getScriptTimeZone(),
+            "yyyy/MM/dd HH:mm:ss"
+        );
+
+        // 列順: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT
         const rowData = [
             eventId,
             Number(year),
@@ -634,6 +797,8 @@ const handlePostSchedule = (postData) => {
             title,
             where || "",
             detail || "",
+            createdBy || "",
+            createdAt,
         ];
 
         sheet.appendRow(rowData);
@@ -651,6 +816,8 @@ const handlePostSchedule = (postData) => {
                 title,
                 where: where || "",
                 detail: detail || "",
+                createdBy: createdBy || "",
+                createdAt,
             },
         });
     } catch (error) {
@@ -658,7 +825,19 @@ const handlePostSchedule = (postData) => {
     }
 };
 
-// 欠席データ登録API
+// ============================================
+// API: 欠席データ登録（POST）
+// シート名: absence_data
+// 列構成: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
+// リクエストボディ: { eventId, studentNumber, name, type, reason, timeLeavingEarly?, timeStepOut?, timeReturn? }
+// 登録後、Discord通知とメール送信を実行
+// ============================================
+
+/**
+ * 新規欠席データを登録し、Discord通知とメール送信を実行
+ * @param {Object} postData - リクエストボディ
+ * @returns {TextOutput} { success, message, data: {作成された欠席データ情報} }
+ */
 const handlePostAbsence = (postData) => {
     try {
         const {
@@ -684,7 +863,7 @@ const handlePostAbsence = (postData) => {
             return createErrorResponse("Sheet 'absence_data' not found", 404);
         }
 
-        // タイムスタンプを作成
+        // 現在日時でタイムスタンプを生成
         const now = new Date();
         const timestamp = Utilities.formatDate(
             now,
@@ -692,10 +871,7 @@ const handlePostAbsence = (postData) => {
             "yyyy/MM/dd HH:mm:ss"
         );
 
-        // データを追加（A列: タイムスタンプ, B列以降: フォームデータ）
-        // absence_data シートの列構成に合わせる:
-        // A: タイムスタンプ, B: EVENT_ID, C: 学籍番号, D: 氏名, E: 種別, F: 理由, G: 早退時間, H: 抜ける時間, I: 戻る時間
-        // A: TIMESTAMP, B: EVENT_ID, C: STUDENT_NUMBER, D: NAME, E: TYPE, F: REASON, G: TimeLeavingEarly, H: TimeStepOut, I: TimeReturn
+        // 列順: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
         const rowData = [
             timestamp,
             eventId,
@@ -710,7 +886,7 @@ const handlePostAbsence = (postData) => {
 
         sheet.appendRow(rowData);
 
-        // Discord通知を送信
+        // Discord Webhookに通知を送信
         const webhookURL =
             PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
 
@@ -730,7 +906,7 @@ const handlePostAbsence = (postData) => {
             sendToDiscord(webhookURL, body);
         }
 
-        // メール送信
+        // 送信者にメールで完了通知を送信
         const domain =
             PropertiesService.getScriptProperties().getProperty("NIT_DOMAIN");
 
@@ -767,6 +943,295 @@ const handlePostAbsence = (postData) => {
                 name,
                 type,
             },
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: スケジュール更新（POST schedules/update）
+// シート名: schedules
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT, L:UPDATED_BY, M:UPDATED_AT
+// リクエストボディ: { eventId, year, month, date, timeHH?, timeMM?, title, where?, detail?, updatedBy? }
+// ============================================
+
+/**
+ * 既存スケジュールを更新
+ * @param {Object} postData - リクエストボディ { eventId, year, month, date, title, timeHH?, timeMM?, where?, detail?, updatedBy? }
+ * @returns {TextOutput} { success, message, data: {更新されたスケジュール情報} }
+ */
+const handleUpdateSchedule = (postData) => {
+    try {
+        const { eventId, year, month, date, timeHH, timeMM, title, where, detail, updatedBy } =
+            postData;
+
+        // 必須フィールドの検証
+        if (!eventId || !year || !month || !date || !title) {
+            return createErrorResponse(
+                "Missing required fields (eventId, year, month, date, title)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("schedules");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'schedules' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createErrorResponse("Schedule not found", 404);
+        }
+
+        // EVENT_IDが一致する行を検索
+        const eventIdColumn = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        let targetRow = -1;
+
+        for (let i = 0; i < eventIdColumn.length; i++) {
+            if (String(eventIdColumn[i][0]) === String(eventId)) {
+                targetRow = i + 2; // 2行目から始まるため+2
+                break;
+            }
+        }
+
+        if (targetRow === -1) {
+            return createErrorResponse("Schedule not found with eventId: " + eventId, 404);
+        }
+
+        // 更新日時を生成
+        const now = new Date();
+        const updatedAt = Utilities.formatDate(
+            now,
+            Session.getScriptTimeZone(),
+            "yyyy/MM/dd HH:mm:ss"
+        );
+
+        // 列順: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL
+        // B〜I列を更新（EVENT_IDは変更しない、CREATED_BY/CREATED_ATも保持）
+        const updateData = [
+            Number(year),
+            Number(month),
+            Number(date),
+            timeHH !== undefined && timeHH !== "" ? Number(timeHH) : "",
+            timeMM !== undefined && timeMM !== "" ? Number(timeMM) : "",
+            title,
+            where || "",
+            detail || "",
+        ];
+
+        sheet.getRange(targetRow, 2, 1, 8).setValues([updateData]);
+
+        // L列（UPDATED_BY）とM列（UPDATED_AT）を更新
+        if (updatedBy) {
+            sheet.getRange(targetRow, 12, 1, 2).setValues([[updatedBy, updatedAt]]);
+        }
+
+        return createResponse({
+            success: true,
+            message: "Schedule updated successfully",
+            data: {
+                eventId,
+                year: Number(year),
+                month: Number(month),
+                date: Number(date),
+                timeHH: timeHH || null,
+                timeMM: timeMM || null,
+                title,
+                where: where || "",
+                detail: detail || "",
+                updatedBy: updatedBy || "",
+                updatedAt,
+            },
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: スケジュール削除（POST schedules/delete）
+// シート名: schedules
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT, L:UPDATED_BY, M:UPDATED_AT
+// リクエストボディ: { eventId }
+// ============================================
+
+/**
+ * スケジュールを削除
+ * @param {Object} postData - リクエストボディ { eventId }
+ * @returns {TextOutput} { success, message }
+ */
+const handleDeleteSchedule = (postData) => {
+    try {
+        const { eventId } = postData;
+
+        // 必須フィールドの検証
+        if (!eventId) {
+            return createErrorResponse("Missing required field (eventId)", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("schedules");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'schedules' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createErrorResponse("Schedule not found", 404);
+        }
+
+        // EVENT_IDが一致する行を検索
+        const eventIdColumn = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        let targetRow = -1;
+
+        for (let i = 0; i < eventIdColumn.length; i++) {
+            if (String(eventIdColumn[i][0]) === String(eventId)) {
+                targetRow = i + 2; // 2行目から始まるため+2
+                break;
+            }
+        }
+
+        if (targetRow === -1) {
+            return createErrorResponse(
+                "Schedule not found with eventId: " + eventId,
+                404
+            );
+        }
+
+        // 行を削除
+        sheet.deleteRow(targetRow);
+
+        return createResponse({
+            success: true,
+            message: "Schedule deleted successfully",
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: お知らせ一覧取得
+// schedulesシートからCREATED_BY/UPDATED_BY（学籍番号）が設定されているレコードを取得し、
+// membersシートのC列（名前）と照合して作成者/更新者名を付与
+// 列構成（schedules）: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT, L:UPDATED_BY, M:UPDATED_AT
+// 列構成（members）: A:学籍番号, B:?, C:名前
+// クエリパラメータ: limit（任意、デフォルト20件）
+// ============================================
+
+/**
+ * お知らせ一覧を取得（カレンダー追加・更新のお知らせ）
+ * @param {Object} e - リクエストイベントオブジェクト（e.parameter.limitで件数指定可）
+ * @returns {TextOutput} { success, data: [{eventId, title, date, actionBy, actionByName, actionAt, actionType}], count }
+ */
+const handleGetNotifications = (e) => {
+    try {
+        const limit = parseInt(e.parameter.limit) || 20;
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const schedulesSheet = spreadsheet.getSheetByName("schedules");
+        const membersSheet = spreadsheet.getSheetByName("members");
+
+        if (!schedulesSheet) {
+            return createErrorResponse("Sheet 'schedules' not found", 404);
+        }
+
+        const lastRow = schedulesSheet.getLastRow();
+        if (lastRow < 2) {
+            return createResponse({
+                success: true,
+                data: [],
+                count: 0,
+            });
+        }
+
+        // membersシートから学籍番号と名前のマッピングを作成
+        const memberNameMap = new Map();
+        if (membersSheet) {
+            const membersLastRow = membersSheet.getLastRow();
+            if (membersLastRow >= 2) {
+                // A列（学籍番号）とC列（名前）を取得
+                const membersRange = membersSheet.getRange(2, 1, membersLastRow - 1, 3);
+                const membersValues = membersRange.getValues();
+                membersValues.forEach((row) => {
+                    const studentId = String(row[0]).toLowerCase().trim();
+                    const name = String(row[2] || "").trim();
+                    if (studentId && name) {
+                        memberNameMap.set(studentId, name);
+                    }
+                });
+            }
+        }
+
+        // schedulesシートから全データを取得（13列: A-M）
+        const range = schedulesSheet.getRange(2, 1, lastRow - 1, 13);
+        const values = range.getValues();
+
+        const notifications = [];
+
+        values.forEach((row) => {
+            const eventId = String(row[0]);
+            const year = Number(row[1]);
+            const month = Number(row[2]);
+            const day = Number(row[3]);
+            const title = String(row[6] || "");
+            const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
+
+            const createdBy = String(row[9] || "").toLowerCase().trim();
+            const createdAt = row[10];
+            const updatedBy = String(row[11] || "").toLowerCase().trim();
+            const updatedAt = row[12];
+
+            // 作成通知を追加
+            if (createdBy !== "" && createdAt !== "") {
+                const createdAtStr = isDate(createdAt)
+                    ? formatDateTime(createdAt)
+                    : String(createdAt);
+                const createdByName = memberNameMap.get(createdBy) || createdBy;
+
+                notifications.push({
+                    eventId,
+                    title,
+                    date: dateStr,
+                    actionBy: createdBy,
+                    actionByName: createdByName,
+                    actionAt: createdAtStr,
+                    actionType: "created",
+                });
+            }
+
+            // 更新通知を追加（更新情報がある場合）
+            if (updatedBy !== "" && updatedAt !== "") {
+                const updatedAtStr = isDate(updatedAt)
+                    ? formatDateTime(updatedAt)
+                    : String(updatedAt);
+                const updatedByName = memberNameMap.get(updatedBy) || updatedBy;
+
+                notifications.push({
+                    eventId,
+                    title,
+                    date: dateStr,
+                    actionBy: updatedBy,
+                    actionByName: updatedByName,
+                    actionAt: updatedAtStr,
+                    actionType: "updated",
+                });
+            }
+        });
+
+        // アクション日時で降順ソート
+        notifications.sort((a, b) => {
+            return b.actionAt.localeCompare(a.actionAt);
+        });
+
+        return createResponse({
+            success: true,
+            data: notifications.slice(0, limit),
+            count: notifications.slice(0, limit).length,
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
