@@ -67,6 +67,23 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
+                <Link href="/notifications">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 640 640"
+                        className="size-[1.5em]"
+                        fill="currentColor"
+                    >
+                        <path d="M240 80c0-26.5 21.5-48 48-48l64 0c26.5 0 48 21.5 48 48l0 13.7c68.4 21.7 118 86.5 118 163.3l0 115c0 12.7 5.1 24.9 14.1 33.9l24 24c9.4 9.4 14.1 21.7 14.1 34c0 26.5-21.5 48-48 48L117.8 512c-26.5 0-48-21.5-48-48c0-12.7 5.1-24.9 14.1-33.9l24-24c9-9 14.1-21.2 14.1-33.9L122 257c0-76.7 49.6-141.6 118-163.3L240 80zm48 352l64 0c8.8 0 16 7.2 16 16s-7.2 16-16 16l-64 0c-8.8 0-16-7.2-16-16s7.2-16 16-16z" />
+                    </svg>
+                    <span
+                        className="dock-label"
+                        style={{ fontSize: "clamp(0.625rem, 2vw, 0.75rem)" }}
+                    >
+                        Info
+                    </span>
+                </Link>
+
                 {user && (
                     <button
                         onClick={() => setShowUserModal(true)}
