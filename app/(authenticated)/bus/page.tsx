@@ -12,10 +12,12 @@ interface BusSchedule {
     stationName: string;
     fromStation: BusTime[];
     fromUniversity: BusTime[];
+    notices: string[];
 }
 
 interface BusScheduleData {
     date: string;
+    scheduleType: string;
     tobu: BusSchedule;
     jr: BusSchedule;
 }
@@ -33,7 +35,9 @@ export default function BusSchedulePage() {
             setIsLoading(true);
             setError(null);
             try {
-                const res = await fetch(`/api/bus-schedule?date=${selectedDate}`);
+                const res = await fetch(
+                    `/api/bus-schedule?date=${selectedDate}`
+                );
                 const json = await res.json();
                 if (json.success) {
                     setData(json.data);
@@ -111,11 +115,42 @@ export default function BusSchedulePage() {
 
                 {data && (
                     <div className="space-y-6">
+                        {/* ダイヤ種別バッジ */}
+                        {data.scheduleType && (
+                            <div className="flex justify-center">
+                                <span className="badge badge-lg badge-outline border-primary text-primary gap-2 px-4 py-3">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    {data.scheduleType}
+                                </span>
+                            </div>
+                        )}
+
                         {/* 東武動物公園駅 */}
-                        <BusScheduleCard schedule={data.tobu} type="tobu" />
+                        <BusScheduleCard
+                            schedule={data.tobu}
+                            type="tobu"
+                            selectedDate={selectedDate}
+                        />
 
                         {/* 新白岡駅 */}
-                        <BusScheduleCard schedule={data.jr} type="jr" />
+                        <BusScheduleCard
+                            schedule={data.jr}
+                            type="jr"
+                            selectedDate={selectedDate}
+                        />
 
                         {/* 注意事項 */}
                         <div className="text-sm text-base-content/60 space-y-1">
@@ -124,7 +159,8 @@ export default function BusSchedulePage() {
                                 宮代町運行の町内循環バスのバス停が「東武動物公園駅西口」「日本工業大学入口」に設置されています。
                             </p>
                             <p>
-                                ※ 行事等による「特別ダイヤ」では運行が変更になる場合があります。
+                                ※
+                                行事等による「特別ダイヤ」では運行が変更になる場合があります。
                             </p>
                             <p>
                                 ★＝約5分間隔、●＝約10分間隔、▲＝約15分間隔で運行
@@ -153,7 +189,7 @@ export default function BusSchedulePage() {
                                         d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                                     />
                                 </svg>
-                                公式サイトで確認
+                                ホームページで確認
                             </a>
                         </div>
                     </div>

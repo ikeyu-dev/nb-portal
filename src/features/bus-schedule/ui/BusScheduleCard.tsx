@@ -11,10 +11,12 @@ interface BusSchedule {
     stationName: string;
     fromStation: BusTime[];
     fromUniversity: BusTime[];
+    notices?: string[];
 }
 
 interface BusScheduleData {
     date: string;
+    scheduleType?: string;
     tobu: BusSchedule;
     jr: BusSchedule;
 }
@@ -59,14 +61,19 @@ interface BusScheduleCardProps {
     schedule: BusSchedule;
     type: "tobu" | "jr";
     compact?: boolean;
+    selectedDate?: string;
 }
 
 export function BusScheduleCard({
     schedule,
     type,
     compact = false,
+    selectedDate,
 }: BusScheduleCardProps) {
     const [now, setNow] = useState(new Date());
+
+    // 今日の日付かどうかを判定
+    const isToday = !selectedDate || selectedDate === new Date().toISOString().split("T")[0];
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -186,132 +193,140 @@ export function BusScheduleCard({
                     <h3 className="font-bold text-lg">{schedule.stationName}</h3>
                 </div>
 
-                {/* 次のバス表示 */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className={`p-4 rounded-xl ${bgClass}`}>
-                        <div className="text-sm text-base-content/70 mb-2">
-                            次の駅発バス
-                        </div>
-                        {nextFromStation ? (
-                            <>
-                                <div className="font-bold text-2xl">
-                                    {formatTime(
-                                        nextFromStation.hour,
-                                        nextFromStation.minute
-                                    )}
-                                </div>
-                                <div className={`text-sm ${colorClass}`}>
-                                    あと{nextFromStation.remainingMinutes}分
-                                </div>
-                            </>
-                        ) : (
-                            <div className="text-base-content/50">本日終了</div>
-                        )}
-                    </div>
-                    <div className={`p-4 rounded-xl ${bgClass}`}>
-                        <div className="text-sm text-base-content/70 mb-2">
-                            次の大学発バス
-                        </div>
-                        {nextFromUniversity ? (
-                            <>
-                                <div className="font-bold text-2xl">
-                                    {formatTime(
-                                        nextFromUniversity.hour,
-                                        nextFromUniversity.minute
-                                    )}
-                                </div>
-                                <div className={`text-sm ${colorClass}`}>
-                                    あと{nextFromUniversity.remainingMinutes}分
-                                </div>
-                            </>
-                        ) : (
-                            <div className="text-base-content/50">本日終了</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 時刻表 */}
-                <div className="space-y-4">
-                    <div>
-                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-primary"></span>
-                            駅発
-                        </h4>
-                        <div className="overflow-x-auto">
-                            <div className="flex gap-2 min-w-max">
-                                {schedule.fromStation.map((time) => (
-                                    <div
-                                        key={time.hour}
-                                        className="flex flex-col items-center"
-                                    >
-                                        <div className="font-bold text-sm bg-base-200 px-2 py-1 rounded-t">
-                                            {time.hour}時
-                                        </div>
-                                        <div className="bg-base-200/50 px-2 py-1 rounded-b min-h-[40px] text-center">
-                                            {time.minutes.length > 0 ? (
-                                                time.minutes.map((m, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="text-sm"
-                                                    >
-                                                        {String(m).padStart(
-                                                            2,
-                                                            "0"
-                                                        )}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-sm text-base-content/30">
-                                                    -
-                                                </div>
-                                            )}
-                                        </div>
+                {/* 次のバス表示（今日のみ表示） */}
+                {isToday && (
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className={`p-4 rounded-xl ${bgClass}`}>
+                            <div className="text-sm text-base-content/70 mb-2">
+                                次の駅発バス
+                            </div>
+                            {nextFromStation ? (
+                                <>
+                                    <div className="font-bold text-2xl">
+                                        {formatTime(
+                                            nextFromStation.hour,
+                                            nextFromStation.minute
+                                        )}
                                     </div>
-                                ))}
+                                    <div className={`text-sm ${colorClass}`}>
+                                        あと{nextFromStation.remainingMinutes}分
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-base-content/50">本日終了</div>
+                            )}
+                        </div>
+                        <div className={`p-4 rounded-xl ${bgClass}`}>
+                            <div className="text-sm text-base-content/70 mb-2">
+                                次の大学発バス
+                            </div>
+                            {nextFromUniversity ? (
+                                <>
+                                    <div className="font-bold text-2xl">
+                                        {formatTime(
+                                            nextFromUniversity.hour,
+                                            nextFromUniversity.minute
+                                        )}
+                                    </div>
+                                    <div className={`text-sm ${colorClass}`}>
+                                        あと{nextFromUniversity.remainingMinutes}分
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="text-base-content/50">本日終了</div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* 時刻表（運休日でない場合のみ表示） */}
+                {(schedule.fromStation.length > 0 || schedule.fromUniversity.length > 0) ? (
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-primary"></span>
+                                駅発
+                            </h4>
+                            <div className="overflow-x-auto">
+                                <div className="flex gap-2 min-w-max">
+                                    {schedule.fromStation.map((time) => (
+                                        <div
+                                            key={time.hour}
+                                            className="flex flex-col items-center"
+                                        >
+                                            <div className="font-bold text-sm bg-base-200 px-2 py-1 rounded-t">
+                                                {time.hour}時
+                                            </div>
+                                            <div className="bg-base-200/50 px-2 py-1 rounded-b min-h-[40px] text-center">
+                                                {time.minutes.length > 0 ? (
+                                                    time.minutes.map((m, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="text-sm"
+                                                        >
+                                                            {String(m).padStart(
+                                                                2,
+                                                                "0"
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-sm text-base-content/30">
+                                                        -
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-secondary"></span>
+                                大学発
+                            </h4>
+                            <div className="overflow-x-auto">
+                                <div className="flex gap-2 min-w-max">
+                                    {schedule.fromUniversity.map((time) => (
+                                        <div
+                                            key={time.hour}
+                                            className="flex flex-col items-center"
+                                        >
+                                            <div className="font-bold text-sm bg-base-200 px-2 py-1 rounded-t">
+                                                {time.hour}時
+                                            </div>
+                                            <div className="bg-base-200/50 px-2 py-1 rounded-b min-h-[40px] text-center">
+                                                {time.minutes.length > 0 ? (
+                                                    time.minutes.map((m, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="text-sm"
+                                                        >
+                                                            {String(m).padStart(
+                                                                2,
+                                                                "0"
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-sm text-base-content/30">
+                                                        -
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div>
-                        <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-secondary"></span>
-                            大学発
-                        </h4>
-                        <div className="overflow-x-auto">
-                            <div className="flex gap-2 min-w-max">
-                                {schedule.fromUniversity.map((time) => (
-                                    <div
-                                        key={time.hour}
-                                        className="flex flex-col items-center"
-                                    >
-                                        <div className="font-bold text-sm bg-base-200 px-2 py-1 rounded-t">
-                                            {time.hour}時
-                                        </div>
-                                        <div className="bg-base-200/50 px-2 py-1 rounded-b min-h-[40px] text-center">
-                                            {time.minutes.length > 0 ? (
-                                                time.minutes.map((m, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="text-sm"
-                                                    >
-                                                        {String(m).padStart(
-                                                            2,
-                                                            "0"
-                                                        )}
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="text-sm text-base-content/30">
-                                                    -
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
+                ) : (
+                    <div className="text-center text-base-content/60 py-4">
+                        運休日です
                     </div>
-                </div>
+                )}
             </div>
         </div>
     );
