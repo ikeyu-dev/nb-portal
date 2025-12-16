@@ -11,7 +11,19 @@ interface Schedule {
 interface SelectedDateInfo {
     date: Date;
     dateStr: string;
-    events: Schedule[];
+    events: ScheduleWithPosition[];
+}
+
+// 複数日イベントの位置情報
+type EventPosition = "single" | "start" | "middle" | "end";
+
+interface ScheduleWithPosition {
+    schedule: Schedule;
+    position: EventPosition;
+    // 週の中での開始位置（0-6）を記録（同じ週で左端から始まるか判定用）
+    isWeekStart: boolean;
+    // 週の中での終了位置（0-6）を記録（同じ週で右端で終わるか判定用）
+    isWeekEnd: boolean;
 }
 
 interface EventForm {
@@ -23,6 +35,10 @@ interface EventForm {
     year: string;
     month: string;
     date: string;
+    endYear: string;
+    endMonth: string;
+    endDate: string;
+    isAllDay: boolean;
 }
 
 export default function CalendarPage() {
@@ -49,6 +65,10 @@ export default function CalendarPage() {
         year: "",
         month: "",
         date: "",
+        endYear: "",
+        endMonth: "",
+        endDate: "",
+        isAllDay: false,
     });
     const [editForm, setEditForm] = useState<EventForm>({
         title: "",
@@ -59,6 +79,10 @@ export default function CalendarPage() {
         year: "",
         month: "",
         date: "",
+        endYear: "",
+        endMonth: "",
+        endDate: "",
+        isAllDay: false,
     });
 
     useEffect(() => {
@@ -98,20 +122,77 @@ export default function CalendarPage() {
     }, []);
 
     // 活動日のマップを作成（YYYY-MM-DD形式 -> イベント数）
+    // 複数日にまたがるイベントは、開始日から終了日までの各日に表示（位置情報付き）
     const activityCounts = new Map<string, number>();
-    const eventsByDate = new Map<string, Schedule[]>();
+    const eventsByDate = new Map<string, ScheduleWithPosition[]>();
     schedules.forEach((schedule) => {
         const values = Object.values(schedule);
-        const year = Number(values[1]);
-        const month = Number(values[2]);
-        const day = Number(values[3]);
-        if (year && month && day) {
-            const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(
-                day
-            ).padStart(2, "0")}`;
-            activityCounts.set(dateStr, (activityCounts.get(dateStr) || 0) + 1);
-            const existing = eventsByDate.get(dateStr) || [];
-            eventsByDate.set(dateStr, [...existing, schedule]);
+        const startYear = Number(values[1]);
+        const startMonth = Number(values[2]);
+        const startDay = Number(values[3]);
+        // 終了日はインデックス9, 10, 11（END_YYYY, END_MM, END_DD）
+        const endYear = values[9] ? Number(values[9]) : 0;
+        const endMonth = values[10] ? Number(values[10]) : 0;
+        const endDay = values[11] ? Number(values[11]) : 0;
+
+        if (startYear && startMonth && startDay) {
+            const startDate = new Date(startYear, startMonth - 1, startDay);
+            // 終了日がある場合は複数日、なければ開始日のみ
+            const hasEndDate = endYear && endMonth && endDay;
+            const endDate = hasEndDate
+                ? new Date(endYear, endMonth - 1, endDay)
+                : startDate;
+
+            const isMultiDay =
+                hasEndDate && startDate.getTime() !== endDate.getTime();
+
+            // 開始日から終了日まで各日にイベントを追加
+            const currentDate = new Date(startDate);
+            while (currentDate <= endDate) {
+                const dateStr = `${currentDate.getFullYear()}-${String(
+                    currentDate.getMonth() + 1
+                ).padStart(2, "0")}-${String(currentDate.getDate()).padStart(
+                    2,
+                    "0"
+                )}`;
+                activityCounts.set(
+                    dateStr,
+                    (activityCounts.get(dateStr) || 0) + 1
+                );
+
+                // 位置情報を計算
+                let position: EventPosition = "single";
+                if (isMultiDay) {
+                    const isStart =
+                        currentDate.getTime() === startDate.getTime();
+                    const isEnd = currentDate.getTime() === endDate.getTime();
+                    if (isStart) {
+                        position = "start";
+                    } else if (isEnd) {
+                        position = "end";
+                    } else {
+                        position = "middle";
+                    }
+                }
+
+                // 週の境界を計算（日曜日が週の始まり）
+                const dayOfWeek = currentDate.getDay();
+                const isWeekStart =
+                    dayOfWeek === 0 ||
+                    currentDate.getTime() === startDate.getTime();
+                const isWeekEnd =
+                    dayOfWeek === 6 ||
+                    currentDate.getTime() === endDate.getTime();
+
+                const existing = eventsByDate.get(dateStr) || [];
+                eventsByDate.set(dateStr, [
+                    ...existing,
+                    { schedule, position, isWeekStart, isWeekEnd },
+                ]);
+
+                // 次の日へ
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
         }
     });
 
@@ -136,6 +217,10 @@ export default function CalendarPage() {
             year: "",
             month: "",
             date: "",
+            endYear: "",
+            endMonth: "",
+            endDate: "",
+            isAllDay: false,
         });
         setEditForm({
             title: "",
@@ -146,6 +231,10 @@ export default function CalendarPage() {
             year: "",
             month: "",
             date: "",
+            endYear: "",
+            endMonth: "",
+            endDate: "",
+            isAllDay: false,
         });
     };
 
@@ -166,6 +255,10 @@ export default function CalendarPage() {
             year: "",
             month: "",
             date: "",
+            endYear: "",
+            endMonth: "",
+            endDate: "",
+            isAllDay: false,
         });
     };
 
@@ -190,6 +283,9 @@ export default function CalendarPage() {
                     title: addForm.title.trim(),
                     where: addForm.where.trim(),
                     detail: addForm.detail.trim(),
+                    endYear: addForm.endYear || undefined,
+                    endMonth: addForm.endMonth || undefined,
+                    endDate: addForm.endDate || undefined,
                 }),
             });
 
@@ -207,6 +303,9 @@ export default function CalendarPage() {
                     TITLE: data.data.title,
                     WHERE: data.data.where,
                     DETAIL: data.data.detail,
+                    END_YYYY: data.data.endYear || "",
+                    END_MM: data.data.endMonth || "",
+                    END_DD: data.data.endDate || "",
                 };
                 setSchedules((prev) => [...prev, newSchedule]);
 
@@ -242,6 +341,20 @@ export default function CalendarPage() {
         const values = Object.values(selectedEvent);
         const rawTimeHH = values[4];
         const rawTimeMM = values[5];
+        // 終了日はインデックス9, 10, 11（END_YYYY, END_MM, END_DD）
+        const rawEndYear = values[9];
+        const rawEndMonth = values[10];
+        const rawEndDate = values[11];
+
+        // 終日判定: 時刻がなく、終了日がある場合は終日
+        const hasTime =
+            rawTimeHH !== "" && rawTimeHH !== null && rawTimeHH !== undefined;
+        const hasEndDate =
+            rawEndYear !== "" &&
+            rawEndYear !== null &&
+            rawEndYear !== undefined;
+        const isAllDay = !hasTime && hasEndDate;
+
         setEditForm({
             title: String(values[6] ?? ""),
             where: String(values[7] ?? ""),
@@ -261,6 +374,25 @@ export default function CalendarPage() {
             year: String(values[1] ?? ""),
             month: String(values[2] ?? ""),
             date: String(values[3] ?? ""),
+            endYear:
+                rawEndYear !== "" &&
+                rawEndYear !== null &&
+                rawEndYear !== undefined
+                    ? String(rawEndYear)
+                    : "",
+            endMonth:
+                rawEndMonth !== "" &&
+                rawEndMonth !== null &&
+                rawEndMonth !== undefined
+                    ? String(rawEndMonth)
+                    : "",
+            endDate:
+                rawEndDate !== "" &&
+                rawEndDate !== null &&
+                rawEndDate !== undefined
+                    ? String(rawEndDate)
+                    : "",
+            isAllDay,
         });
         setShowEditModal(true);
     };
@@ -278,6 +410,10 @@ export default function CalendarPage() {
             year: "",
             month: "",
             date: "",
+            endYear: "",
+            endMonth: "",
+            endDate: "",
+            isAllDay: false,
         });
     };
 
@@ -351,6 +487,9 @@ export default function CalendarPage() {
                     title: editForm.title.trim(),
                     where: editForm.where.trim(),
                     detail: editForm.detail.trim(),
+                    endYear: editForm.endYear || undefined,
+                    endMonth: editForm.endMonth || undefined,
+                    endDate: editForm.endDate || undefined,
                 }),
             });
 
@@ -372,6 +511,9 @@ export default function CalendarPage() {
                                 DETAIL: data.data.detail,
                                 TIME_HH: data.data.timeHH || "",
                                 TIME_MM: data.data.timeMM || "",
+                                END_YYYY: data.data.endYear || "",
+                                END_MM: data.data.endMonth || "",
+                                END_DD: data.data.endDate || "",
                             };
                         }
                         return schedule;
@@ -427,7 +569,7 @@ export default function CalendarPage() {
             dateStr: string;
             isCurrentMonth: boolean;
             isToday: boolean;
-            events: Schedule[];
+            events: ScheduleWithPosition[];
         }[] = [];
 
         // 前月の日を追加
@@ -489,14 +631,14 @@ export default function CalendarPage() {
     const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
 
     // イベントのタイトルを取得
-    const getEventTitle = (event: Schedule): string => {
-        const values = Object.values(event);
+    const getEventTitle = (schedule: Schedule): string => {
+        const values = Object.values(schedule);
         return String(values[6] ?? "予定");
     };
 
     // イベントの時刻を取得
-    const getEventTime = (event: Schedule): string | null => {
-        const values = Object.values(event);
+    const getEventTime = (schedule: Schedule): string | null => {
+        const values = Object.values(schedule);
         const rawTimeHH = values[4];
         const rawTimeMM = values[5];
         const hasTime =
@@ -611,9 +753,9 @@ export default function CalendarPage() {
                     <div className="grid grid-cols-7 grid-rows-6 h-full">
                         {days.map((day, index) => {
                             const dayOfWeek = day.date.getDay();
-                            const hasEvents = day.events.length > 0;
                             const rowIndex = Math.floor(index / 7);
                             const isLastRow = rowIndex === 5;
+                            const colIndex = index % 7;
 
                             return (
                                 <div
@@ -622,15 +764,16 @@ export default function CalendarPage() {
                                         handleDateClick(day.date, day.dateStr)
                                     }
                                     className={`
-                                        relative flex flex-col border-r border-b border-base-300 cursor-pointer active:bg-base-200/50
+                                        relative flex flex-col border-r border-b border-base-300 cursor-pointer active:bg-base-200/50 overflow-visible
                                         ${isLastRow ? "border-b-0" : ""}
-                                        ${index % 7 === 6 ? "border-r-0" : ""}
+                                        ${colIndex === 6 ? "border-r-0" : ""}
                                         ${
                                             !day.isCurrentMonth
                                                 ? "bg-base-200/30"
                                                 : "bg-base-100"
                                         }
                                     `}
+                                    style={{ zIndex: 1 }}
                                 >
                                     {/* 日付 */}
                                     <div className="p-1">
@@ -668,23 +811,78 @@ export default function CalendarPage() {
                                     </div>
 
                                     {/* イベントチップ */}
-                                    <div className="flex flex-col gap-0.5 px-0.5 pb-0.5 overflow-hidden flex-1">
+                                    <div className="relative flex-1">
                                         {day.events
                                             .slice(0, 3)
-                                            .map((event, eventIndex) => {
-                                                const title =
-                                                    getEventTitle(event);
+                                            .map((eventWithPos, eventIndex) => {
+                                                const title = getEventTitle(
+                                                    eventWithPos.schedule
+                                                );
+                                                const {
+                                                    position,
+                                                    isWeekStart,
+                                                    isWeekEnd,
+                                                } = eventWithPos;
+                                                const isMultiDay =
+                                                    position !== "single";
+
+                                                // 複数日イベントの場合、セルの境界を越えて表示
+                                                const leftStyle =
+                                                    isMultiDay && !isWeekStart
+                                                        ? "-1px"
+                                                        : "2px";
+                                                const rightStyle =
+                                                    isMultiDay && !isWeekEnd
+                                                        ? "-1px"
+                                                        : "2px";
+                                                const topOffset =
+                                                    eventIndex * 16; // 各イベントの高さ + gap
+
                                                 return (
                                                     <div
                                                         key={eventIndex}
-                                                        className="text-[9px] leading-tight bg-primary/90 text-primary-content px-1 py-0.5 rounded truncate"
+                                                        className={`absolute text-[9px] leading-tight bg-primary/90 text-primary-content py-0.5 truncate ${
+                                                            isMultiDay
+                                                                ? `${
+                                                                      isWeekStart
+                                                                          ? "rounded-l"
+                                                                          : ""
+                                                                  } ${
+                                                                      isWeekEnd
+                                                                          ? "rounded-r"
+                                                                          : ""
+                                                                  }`
+                                                                : "rounded"
+                                                        }`}
+                                                        style={{
+                                                            top: `${topOffset}px`,
+                                                            left: leftStyle,
+                                                            right: rightStyle,
+                                                            zIndex: 10,
+                                                            paddingLeft:
+                                                                isWeekStart
+                                                                    ? "4px"
+                                                                    : "1px",
+                                                            paddingRight:
+                                                                isWeekEnd
+                                                                    ? "4px"
+                                                                    : "1px",
+                                                        }}
                                                     >
-                                                        {title}
+                                                        {isWeekStart
+                                                            ? title
+                                                            : "\u00A0"}
                                                     </div>
                                                 );
                                             })}
                                         {day.events.length > 3 && (
-                                            <div className="text-[9px] text-base-content/60 px-0.5">
+                                            <div
+                                                className="absolute text-[9px] text-base-content/60 px-0.5"
+                                                style={{
+                                                    top: "48px",
+                                                    left: "2px",
+                                                }}
+                                            >
                                                 +{day.events.length - 3}
                                             </div>
                                         )}
@@ -780,9 +978,9 @@ export default function CalendarPage() {
                 <div className="grid grid-cols-7 grid-rows-6 flex-1">
                     {days.map((day, index) => {
                         const dayOfWeek = day.date.getDay();
-                        const hasEvents = day.events.length > 0;
                         const rowIndex = Math.floor(index / 7);
                         const isLastRow = rowIndex === 5;
+                        const colIndex = index % 7;
 
                         return (
                             <div
@@ -791,15 +989,16 @@ export default function CalendarPage() {
                                     handleDateClick(day.date, day.dateStr)
                                 }
                                 className={`
-                                    relative flex flex-col border-r border-b border-base-300 last:border-r-0 cursor-pointer hover:bg-base-200/50
+                                    relative flex flex-col border-r border-b border-base-300 last:border-r-0 cursor-pointer hover:bg-base-200/50 overflow-visible
                                     ${isLastRow ? "border-b-0" : ""}
-                                    ${index % 7 === 6 ? "border-r-0" : ""}
+                                    ${colIndex === 6 ? "border-r-0" : ""}
                                     ${
                                         !day.isCurrentMonth
                                             ? "bg-base-200/30"
                                             : "bg-base-100"
                                     }
                                 `}
+                                style={{ zIndex: 1 }}
                             >
                                 {/* 日付 */}
                                 <div className="p-2">
@@ -837,28 +1036,82 @@ export default function CalendarPage() {
                                 </div>
 
                                 {/* イベントチップ */}
-                                <div className="flex flex-col gap-0.5 px-1 pb-1 overflow-hidden flex-1">
+                                <div className="relative flex-1">
                                     {day.events
                                         .slice(0, 2)
-                                        .map((event, eventIndex) => {
-                                            const time = getEventTime(event);
-                                            const title = getEventTitle(event);
+                                        .map((eventWithPos, eventIndex) => {
+                                            const time = getEventTime(
+                                                eventWithPos.schedule
+                                            );
+                                            const title = getEventTitle(
+                                                eventWithPos.schedule
+                                            );
+                                            const {
+                                                position,
+                                                isWeekStart,
+                                                isWeekEnd,
+                                            } = eventWithPos;
+                                            const isMultiDay =
+                                                position !== "single";
+
+                                            // 複数日イベントの場合、セルの境界を越えて表示
+                                            // left: 開始日は4px、それ以外は-1px（境界線を越える）
+                                            // right: 終了日は4px、それ以外は-1px（境界線を越える）
+                                            const leftStyle =
+                                                isMultiDay && !isWeekStart
+                                                    ? "-1px"
+                                                    : "4px";
+                                            const rightStyle =
+                                                isMultiDay && !isWeekEnd
+                                                    ? "-1px"
+                                                    : "4px";
+                                            const topOffset = eventIndex * 22; // 各イベントの高さ + gap
+
                                             return (
                                                 <div
                                                     key={eventIndex}
-                                                    className="text-xs bg-primary/90 text-primary-content px-1.5 py-0.5 rounded truncate leading-tight"
+                                                    className={`absolute text-xs bg-primary/90 text-primary-content py-0.5 truncate leading-tight ${
+                                                        isMultiDay
+                                                            ? `${
+                                                                  isWeekStart
+                                                                      ? "rounded-l"
+                                                                      : ""
+                                                              } ${
+                                                                  isWeekEnd
+                                                                      ? "rounded-r"
+                                                                      : ""
+                                                              }`
+                                                            : "rounded"
+                                                    }`}
+                                                    style={{
+                                                        top: `${topOffset}px`,
+                                                        left: leftStyle,
+                                                        right: rightStyle,
+                                                        zIndex: 10,
+                                                        paddingLeft: isWeekStart
+                                                            ? "6px"
+                                                            : "2px",
+                                                        paddingRight: isWeekEnd
+                                                            ? "6px"
+                                                            : "2px",
+                                                    }}
                                                 >
-                                                    {time && (
+                                                    {isWeekStart && time && (
                                                         <span className="font-medium mr-1">
                                                             {time}
                                                         </span>
                                                     )}
-                                                    {title}
+                                                    {isWeekStart
+                                                        ? title
+                                                        : "\u00A0"}
                                                 </div>
                                             );
                                         })}
                                     {day.events.length > 2 && (
-                                        <div className="text-xs text-base-content/60 px-1">
+                                        <div
+                                            className="absolute text-xs text-base-content/60 px-1"
+                                            style={{ top: "44px", left: "4px" }}
+                                        >
                                             +{day.events.length - 2}
                                         </div>
                                     )}
@@ -872,21 +1125,13 @@ export default function CalendarPage() {
             {/* イベント一覧モーダル */}
             {selectedDate && !selectedEvent && !showAddModal && (
                 <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)]">
-                        <div className="flex items-center gap-2 absolute right-2 top-2">
-                            <button
-                                onClick={openAddModal}
-                                className="btn btn-sm btn-primary"
-                            >
-                                追加
-                            </button>
-                            <button
-                                onClick={closeModal}
-                                className="btn btn-sm btn-circle btn-ghost"
-                            >
-                                ✕
-                            </button>
-                        </div>
+                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)] flex flex-col">
+                        <button
+                            onClick={closeModal}
+                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                        >
+                            ✕
+                        </button>
                         <h3 className="font-bold text-xl mb-4">
                             {selectedDate.date.getFullYear()}年
                             {selectedDate.date.getMonth() + 1}月
@@ -895,81 +1140,149 @@ export default function CalendarPage() {
                                 {selectedDate.events.length}件
                             </span>
                         </h3>
-                        {selectedDate.events.length === 0 ? (
-                            <div className="text-center py-8 text-base-content/60">
-                                この日の予定はありません
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {selectedDate.events.map((event, index) => {
-                                    const values = Object.values(event);
-                                    const rawTimeHH = values[4];
-                                    const rawTimeMM = values[5];
-                                    const title = String(values[6] ?? "予定");
-                                    const where = String(values[7] ?? "");
+                        <div className="flex-1 overflow-y-auto">
+                            {selectedDate.events.length === 0 ? (
+                                <div className="text-center py-8 text-base-content/60">
+                                    この日の予定はありません
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {selectedDate.events.map(
+                                        (eventWithPos, index) => {
+                                            const { schedule, position } =
+                                                eventWithPos;
+                                            const values =
+                                                Object.values(schedule);
+                                            const startYear = Number(values[1]);
+                                            const startMonth = Number(
+                                                values[2]
+                                            );
+                                            const startDay = Number(values[3]);
+                                            const rawTimeHH = values[4];
+                                            const rawTimeMM = values[5];
+                                            const title = String(
+                                                values[6] ?? "予定"
+                                            );
+                                            const where = String(
+                                                values[7] ?? ""
+                                            );
+                                            const endYear = values[9]
+                                                ? Number(values[9])
+                                                : 0;
+                                            const endMonth = values[10]
+                                                ? Number(values[10])
+                                                : 0;
+                                            const endDay = values[11]
+                                                ? Number(values[11])
+                                                : 0;
 
-                                    const hasTime =
-                                        rawTimeHH !== "" &&
-                                        rawTimeHH !== null &&
-                                        rawTimeHH !== undefined &&
-                                        rawTimeMM !== "" &&
-                                        rawTimeMM !== null &&
-                                        rawTimeMM !== undefined;
-                                    const timeLabel = hasTime
-                                        ? `${String(rawTimeHH).padStart(
-                                              2,
-                                              "0"
-                                          )}:${String(rawTimeMM).padStart(
-                                              2,
-                                              "0"
-                                          )}`
-                                        : null;
+                                            const hasTime =
+                                                rawTimeHH !== "" &&
+                                                rawTimeHH !== null &&
+                                                rawTimeHH !== undefined &&
+                                                rawTimeMM !== "" &&
+                                                rawTimeMM !== null &&
+                                                rawTimeMM !== undefined;
+                                            const timeLabel = hasTime
+                                                ? `${String(rawTimeHH).padStart(
+                                                      2,
+                                                      "0"
+                                                  )}:${String(
+                                                      rawTimeMM
+                                                  ).padStart(2, "0")}`
+                                                : null;
 
-                                    return (
-                                        <div
-                                            key={index}
-                                            onClick={() =>
-                                                handleEventSelect(event)
-                                            }
-                                            className="p-4 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-3 h-3 bg-primary rounded-full shrink-0"></div>
-                                                <div className="flex-1">
-                                                    <div className="font-bold text-lg flex items-center gap-2">
-                                                        {title}
-                                                        {timeLabel && (
-                                                            <span className="text-sm font-normal text-base-content/70">
-                                                                {timeLabel}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {where && (
-                                                        <div className="text-sm text-base-content/70 mt-1">
-                                                            {where}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-5 w-5 text-base-content/50"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
+                                            // 複数日イベントの期間表示
+                                            const isMultiDay =
+                                                position !== "single";
+                                            const dateRangeLabel =
+                                                isMultiDay &&
+                                                endYear &&
+                                                endMonth &&
+                                                endDay
+                                                    ? `${startYear}年 ${startMonth}月 ${startDay}日 〜 ${endYear}年 ${endMonth}月 ${endDay}日`
+                                                    : null;
+
+                                            return (
+                                                <div
+                                                    key={index}
+                                                    onClick={() =>
+                                                        handleEventSelect(
+                                                            schedule
+                                                        )
+                                                    }
+                                                    className="p-4 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
                                                 >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 5l7 7-7 7"
-                                                    />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-3 h-3 bg-primary rounded-full shrink-0"></div>
+                                                        <div className="flex-1">
+                                                            <div className="font-bold text-lg flex items-center gap-2">
+                                                                {title}
+                                                                {timeLabel && (
+                                                                    <span className="text-sm font-normal text-base-content/70">
+                                                                        {
+                                                                            timeLabel
+                                                                        }
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            {dateRangeLabel && (
+                                                                <div className="text-sm text-base-content/70 mt-1">
+                                                                    {
+                                                                        dateRangeLabel
+                                                                    }
+                                                                </div>
+                                                            )}
+                                                            {where && (
+                                                                <div className="text-sm text-base-content/70 mt-1">
+                                                                    {where}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <svg
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            className="h-5 w-5 text-base-content/50"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M9 5l7 7-7 7"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        <div className="modal-action justify-end mt-4">
+                            <button
+                                onClick={openAddModal}
+                                className="btn btn-primary"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 4v16m8-8H4"
+                                    />
+                                </svg>
+                                追加
+                            </button>
+                        </div>
                     </div>
                     <form
                         method="dialog"
@@ -1021,41 +1334,147 @@ export default function CalendarPage() {
                                 />
                             </div>
                             <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">時刻</span>
+                                <label className="label cursor-pointer justify-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary"
+                                        checked={addForm.isAllDay}
+                                        onChange={(e) =>
+                                            setAddForm({
+                                                ...addForm,
+                                                isAllDay: e.target.checked,
+                                                // 終日をオンにしたら時刻をクリア
+                                                timeHH: e.target.checked
+                                                    ? ""
+                                                    : addForm.timeHH,
+                                                timeMM: e.target.checked
+                                                    ? ""
+                                                    : addForm.timeMM,
+                                            })
+                                        }
+                                    />
+                                    <span className="label-text">終日</span>
                                 </label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="時"
-                                        min="0"
-                                        max="23"
-                                        className="input input-bordered w-20"
-                                        value={addForm.timeHH}
-                                        onChange={(e) =>
-                                            setAddForm({
-                                                ...addForm,
-                                                timeHH: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <span>:</span>
-                                    <input
-                                        type="number"
-                                        placeholder="分"
-                                        min="0"
-                                        max="59"
-                                        className="input input-bordered w-20"
-                                        value={addForm.timeMM}
-                                        onChange={(e) =>
-                                            setAddForm({
-                                                ...addForm,
-                                                timeMM: e.target.value,
-                                            })
-                                        }
-                                    />
-                                </div>
                             </div>
+                            {addForm.isAllDay ? (
+                                <>
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text">
+                                                開始日
+                                            </span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-base-content/70">
+                                                {selectedDate.date.getFullYear()}
+                                                年
+                                                {selectedDate.date.getMonth() +
+                                                    1}
+                                                月{selectedDate.date.getDate()}
+                                                日
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text">
+                                                終了日{" "}
+                                                <span className="text-error">
+                                                    *
+                                                </span>
+                                            </span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                placeholder="年"
+                                                min="2020"
+                                                max="2100"
+                                                className="input input-bordered w-24"
+                                                value={addForm.endYear}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        endYear: e.target.value,
+                                                    })
+                                                }
+                                                required
+                                            />
+                                            <span>年</span>
+                                            <input
+                                                type="number"
+                                                placeholder="月"
+                                                min="1"
+                                                max="12"
+                                                className="input input-bordered w-20"
+                                                value={addForm.endMonth}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        endMonth:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                                required
+                                            />
+                                            <span>月</span>
+                                            <input
+                                                type="number"
+                                                placeholder="日"
+                                                min="1"
+                                                max="31"
+                                                className="input input-bordered w-20"
+                                                value={addForm.endDate}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        endDate: e.target.value,
+                                                    })
+                                                }
+                                                required
+                                            />
+                                            <span>日</span>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">時刻</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="時"
+                                            min="0"
+                                            max="23"
+                                            className="input input-bordered w-20"
+                                            value={addForm.timeHH}
+                                            onChange={(e) =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    timeHH: e.target.value,
+                                                })
+                                            }
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            placeholder="分"
+                                            min="0"
+                                            max="59"
+                                            className="input input-bordered w-20"
+                                            value={addForm.timeMM}
+                                            onChange={(e) =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    timeMM: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">場所</span>
@@ -1222,9 +1641,32 @@ export default function CalendarPage() {
                                 />
                             </div>
                             <div className="form-control">
+                                <label className="label cursor-pointer justify-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary"
+                                        checked={editForm.isAllDay}
+                                        onChange={(e) =>
+                                            setEditForm({
+                                                ...editForm,
+                                                isAllDay: e.target.checked,
+                                                // 終日をオンにしたら時刻をクリア
+                                                timeHH: e.target.checked
+                                                    ? ""
+                                                    : editForm.timeHH,
+                                                timeMM: e.target.checked
+                                                    ? ""
+                                                    : editForm.timeMM,
+                                            })
+                                        }
+                                    />
+                                    <span className="label-text">終日</span>
+                                </label>
+                            </div>
+                            <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
-                                        日付{" "}
+                                        {editForm.isAllDay ? "開始日" : "日付"}{" "}
                                         <span className="text-error">*</span>
                                     </span>
                                 </label>
@@ -1279,42 +1721,105 @@ export default function CalendarPage() {
                                     <span>日</span>
                                 </div>
                             </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">時刻</span>
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="時"
-                                        min="0"
-                                        max="23"
-                                        className="input input-bordered w-20"
-                                        value={editForm.timeHH}
-                                        onChange={(e) =>
-                                            setEditForm({
-                                                ...editForm,
-                                                timeHH: e.target.value,
-                                            })
-                                        }
-                                    />
-                                    <span>:</span>
-                                    <input
-                                        type="number"
-                                        placeholder="分"
-                                        min="0"
-                                        max="59"
-                                        className="input input-bordered w-20"
-                                        value={editForm.timeMM}
-                                        onChange={(e) =>
-                                            setEditForm({
-                                                ...editForm,
-                                                timeMM: e.target.value,
-                                            })
-                                        }
-                                    />
+                            {editForm.isAllDay ? (
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            終了日{" "}
+                                            <span className="text-error">
+                                                *
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="年"
+                                            min="2020"
+                                            max="2100"
+                                            className="input input-bordered w-24"
+                                            value={editForm.endYear}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    endYear: e.target.value,
+                                                })
+                                            }
+                                            required
+                                        />
+                                        <span>年</span>
+                                        <input
+                                            type="number"
+                                            placeholder="月"
+                                            min="1"
+                                            max="12"
+                                            className="input input-bordered w-20"
+                                            value={editForm.endMonth}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    endMonth: e.target.value,
+                                                })
+                                            }
+                                            required
+                                        />
+                                        <span>月</span>
+                                        <input
+                                            type="number"
+                                            placeholder="日"
+                                            min="1"
+                                            max="31"
+                                            className="input input-bordered w-20"
+                                            value={editForm.endDate}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    endDate: e.target.value,
+                                                })
+                                            }
+                                            required
+                                        />
+                                        <span>日</span>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">時刻</span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="時"
+                                            min="0"
+                                            max="23"
+                                            className="input input-bordered w-20"
+                                            value={editForm.timeHH}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    timeHH: e.target.value,
+                                                })
+                                            }
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            placeholder="分"
+                                            min="0"
+                                            max="59"
+                                            className="input input-bordered w-20"
+                                            value={editForm.timeMM}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    timeMM: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">場所</span>
