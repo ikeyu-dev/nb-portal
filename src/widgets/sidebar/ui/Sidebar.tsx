@@ -110,16 +110,15 @@ export default async function Sidebar({ children }: SidebarProps) {
                         </li>
                     </ul>
 
-                    {/* Theme Toggle & PWA Install */}
-                    <div className="p-4 border-t border-base-300 space-y-2">
+                    {/* Theme Toggle */}
+                    <div className="p-4 border-t border-base-300">
                         <ThemeToggle showLabel={true} />
-                        <SidebarClient />
                     </div>
 
-                    {/* User Info & Logout */}
+                    {/* User Info & Logout & PWA Install */}
                     {session?.user && (
-                        <div className="p-4 border-t border-base-300">
-                            <div className="flex items-center gap-3 mb-3">
+                        <div className="p-4 border-t border-base-300 space-y-3">
+                            <div className="flex items-center gap-3">
                                 <div className="avatar placeholder">
                                     <div className="bg-primary text-primary-content rounded-full w-10 flex items-center justify-center">
                                         <svg
@@ -153,6 +152,7 @@ export default async function Sidebar({ children }: SidebarProps) {
                                     </p>
                                 </div>
                             </div>
+                            <SidebarClient />
                             <form
                                 action={async () => {
                                     "use server";
