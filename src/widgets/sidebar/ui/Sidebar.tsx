@@ -161,7 +161,7 @@ export default async function Sidebar({ children }: SidebarProps) {
                             >
                                 <button
                                     type="submit"
-                                    className="btn btn-ghost btn-sm w-full justify-start gap-2"
+                                    className="btn btn-error btn-outline btn-sm w-full justify-start gap-2"
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
