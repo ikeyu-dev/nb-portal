@@ -32,21 +32,33 @@ const getNextBus = (times: BusTime[], now: Date): NextBus | null => {
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
 
+    // すべてのバス時刻をフラット化してソート
+    const allBuses: { hour: number; minute: number }[] = [];
     for (const time of times) {
-        if (time.hour < currentHour) continue;
-
         for (const minute of time.minutes) {
-            if (time.hour === currentHour && minute <= currentMinute) continue;
-
-            const remainingMinutes =
-                (time.hour - currentHour) * 60 + (minute - currentMinute);
-
-            return {
-                hour: time.hour,
-                minute,
-                remainingMinutes,
-            };
+            allBuses.push({ hour: time.hour, minute });
         }
+    }
+
+    // 時刻順にソート
+    allBuses.sort((a, b) => {
+        if (a.hour !== b.hour) return a.hour - b.hour;
+        return a.minute - b.minute;
+    });
+
+    // 現在時刻より後の最初のバスを探す
+    for (const bus of allBuses) {
+        if (bus.hour < currentHour) continue;
+        if (bus.hour === currentHour && bus.minute <= currentMinute) continue;
+
+        const remainingMinutes =
+            (bus.hour - currentHour) * 60 + (bus.minute - currentMinute);
+
+        return {
+            hour: bus.hour,
+            minute: bus.minute,
+            remainingMinutes,
+        };
     }
 
     return null;
@@ -297,7 +309,7 @@ export function BusScheduleCard({
                                             <div className="font-bold text-sm bg-base-200 px-2 py-1 rounded-t">
                                                 {time.hour}時
                                             </div>
-                                            <div className="bg-base-200/50 px-2 py-1 rounded-b min-h-[40px] text-center">
+                                            <div className="bg-base-200/50 px-2 py-1 rounded-b min-h-10 text-center">
                                                 {time.minutes.length > 0 ? (
                                                     time.minutes.map((m, i) => (
                                                         <div
