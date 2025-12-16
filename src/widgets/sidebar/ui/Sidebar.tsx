@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { ThemeToggle } from "@/features/theme-toggle";
 import { auth, signOut } from "@/src/auth";
-import { SidebarClient } from "./SidebarClient";
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -110,10 +109,9 @@ export default async function Sidebar({ children }: SidebarProps) {
                         </li>
                     </ul>
 
-                    {/* Theme Toggle & PWA Install */}
-                    <div className="p-4 border-t border-base-300 space-y-2">
+                    {/* Theme Toggle */}
+                    <div className="p-4 border-t border-base-300">
                         <ThemeToggle showLabel={true} />
-                        <SidebarClient />
                     </div>
 
                     {/* User Info & Logout */}

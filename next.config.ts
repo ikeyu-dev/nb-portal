@@ -5,10 +5,6 @@ const withPWA = withPWAInit({
     dest: "public",
     register: true,
     disable: process.env.NODE_ENV === "development",
-    extendDefaultRuntimeCaching: true,
-    workboxOptions: {
-        importScripts: ["/sw.js"],
-    },
 });
 
 const nextConfig: NextConfig = {
