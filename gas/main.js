@@ -352,6 +352,8 @@ function doGet(e) {
                 return handleVerifyMember(e);
             case "notifications":
                 return handleGetNotifications(e);
+            case "push-subscriptions":
+                return handleGetPushSubscriptions(e);
             case "health":
                 return createResponse({
                     success: true,
@@ -411,6 +413,10 @@ function doPost(e) {
                 return handleUpdateSchedule(postData);
             case "schedules/delete":
                 return handleDeleteSchedule(postData);
+            case "push-subscribe":
+                return handlePushSubscribe(postData);
+            case "push-unsubscribe":
+                return handlePushUnsubscribe(postData);
             default:
                 return createErrorResponse("Invalid endpoint", 404);
         }
@@ -1245,6 +1251,197 @@ const handleGetNotifications = (e) => {
             success: true,
             data: notifications.slice(0, limit),
             count: notifications.slice(0, limit).length,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: プッシュ通知購読登録（POST push-subscribe）
+// シート名: push_subscriptions
+// 列構成: A:STUDENT_ID, B:ENDPOINT, C:P256DH, D:AUTH, E:CREATED_AT
+// リクエストボディ: { subscription: {endpoint, keys: {p256dh, auth}}, studentId }
+// ============================================
+
+/**
+ * プッシュ通知の購読を登録
+ * @param {Object} postData - リクエストボディ
+ * @returns {TextOutput} { success, message }
+ */
+const handlePushSubscribe = (postData) => {
+    try {
+        const { subscription, studentId } = postData;
+
+        if (!subscription || !studentId) {
+            return createErrorResponse("Missing required fields (subscription, studentId)", 400);
+        }
+
+        const { endpoint, keys } = subscription;
+        if (!endpoint || !keys?.p256dh || !keys?.auth) {
+            return createErrorResponse("Invalid subscription format", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        let sheet = spreadsheet.getSheetByName("push_subscriptions");
+
+        // シートが存在しない場合は作成
+        if (!sheet) {
+            sheet = spreadsheet.insertSheet("push_subscriptions");
+            sheet.getRange(1, 1, 1, 5).setValues([
+                ["STUDENT_ID", "ENDPOINT", "P256DH", "AUTH", "CREATED_AT"]
+            ]);
+        }
+
+        // 既存の購読を確認（同じendpointがあれば更新）
+        const lastRow = sheet.getLastRow();
+        let existingRow = -1;
+
+        if (lastRow >= 2) {
+            const endpoints = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+            for (let i = 0; i < endpoints.length; i++) {
+                if (endpoints[i][0] === endpoint) {
+                    existingRow = i + 2;
+                    break;
+                }
+            }
+        }
+
+        const now = new Date();
+        const createdAt = Utilities.formatDate(
+            now,
+            Session.getScriptTimeZone(),
+            "yyyy/MM/dd HH:mm:ss"
+        );
+
+        if (existingRow > 0) {
+            // 既存の購読を更新
+            sheet.getRange(existingRow, 1, 1, 5).setValues([
+                [studentId.toLowerCase(), endpoint, keys.p256dh, keys.auth, createdAt]
+            ]);
+        } else {
+            // 新規登録
+            sheet.appendRow([
+                studentId.toLowerCase(),
+                endpoint,
+                keys.p256dh,
+                keys.auth,
+                createdAt
+            ]);
+        }
+
+        return createResponse({
+            success: true,
+            message: "Subscription registered successfully",
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: プッシュ通知購読解除（POST push-unsubscribe）
+// シート名: push_subscriptions
+// リクエストボディ: { endpoint, studentId }
+// ============================================
+
+/**
+ * プッシュ通知の購読を解除
+ * @param {Object} postData - リクエストボディ
+ * @returns {TextOutput} { success, message }
+ */
+const handlePushUnsubscribe = (postData) => {
+    try {
+        const { endpoint } = postData;
+
+        if (!endpoint) {
+            return createErrorResponse("Missing required field (endpoint)", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("push_subscriptions");
+
+        if (!sheet) {
+            return createResponse({
+                success: true,
+                message: "No subscriptions found",
+            });
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createResponse({
+                success: true,
+                message: "No subscriptions found",
+            });
+        }
+
+        // endpointが一致する行を検索して削除
+        const data = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+        for (let i = data.length - 1; i >= 0; i--) {
+            if (data[i][1] === endpoint) {
+                sheet.deleteRow(i + 2);
+                return createResponse({
+                    success: true,
+                    message: "Subscription removed successfully",
+                });
+            }
+        }
+
+        return createResponse({
+            success: true,
+            message: "Subscription not found",
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: プッシュ通知購読者一覧取得（GET push-subscriptions）
+// シート名: push_subscriptions
+// ============================================
+
+/**
+ * プッシュ通知の購読者一覧を取得
+ * @param {Object} e - リクエストイベントオブジェクト
+ * @returns {TextOutput} { success, data: [{studentId, endpoint, p256dh, auth}], count }
+ */
+const handleGetPushSubscriptions = (e) => {
+    try {
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("push_subscriptions");
+
+        if (!sheet) {
+            return createResponse({
+                success: true,
+                data: [],
+                count: 0,
+            });
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createResponse({
+                success: true,
+                data: [],
+                count: 0,
+            });
+        }
+
+        // A:STUDENT_ID, B:ENDPOINT, C:P256DH, D:AUTH
+        const data = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+        const subscriptions = data.map((row) => ({
+            studentId: row[0],
+            endpoint: row[1],
+            p256dh: row[2],
+            auth: row[3],
+        }));
+
+        return createResponse({
+            success: true,
+            data: subscriptions,
+            count: subscriptions.length,
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);

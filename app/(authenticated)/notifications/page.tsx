@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
+import { NotificationSettings } from "@/src/features/push-notification/ui/NotificationSettings";
 
 interface Notification {
     eventId: string;
@@ -13,9 +15,11 @@ interface Notification {
 }
 
 export default function NotificationsPage() {
+    const { data: session } = useSession();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const studentId = session?.studentId;
 
     useEffect(() => {
         const fetchNotifications = async () => {
@@ -92,6 +96,13 @@ export default function NotificationsPage() {
                         お知らせ
                     </h1>
                 </div>
+
+                {/* 通知設定 */}
+                {studentId && (
+                    <div className="mb-6">
+                        <NotificationSettings studentId={studentId} />
+                    </div>
+                )}
 
                 {error && (
                     <div className="alert alert-error mb-4">

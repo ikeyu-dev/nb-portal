@@ -58,6 +58,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             return true;
         },
+        async jwt({ token, user }) {
+            // 初回ログイン時にstudentIdをトークンに追加
+            if (user?.email) {
+                token.studentId = extractStudentId(user.email);
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            // セッションにstudentIdを追加
+            if (token.studentId) {
+                session.studentId = token.studentId as string;
+            }
+            return session;
+        },
         authorized({ auth, request: { nextUrl } }) {
             const isLoggedIn = !!auth?.user;
             const isOnLoginPage = nextUrl.pathname === "/login";
