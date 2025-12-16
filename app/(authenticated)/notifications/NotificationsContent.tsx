@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { NotificationSettings } from "@/src/features/push-notification/ui/NotificationSettings";
 
 interface Notification {
     eventId: string;
@@ -13,11 +12,7 @@ interface Notification {
     actionType: "created" | "updated";
 }
 
-interface NotificationsContentProps {
-    studentId?: string;
-}
-
-export function NotificationsContent({ studentId }: NotificationsContentProps) {
+export function NotificationsContent() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -97,13 +92,6 @@ export function NotificationsContent({ studentId }: NotificationsContentProps) {
                         お知らせ
                     </h1>
                 </div>
-
-                {/* 通知設定 */}
-                {studentId && (
-                    <div className="mb-6">
-                        <NotificationSettings studentId={studentId} />
-                    </div>
-                )}
 
                 {error && (
                     <div className="alert alert-error mb-4">
