@@ -20,7 +20,7 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 // 通知の許可状態を取得
 export function getNotificationPermission(): NotificationPermission | "unsupported" {
-    if (!("Notification" in window)) {
+    if (typeof window === "undefined" || !("Notification" in window)) {
         return "unsupported";
     }
     return Notification.permission;
@@ -28,7 +28,7 @@ export function getNotificationPermission(): NotificationPermission | "unsupport
 
 // 通知の許可をリクエスト
 export async function requestNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
-    if (!("Notification" in window)) {
+    if (typeof window === "undefined" || !("Notification" in window)) {
         return "unsupported";
     }
     const permission = await Notification.requestPermission();
@@ -37,7 +37,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
 // Service Workerの登録を取得
 async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
-    if (!("serviceWorker" in navigator)) {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
         return null;
     }
     try {
