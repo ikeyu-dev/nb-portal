@@ -23,11 +23,14 @@ export function NotificationSettings({ studentId }: NotificationSettingsProps) {
 
     useEffect(() => {
         const checkPermission = async () => {
+            console.log("[NotificationSettings] Checking permission...");
             const perm = getNotificationPermission();
+            console.log("[NotificationSettings] Permission:", perm);
             setPermission(perm);
 
             if (perm === "granted") {
                 const subscription = await getPushSubscription();
+                console.log("[NotificationSettings] Subscription:", !!subscription);
                 setIsSubscribed(!!subscription);
             }
         };

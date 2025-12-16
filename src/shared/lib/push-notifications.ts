@@ -18,9 +18,33 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
     return outputArray;
 }
 
+// プッシュ通知がサポートされているかチェック
+export function isPushNotificationSupported(): boolean {
+    if (typeof window === "undefined") {
+        console.log("[PushNotification] Server-side rendering");
+        return false;
+    }
+    // Notification APIが存在するか
+    if (!("Notification" in window)) {
+        console.log("[PushNotification] Notification API not supported");
+        return false;
+    }
+    // Service WorkerとPushManagerが存在するか
+    if (!("serviceWorker" in navigator)) {
+        console.log("[PushNotification] ServiceWorker not supported");
+        return false;
+    }
+    if (!("PushManager" in window)) {
+        console.log("[PushNotification] PushManager not supported");
+        return false;
+    }
+    console.log("[PushNotification] Push notifications supported");
+    return true;
+}
+
 // 通知の許可状態を取得
 export function getNotificationPermission(): NotificationPermission | "unsupported" {
-    if (typeof window === "undefined" || !("Notification" in window)) {
+    if (!isPushNotificationSupported()) {
         return "unsupported";
     }
     return Notification.permission;
@@ -28,7 +52,7 @@ export function getNotificationPermission(): NotificationPermission | "unsupport
 
 // 通知の許可をリクエスト
 export async function requestNotificationPermission(): Promise<NotificationPermission | "unsupported"> {
-    if (typeof window === "undefined" || !("Notification" in window)) {
+    if (!isPushNotificationSupported()) {
         return "unsupported";
     }
     const permission = await Notification.requestPermission();

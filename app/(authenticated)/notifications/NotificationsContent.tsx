@@ -22,6 +22,8 @@ export function NotificationsContent({ studentId }: NotificationsContentProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    console.log("[NotificationsContent] studentId:", studentId);
+
     useEffect(() => {
         const fetchNotifications = async () => {
             try {
