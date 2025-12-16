@@ -477,7 +477,7 @@ const handleGetItems = (e) => {
 // ============================================
 // API: スケジュール一覧取得
 // シート名: schedules
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:CREATED_BY, N:CREATED_AT, O:UPDATED_BY, P:UPDATED_AT
 // ============================================
 
 /**
@@ -503,12 +503,12 @@ const handleGetSchedules = (e) => {
             });
         }
 
-        // A2:I（2行目以降、9列）のデータを取得
-        const range = sheet.getRange(2, 1, lastRow - 1, 9);
+        // A2:L（2行目以降、12列）のデータを取得（終了日を含む）
+        const range = sheet.getRange(2, 1, lastRow - 1, 12);
         const values = range.getValues();
 
-        // ヘッダー行（A1:I1）を取得
-        const headers = sheet.getRange(1, 1, 1, 9).getValues()[0];
+        // ヘッダー行（A1:L1）を取得
+        const headers = sheet.getRange(1, 1, 1, 12).getValues()[0];
 
         // ヘッダーをキーとしたオブジェクト配列に変換
         const schedules = values.map((row) => {
@@ -742,19 +742,19 @@ const handleVerifyMember = (e) => {
 // ============================================
 // API: スケジュール登録（POST）
 // シート名: schedules
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT
-// リクエストボディ: { year, month, date, timeHH?, timeMM?, title, where?, detail?, createdBy? }
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:CREATED_BY, N:CREATED_AT
+// リクエストボディ: { year, month, date, timeHH?, timeMM?, title, where?, detail?, endYear?, endMonth?, endDate?, createdBy? }
 // EVENT_IDは自動採番（E-01, E-02, ...）
 // ============================================
 
 /**
  * 新規スケジュールを登録
- * @param {Object} postData - リクエストボディ { year, month, date, title, timeHH?, timeMM?, where?, detail?, createdBy? }
+ * @param {Object} postData - リクエストボディ { year, month, date, title, timeHH?, timeMM?, where?, detail?, endYear?, endMonth?, endDate?, createdBy? }
  * @returns {TextOutput} { success, message, data: {作成されたスケジュール情報} }
  */
 const handlePostSchedule = (postData) => {
     try {
-        const { year, month, date, timeHH, timeMM, title, where, detail, createdBy } =
+        const { year, month, date, timeHH, timeMM, title, where, detail, endYear, endMonth, endDate, createdBy } =
             postData;
 
         // 必須フィールドの検証（年月日とタイトルは必須）
@@ -786,7 +786,7 @@ const handlePostSchedule = (postData) => {
             "yyyy/MM/dd HH:mm:ss"
         );
 
-        // 列順: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT
+        // 列順: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:CREATED_BY, N:CREATED_AT
         const rowData = [
             eventId,
             Number(year),
@@ -797,6 +797,9 @@ const handlePostSchedule = (postData) => {
             title,
             where || "",
             detail || "",
+            endYear !== undefined && endYear !== "" ? Number(endYear) : "",
+            endMonth !== undefined && endMonth !== "" ? Number(endMonth) : "",
+            endDate !== undefined && endDate !== "" ? Number(endDate) : "",
             createdBy || "",
             createdAt,
         ];
@@ -816,6 +819,9 @@ const handlePostSchedule = (postData) => {
                 title,
                 where: where || "",
                 detail: detail || "",
+                endYear: endYear || null,
+                endMonth: endMonth || null,
+                endDate: endDate || null,
                 createdBy: createdBy || "",
                 createdAt,
             },
@@ -952,18 +958,18 @@ const handlePostAbsence = (postData) => {
 // ============================================
 // API: スケジュール更新（POST schedules/update）
 // シート名: schedules
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT, L:UPDATED_BY, M:UPDATED_AT
-// リクエストボディ: { eventId, year, month, date, timeHH?, timeMM?, title, where?, detail?, updatedBy? }
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:CREATED_BY, N:CREATED_AT, O:UPDATED_BY, P:UPDATED_AT
+// リクエストボディ: { eventId, year, month, date, timeHH?, timeMM?, title, where?, detail?, endYear?, endMonth?, endDate?, updatedBy? }
 // ============================================
 
 /**
  * 既存スケジュールを更新
- * @param {Object} postData - リクエストボディ { eventId, year, month, date, title, timeHH?, timeMM?, where?, detail?, updatedBy? }
+ * @param {Object} postData - リクエストボディ { eventId, year, month, date, title, timeHH?, timeMM?, where?, detail?, endYear?, endMonth?, endDate?, updatedBy? }
  * @returns {TextOutput} { success, message, data: {更新されたスケジュール情報} }
  */
 const handleUpdateSchedule = (postData) => {
     try {
-        const { eventId, year, month, date, timeHH, timeMM, title, where, detail, updatedBy } =
+        const { eventId, year, month, date, timeHH, timeMM, title, where, detail, endYear, endMonth, endDate, updatedBy } =
             postData;
 
         // 必須フィールドの検証
@@ -1009,8 +1015,8 @@ const handleUpdateSchedule = (postData) => {
             "yyyy/MM/dd HH:mm:ss"
         );
 
-        // 列順: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL
-        // B〜I列を更新（EVENT_IDは変更しない、CREATED_BY/CREATED_ATも保持）
+        // 列順: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD
+        // B〜L列を更新（EVENT_IDは変更しない、CREATED_BY/CREATED_ATも保持）
         const updateData = [
             Number(year),
             Number(month),
@@ -1020,13 +1026,16 @@ const handleUpdateSchedule = (postData) => {
             title,
             where || "",
             detail || "",
+            endYear !== undefined && endYear !== "" ? Number(endYear) : "",
+            endMonth !== undefined && endMonth !== "" ? Number(endMonth) : "",
+            endDate !== undefined && endDate !== "" ? Number(endDate) : "",
         ];
 
-        sheet.getRange(targetRow, 2, 1, 8).setValues([updateData]);
+        sheet.getRange(targetRow, 2, 1, 11).setValues([updateData]);
 
-        // L列（UPDATED_BY）とM列（UPDATED_AT）を更新
+        // O列（UPDATED_BY）とP列（UPDATED_AT）を更新
         if (updatedBy) {
-            sheet.getRange(targetRow, 12, 1, 2).setValues([[updatedBy, updatedAt]]);
+            sheet.getRange(targetRow, 15, 1, 2).setValues([[updatedBy, updatedAt]]);
         }
 
         return createResponse({
@@ -1042,6 +1051,9 @@ const handleUpdateSchedule = (postData) => {
                 title,
                 where: where || "",
                 detail: detail || "",
+                endYear: endYear || null,
+                endMonth: endMonth || null,
+                endDate: endDate || null,
                 updatedBy: updatedBy || "",
                 updatedAt,
             },
@@ -1054,7 +1066,7 @@ const handleUpdateSchedule = (postData) => {
 // ============================================
 // API: スケジュール削除（POST schedules/delete）
 // シート名: schedules
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT, L:UPDATED_BY, M:UPDATED_AT
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:CREATED_BY, N:CREATED_AT, O:UPDATED_BY, P:UPDATED_AT
 // リクエストボディ: { eventId }
 // ============================================
 
@@ -1118,7 +1130,7 @@ const handleDeleteSchedule = (postData) => {
 // API: お知らせ一覧取得
 // schedulesシートからCREATED_BY/UPDATED_BY（学籍番号）が設定されているレコードを取得し、
 // membersシートのC列（名前）と照合して作成者/更新者名を付与
-// 列構成（schedules）: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:CREATED_BY, K:CREATED_AT, L:UPDATED_BY, M:UPDATED_AT
+// 列構成（schedules）: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:CREATED_BY, N:CREATED_AT, O:UPDATED_BY, P:UPDATED_AT
 // 列構成（members）: A:学籍番号, B:?, C:名前
 // クエリパラメータ: limit（任意、デフォルト20件）
 // ============================================
@@ -1167,8 +1179,8 @@ const handleGetNotifications = (e) => {
             }
         }
 
-        // schedulesシートから全データを取得（13列: A-M）
-        const range = schedulesSheet.getRange(2, 1, lastRow - 1, 13);
+        // schedulesシートから全データを取得（16列: A-P）
+        const range = schedulesSheet.getRange(2, 1, lastRow - 1, 16);
         const values = range.getValues();
 
         const notifications = [];
@@ -1181,10 +1193,11 @@ const handleGetNotifications = (e) => {
             const title = String(row[6] || "");
             const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
 
-            const createdBy = String(row[9] || "").toLowerCase().trim();
-            const createdAt = row[10];
-            const updatedBy = String(row[11] || "").toLowerCase().trim();
-            const updatedAt = row[12];
+            // 新しい列構成: M列(12)=CREATED_BY, N列(13)=CREATED_AT, O列(14)=UPDATED_BY, P列(15)=UPDATED_AT
+            const createdBy = String(row[12] || "").toLowerCase().trim();
+            const createdAt = row[13];
+            const updatedBy = String(row[14] || "").toLowerCase().trim();
+            const updatedAt = row[15];
 
             // 作成通知を追加
             if (createdBy !== "" && createdAt !== "") {
