@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 
-// VAPID設定
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
+// VAPID設定（リクエスト時に設定）
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
 const VAPID_SUBJECT = "mailto:admin@example.com";
-
-webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 interface PushSubscription {
     endpoint: string;
@@ -26,6 +24,16 @@ interface NotificationPayload {
 
 export async function POST(request: NextRequest) {
     try {
+        // VAPID設定をリクエスト時に行う（ビルド時のエラーを回避）
+        if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+            return NextResponse.json(
+                { success: false, error: "VAPID keys not configured" },
+                { status: 500 }
+            );
+        }
+
+        webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+
         const body = await request.json();
         const { title, body: notificationBody, url } = body;
 
