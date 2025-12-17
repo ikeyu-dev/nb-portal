@@ -4,6 +4,24 @@ import { useEffect, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import type { Absence } from "@/src/shared/types/api";
 
+// イベントカラーの定義
+export const EVENT_COLORS = [
+    { id: "primary", hex: "#2a83a2", label: "デフォルト" },
+    { id: "red", hex: "#d7003a", label: "赤" },
+    { id: "green", hex: "#88cb7f", label: "緑" },
+    { id: "purple", hex: "#4a488e", label: "紫" },
+    { id: "yellow", hex: "#eec362", label: "黄" },
+    { id: "brown", hex: "#554738", label: "茶" },
+] as const;
+
+export type EventColorId = (typeof EVENT_COLORS)[number]["id"];
+
+// カラーIDからHEX値を取得
+const getColorHex = (colorId: string | undefined): string => {
+    const color = EVENT_COLORS.find((c) => c.id === colorId);
+    return color?.hex || EVENT_COLORS[0].hex;
+};
+
 interface Schedule {
     [key: string]: string | number | boolean | Date;
 }
@@ -39,6 +57,7 @@ interface EventForm {
     endMonth: string;
     endDate: string;
     isAllDay: boolean;
+    color: EventColorId;
 }
 
 export default function CalendarPage() {
@@ -69,6 +88,7 @@ export default function CalendarPage() {
         endMonth: "",
         endDate: "",
         isAllDay: false,
+        color: "primary",
     });
     const [editForm, setEditForm] = useState<EventForm>({
         title: "",
@@ -83,6 +103,7 @@ export default function CalendarPage() {
         endMonth: "",
         endDate: "",
         isAllDay: false,
+        color: "primary",
     });
 
     useEffect(() => {
@@ -221,6 +242,7 @@ export default function CalendarPage() {
             endMonth: "",
             endDate: "",
             isAllDay: false,
+            color: "primary",
         });
         setEditForm({
             title: "",
@@ -235,6 +257,7 @@ export default function CalendarPage() {
             endMonth: "",
             endDate: "",
             isAllDay: false,
+            color: "primary",
         });
     };
 
@@ -259,6 +282,7 @@ export default function CalendarPage() {
             endMonth: "",
             endDate: "",
             isAllDay: false,
+            color: "primary",
         });
     };
 
@@ -286,6 +310,7 @@ export default function CalendarPage() {
                     endYear: addForm.endYear || undefined,
                     endMonth: addForm.endMonth || undefined,
                     endDate: addForm.endDate || undefined,
+                    color: addForm.color,
                 }),
             });
 
@@ -306,6 +331,7 @@ export default function CalendarPage() {
                     END_YYYY: data.data.endYear || "",
                     END_MM: data.data.endMonth || "",
                     END_DD: data.data.endDate || "",
+                    COLOR: data.data.color || "primary",
                 };
                 setSchedules((prev) => [...prev, newSchedule]);
 
@@ -393,6 +419,7 @@ export default function CalendarPage() {
                     ? String(rawEndDate)
                     : "",
             isAllDay,
+            color: (values[12] as EventColorId) || "primary",
         });
         setShowEditModal(true);
     };
@@ -414,6 +441,7 @@ export default function CalendarPage() {
             endMonth: "",
             endDate: "",
             isAllDay: false,
+            color: "primary",
         });
     };
 
@@ -490,6 +518,7 @@ export default function CalendarPage() {
                     endYear: editForm.endYear || undefined,
                     endMonth: editForm.endMonth || undefined,
                     endDate: editForm.endDate || undefined,
+                    color: editForm.color,
                 }),
             });
 
@@ -514,6 +543,7 @@ export default function CalendarPage() {
                                 END_YYYY: data.data.endYear || "",
                                 END_MM: data.data.endMonth || "",
                                 END_DD: data.data.endDate || "",
+                                COLOR: data.data.color || "primary",
                             };
                         }
                         return schedule;
@@ -826,6 +856,15 @@ export default function CalendarPage() {
                                                 const isMultiDay =
                                                     position !== "single";
 
+                                                // イベントの色を取得
+                                                const eventColor = getColorHex(
+                                                    String(
+                                                        Object.values(
+                                                            eventWithPos.schedule
+                                                        )[12] || "primary"
+                                                    )
+                                                );
+
                                                 // 複数日イベントの場合、セルの境界を越えて表示
                                                 const leftStyle =
                                                     isMultiDay && !isWeekStart
@@ -841,7 +880,7 @@ export default function CalendarPage() {
                                                 return (
                                                     <div
                                                         key={eventIndex}
-                                                        className={`absolute text-[9px] leading-tight bg-primary/90 text-primary-content py-0.5 truncate ${
+                                                        className={`absolute text-[9px] leading-tight text-white py-0.5 truncate ${
                                                             isMultiDay
                                                                 ? `${
                                                                       isWeekStart
@@ -867,6 +906,8 @@ export default function CalendarPage() {
                                                                 isWeekEnd
                                                                     ? "4px"
                                                                     : "1px",
+                                                            backgroundColor:
+                                                                eventColor,
                                                         }}
                                                     >
                                                         {isWeekStart
@@ -1054,6 +1095,15 @@ export default function CalendarPage() {
                                             const isMultiDay =
                                                 position !== "single";
 
+                                            // イベントの色を取得
+                                            const eventColor = getColorHex(
+                                                String(
+                                                    Object.values(
+                                                        eventWithPos.schedule
+                                                    )[12] || "primary"
+                                                )
+                                            );
+
                                             // 複数日イベントの場合、セルの境界を越えて表示
                                             // left: 開始日は4px、それ以外は-1px（境界線を越える）
                                             // right: 終了日は4px、それ以外は-1px（境界線を越える）
@@ -1070,7 +1120,7 @@ export default function CalendarPage() {
                                             return (
                                                 <div
                                                     key={eventIndex}
-                                                    className={`absolute text-xs bg-primary/90 text-primary-content py-0.5 truncate leading-tight ${
+                                                    className={`absolute text-xs text-white py-0.5 truncate leading-tight ${
                                                         isMultiDay
                                                             ? `${
                                                                   isWeekStart
@@ -1094,6 +1144,8 @@ export default function CalendarPage() {
                                                         paddingRight: isWeekEnd
                                                             ? "6px"
                                                             : "2px",
+                                                        backgroundColor:
+                                                            eventColor,
                                                     }}
                                                 >
                                                     {isWeekStart && time && (
@@ -1203,6 +1255,11 @@ export default function CalendarPage() {
                                                     ? `${startYear}年 ${startMonth}月 ${startDay}日 〜 ${endYear}年 ${endMonth}月 ${endDay}日`
                                                     : null;
 
+                                            // イベントの色を取得
+                                            const eventColor = getColorHex(
+                                                String(values[12] || "primary")
+                                            );
+
                                             return (
                                                 <div
                                                     key={index}
@@ -1211,10 +1268,20 @@ export default function CalendarPage() {
                                                             schedule
                                                         )
                                                     }
-                                                    className="p-4 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                                                    className="p-4 bg-base-100 rounded-xl border-l-4 shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                                                    style={{
+                                                        borderLeftColor:
+                                                            eventColor,
+                                                    }}
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-3 h-3 bg-primary rounded-full shrink-0"></div>
+                                                        <div
+                                                            className="w-3 h-3 rounded-full shrink-0"
+                                                            style={{
+                                                                backgroundColor:
+                                                                    eventColor,
+                                                            }}
+                                                        ></div>
                                                         <div className="flex-1">
                                                             <div className="font-bold text-lg flex items-center gap-2">
                                                                 {title}
@@ -1508,6 +1575,34 @@ export default function CalendarPage() {
                                         })
                                     }
                                 />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">カラー</span>
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {EVENT_COLORS.map((color) => (
+                                        <button
+                                            key={color.id}
+                                            type="button"
+                                            onClick={() =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    color: color.id,
+                                                })
+                                            }
+                                            className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                                addForm.color === color.id
+                                                    ? "border-base-content scale-110"
+                                                    : "border-transparent hover:scale-105"
+                                            }`}
+                                            style={{
+                                                backgroundColor: color.hex,
+                                            }}
+                                            title={color.label}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                             <div className="modal-action">
                                 <button
@@ -1853,6 +1948,34 @@ export default function CalendarPage() {
                                         })
                                     }
                                 />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">カラー</span>
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {EVENT_COLORS.map((color) => (
+                                        <button
+                                            key={color.id}
+                                            type="button"
+                                            onClick={() =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    color: color.id,
+                                                })
+                                            }
+                                            className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                                editForm.color === color.id
+                                                    ? "border-base-content scale-110"
+                                                    : "border-transparent hover:scale-105"
+                                            }`}
+                                            style={{
+                                                backgroundColor: color.hex,
+                                            }}
+                                            title={color.label}
+                                        />
+                                    ))}
+                                </div>
                             </div>
                             {/* 削除確認 */}
                             {showDeleteConfirm ? (

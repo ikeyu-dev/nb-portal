@@ -15,6 +15,7 @@ interface ScheduleCardProps {
     onClose?: () => void;
     onEdit?: () => void;
     hideCard?: boolean;
+    color?: string;
 }
 
 export default function ScheduleCard({
@@ -29,6 +30,7 @@ export default function ScheduleCard({
     onClose,
     onEdit,
     hideCard = false,
+    color = "#2a83a2",
 }: ScheduleCardProps) {
     const [isModalOpen, setIsModalOpen] = useState(defaultOpen);
 
@@ -48,12 +50,16 @@ export default function ScheduleCard({
             {!hideCard && (
                 <div
                     onClick={() => setIsModalOpen(true)}
-                    className="p-5 bg-base-100 rounded-xl border-l-4 border-primary shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                    className="p-5 bg-base-100 rounded-xl border-l-4 shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                    style={{ borderLeftColor: color }}
                 >
                     <div className="flex flex-col lg:flex-row gap-4">
                         <div className="flex items-start gap-3 flex-1">
                             <div className="shrink-0 mt-1.5">
-                                <div className="w-3 h-3 bg-primary rounded-full"></div>
+                                <div
+                                    className="w-3 h-3 rounded-full"
+                                    style={{ backgroundColor: color }}
+                                ></div>
                             </div>
                             <div className="flex-1">
                                 <div
