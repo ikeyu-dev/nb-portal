@@ -3,6 +3,7 @@ import type { Absence, Schedule } from "@/src/shared/types/api";
 import { AnalogClock } from "@/features/analog-clock";
 import { WeatherWidget } from "@/features/weather";
 import { ScheduleCard } from "@/features/schedule-card";
+import { DateDisplay } from "@/features/date-display";
 
 export default async function HomePage() {
     let absences: Absence[] = [];
@@ -21,18 +22,11 @@ export default async function HomePage() {
             err instanceof Error ? err.message : "データの取得に失敗しました";
     }
 
-    // 今日の日付を取得
+    // 今日の日付を取得（スケジュールフィルタ用）
     const today = new Date();
     const todayYear = today.getFullYear();
     const todayMonth = today.getMonth() + 1;
     const todayDate = today.getDate();
-    const dateString = `${todayYear}年${String(todayMonth).padStart(
-        2,
-        "0"
-    )}月${String(todayDate).padStart(2, "0")}日`;
-    const dayOfWeek = ["日", "月", "火", "水", "木", "金", "土"][
-        today.getDay()
-    ];
 
     // 今後のスケジュールをフィルタリング（今日以降）
     // スプレッドシートの形式: A=EVENT_ID, B=YYYY, C=MM, D=DD, E=TITLE, F=WHERE, G=DETAIL
@@ -267,7 +261,7 @@ export default async function HomePage() {
                                     fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
                                 }}
                             >
-                                {dateString} ({dayOfWeek})
+                                <DateDisplay />
                             </h2>
                         </div>
                         <div className="flex-1 grid grid-cols-2 gap-0 w-full min-h-0">
