@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PushNotificationToggle } from "@/src/features/push-notification";
 
 interface Notification {
     eventId: string;
@@ -91,6 +92,11 @@ export function NotificationsContent() {
                     >
                         お知らせ
                     </h1>
+                </div>
+
+                {/* プッシュ通知設定 */}
+                <div className="mb-6">
+                    <PushNotificationToggle />
                 </div>
 
                 {error && (
