@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:admin@example.com";
-const PUSH_API_SECRET = process.env.PUSH_API_SECRET || "";
+const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT!;
+const PUSH_API_SECRET = process.env.PUSH_API_SECRET!;
 
 // VAPIDの設定
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-}
+webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
 interface PushSubscription {
     studentId: string;
@@ -25,7 +23,7 @@ export async function POST(request: NextRequest) {
         const authHeader = request.headers.get("authorization");
         const providedSecret = authHeader?.replace("Bearer ", "");
 
-        if (!PUSH_API_SECRET || providedSecret !== PUSH_API_SECRET) {
+        if (providedSecret !== PUSH_API_SECRET) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
