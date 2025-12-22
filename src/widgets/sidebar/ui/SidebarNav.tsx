@@ -88,7 +88,7 @@ export function SidebarNav() {
                 <li key={item.href}>
                     <Link
                         href={item.href}
-                        className={pathname === item.href ? "menu-active" : ""}
+                        className={`transition-transform hover:scale-105 ${pathname === item.href ? "text-primary" : ""}`}
                     >
                         {item.icon}
                         {item.label}

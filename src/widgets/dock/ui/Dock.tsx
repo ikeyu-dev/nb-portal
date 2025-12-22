@@ -18,10 +18,10 @@ export default function Dock({ user }: DockProps) {
     return (
         <>
             <div
-                className="dock dock-md fixed bottom-0 left-0 right-0 z-30 lg:hidden"
-                style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
+                className="dock dock-md fixed bottom-0 left-0 right-0 z-30 lg:hidden p-3"
+                style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 0.5rem)" }}
             >
-                <Link href="/home" className={pathname === "/home" ? "dock-active" : ""}>
+                <Link href="/home" className={`transition-transform ${pathname === "/home" ? "text-primary scale-110" : ""}`}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -38,7 +38,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/calendar" className={pathname === "/calendar" ? "dock-active" : ""}>
+                <Link href="/calendar" className={`transition-transform ${pathname === "/calendar" ? "text-primary scale-110" : ""}`}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -55,7 +55,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/items" className={pathname === "/items" ? "dock-active" : ""}>
+                <Link href="/items" className={`transition-transform ${pathname === "/items" ? "text-primary scale-110" : ""}`}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -72,7 +72,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/bus" className={pathname === "/bus" ? "dock-active" : ""}>
+                <Link href="/bus" className={`transition-transform ${pathname === "/bus" ? "text-primary scale-110" : ""}`}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -89,7 +89,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/notifications" className={pathname === "/notifications" ? "dock-active" : ""}>
+                <Link href="/notifications" className={`transition-transform ${pathname === "/notifications" ? "text-primary scale-110" : ""}`}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
