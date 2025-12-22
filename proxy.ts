@@ -8,7 +8,7 @@ export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // 認証不要のパス
-    const publicPaths = ["/", "/login", "/api/auth"];
+    const publicPaths = ["/", "/login", "/api/auth", "/api/push-send"];
     const isPublicPath = publicPaths.some(
         (path) => pathname === path || pathname.startsWith(path + "/")
     );

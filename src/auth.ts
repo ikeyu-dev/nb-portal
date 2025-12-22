@@ -78,14 +78,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             const isOnRootPage = nextUrl.pathname === "/";
             const isOnUnauthorizedPage = nextUrl.pathname === "/unauthorized";
 
-            // 静的ファイルは認証不要
-            const isStaticFile = nextUrl.pathname.match(/\.(json|png|ico|svg|webp|jpg|jpeg|gif|webmanifest|js)$/);
-
-            // 外部から呼び出されるAPIは認証不要（独自の認証を使用）
-            const isPublicApi = nextUrl.pathname === "/api/push-send";
-
-            // ログインページ、ルートページ、未認可ページ、静的ファイル、公開APIは認証不要
-            if (isOnLoginPage || isOnRootPage || isOnUnauthorizedPage || isStaticFile || isPublicApi) {
+            // ログインページ、ルートページ、未認可ページは認証不要
+            if (isOnLoginPage || isOnRootPage || isOnUnauthorizedPage) {
                 return true;
             }
 
