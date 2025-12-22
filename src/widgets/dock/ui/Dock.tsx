@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface DockProps {
     user?: {
@@ -12,11 +13,12 @@ interface DockProps {
 
 export default function Dock({ user }: DockProps) {
     const [showUserModal, setShowUserModal] = useState(false);
+    const pathname = usePathname();
 
     return (
         <>
             <div className="dock dock-md fixed bottom-0 left-0 right-0 z-30 lg:hidden">
-                <Link href="/home">
+                <Link href="/home" className={pathname === "/home" ? "dock-active" : ""}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -33,7 +35,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/calendar">
+                <Link href="/calendar" className={pathname === "/calendar" ? "dock-active" : ""}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -50,7 +52,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/items">
+                <Link href="/items" className={pathname === "/items" ? "dock-active" : ""}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -67,7 +69,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/bus">
+                <Link href="/bus" className={pathname === "/bus" ? "dock-active" : ""}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
@@ -84,7 +86,7 @@ export default function Dock({ user }: DockProps) {
                     </span>
                 </Link>
 
-                <Link href="/notifications">
+                <Link href="/notifications" className={pathname === "/notifications" ? "dock-active" : ""}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 640 640"
