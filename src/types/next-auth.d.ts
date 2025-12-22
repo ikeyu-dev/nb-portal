@@ -1,13 +1,13 @@
 import "next-auth";
 
 declare module "next-auth" {
-    interface Session {
-        studentId?: string;
-    }
+  interface Session {
+    studentId?: string;
+  }
 }
 
 declare module "next-auth/jwt" {
-    interface JWT {
-        studentId?: string;
-    }
+  interface JWT {
+    studentId?: string;
+  }
 }

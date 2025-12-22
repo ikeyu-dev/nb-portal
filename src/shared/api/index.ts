@@ -1,7 +1,7 @@
 export {
-    getItems,
-    getSchedules,
-    getAbsences,
-    getEventAbsences,
-    checkHealth,
+  getItems,
+  getSchedules,
+  getAbsences,
+  getEventAbsences,
+  checkHealth,
 } from "./client";
