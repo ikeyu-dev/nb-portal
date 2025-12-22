@@ -5,9 +5,10 @@ const withPWA = withPWAInit({
     dest: "public",
     register: true,
     disable: process.env.NODE_ENV === "development",
-    customWorkerSrc: "worker",
-    customWorkerDest: "public",
-    customWorkerPrefix: "sw",
+    extendDefaultRuntimeCaching: true,
+    workboxOptions: {
+        importScripts: ["/sw-push.js"],
+    },
 });
 
 const nextConfig: NextConfig = {

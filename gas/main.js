@@ -88,6 +88,51 @@ const formatValue = (value, formatType) => {
 };
 
 // ============================================
+// プッシュ通知送信
+// Next.jsのAPIを呼び出して全購読者にプッシュ通知を送信
+// ============================================
+
+/**
+ * プッシュ通知を送信
+ * @param {string} title - 通知タイトル
+ * @param {string} body - 通知本文
+ * @param {string} url - クリック時のURL
+ */
+const sendPushNotification = (title, body, url) => {
+    try {
+        const PUSH_API_URL = "https://nb-portal.vercel.app/api/push-send";
+        const PUSH_API_SECRET = PropertiesService.getScriptProperties().getProperty("PUSH_API_SECRET");
+
+        if (!PUSH_API_SECRET) {
+            console.log("PUSH_API_SECRET is not configured");
+            return;
+        }
+
+        const response = UrlFetchApp.fetch(PUSH_API_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${PUSH_API_SECRET}`,
+            },
+            payload: JSON.stringify({
+                title,
+                body,
+                url,
+                tag: "schedule-update",
+            }),
+            muteHttpExceptions: true,
+        });
+
+        const responseCode = response.getResponseCode();
+        if (responseCode !== 200) {
+            console.log(`Push notification failed with status ${responseCode}: ${response.getContentText()}`);
+        }
+    } catch (error) {
+        console.log(`Push notification error: ${error.toString()}`);
+    }
+};
+
+// ============================================
 // Googleフォーム送信時のトリガー処理
 // フォーム送信 → Discord通知 + メール送信
 // ============================================
@@ -813,6 +858,14 @@ const handlePostSchedule = (postData) => {
 
         sheet.appendRow(rowData);
 
+        // プッシュ通知を送信
+        const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
+        sendPushNotification(
+            "新しい予定が追加されました",
+            `${dateStr} ${title}`,
+            "/calendar"
+        );
+
         return createResponse({
             success: true,
             message: "Schedule created successfully",
@@ -1046,6 +1099,14 @@ const handleUpdateSchedule = (postData) => {
         if (updatedBy) {
             sheet.getRange(targetRow, 16, 1, 2).setValues([[updatedBy, updatedAt]]);
         }
+
+        // プッシュ通知を送信
+        const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
+        sendPushNotification(
+            "予定が更新されました",
+            `${dateStr} ${title}`,
+            "/calendar"
+        );
 
         return createResponse({
             success: true,
