@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "@/src/shared/styles/globals.css";
+import { ServiceWorkerRegistration } from "@/src/components/ServiceWorkerRegistration";
 
 export const metadata: Metadata = {
     title: "NB-Portal",
@@ -36,7 +37,10 @@ export default function RootLayout({
                     href="/icons/icon-192x192.png"
                 />
             </head>
-            <body>{children}</body>
+            <body>
+                <ServiceWorkerRegistration />
+                {children}
+            </body>
         </html>
     );
 }

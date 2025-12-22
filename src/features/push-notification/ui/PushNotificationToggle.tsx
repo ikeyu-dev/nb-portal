@@ -82,7 +82,19 @@ export default function PushNotificationToggle({ userEmail }: PushNotificationTo
                 return;
             }
 
-            const registration = await navigator.serviceWorker.ready;
+            // Service Workerの準備をタイムアウト付きで待機
+            const timeoutPromise = new Promise<null>((_, reject) => {
+                setTimeout(() => reject(new Error("Service Worker not ready")), 10000);
+            });
+
+            const registration = await Promise.race([
+                navigator.serviceWorker.ready,
+                timeoutPromise,
+            ]);
+
+            if (!registration) {
+                throw new Error("Service Worker not available");
+            }
 
             // 既存のサブスクリプションがあれば解除
             const existingSubscription = await registration.pushManager.getSubscription();
@@ -118,7 +130,11 @@ export default function PushNotificationToggle({ userEmail }: PushNotificationTo
             }
         } catch (error) {
             console.error("Error subscribing:", error);
-            alert("プッシュ通知の登録に失敗しました");
+            if (error instanceof Error && error.message.includes("Service Worker")) {
+                alert("Service Workerが利用できません。ページを再読み込みしてください。");
+            } else {
+                alert("プッシュ通知の登録に失敗しました");
+            }
         } finally {
             setIsProcessing(false);
         }
