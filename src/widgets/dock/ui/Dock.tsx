@@ -17,7 +17,10 @@ export default function Dock({ user }: DockProps) {
 
     return (
         <>
-            <div className="dock dock-md fixed bottom-0 left-0 right-0 z-30 lg:hidden">
+            <div
+                className="dock dock-md fixed bottom-0 left-0 right-0 z-30 lg:hidden"
+                style={{ paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
+            >
                 <Link href="/home" className={pathname === "/home" ? "dock-active" : ""}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
