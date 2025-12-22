@@ -1,24 +1,22 @@
 @import url("https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Zen+Maru+Gothic&display=swap");
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes:
-    light --default,
-    dark --prefersDark;
+    themes: light --default, dark --prefersDark;
 }
 
 /* カスタムテーマカラー設定 */
 [data-theme="light"] {
-  --color-primary: #2a83a2;
-  --color-primary-content: #ffffff;
+    --color-primary: #2a83a2;
+    --color-primary-content: #ffffff;
 }
 
 [data-theme="dark"] {
-  --color-primary: #2a83a2;
-  --color-primary-content: #ffffff;
+    --color-primary: #2a83a2;
+    --color-primary-content: #ffffff;
 }
 
 div {
-  font-family: "Zen Maru Gothic";
-  font-style: normal;
-  font-weight: 500;
+    font-family: "Zen Maru Gothic";
+    font-style: normal;
+    font-weight: 500;
 }

@@ -1,32 +1,32 @@
 {
-  "name": "nb-portal",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
-    "@types/google-apps-script": "^2.0.8",
-    "next": "16.0.7",
-    "next-auth": "^5.0.0-beta.30",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "web-push": "^3.6.7"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/web-push": "^3.6.4",
-    "daisyui": "^5.5.8",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.7",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "name": "nb-portal",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint"
+    },
+    "dependencies": {
+        "@ducanh2912/next-pwa": "^10.2.9",
+        "@types/google-apps-script": "^2.0.8",
+        "next": "16.0.7",
+        "next-auth": "^5.0.0-beta.30",
+        "react": "19.2.0",
+        "react-dom": "19.2.0",
+        "web-push": "^3.6.7"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "@types/web-push": "^3.6.4",
+        "daisyui": "^5.5.8",
+        "eslint": "^9",
+        "eslint-config-next": "16.0.7",
+        "tailwindcss": "^4",
+        "typescript": "^5"
+    }
 }
