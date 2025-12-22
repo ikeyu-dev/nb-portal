@@ -40,7 +40,21 @@ export default function PushNotificationToggle({ userEmail }: PushNotificationTo
         }
 
         try {
-            const registration = await navigator.serviceWorker.ready;
+            // Service Workerの準備をタイムアウト付きで待機
+            const timeoutPromise = new Promise<null>((_, reject) => {
+                setTimeout(() => reject(new Error("Service Worker timeout")), 5000);
+            });
+
+            const registration = await Promise.race([
+                navigator.serviceWorker.ready,
+                timeoutPromise,
+            ]);
+
+            if (!registration) {
+                setState("unsubscribed");
+                return;
+            }
+
             const subscription = await registration.pushManager.getSubscription();
             setState(subscription ? "subscribed" : "unsubscribed");
         } catch (error) {
