@@ -13,7 +13,11 @@ interface Notification {
     actionType: "created" | "updated";
 }
 
-export function NotificationsContent() {
+interface NotificationsContentProps {
+    userEmail: string | null;
+}
+
+export function NotificationsContent({ userEmail }: NotificationsContentProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -96,7 +100,7 @@ export function NotificationsContent() {
 
                 {/* プッシュ通知設定 */}
                 <div className="mb-6">
-                    <PushNotificationToggle />
+                    <PushNotificationToggle userEmail={userEmail} />
                 </div>
 
                 {error && (

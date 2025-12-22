@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
 
 type SubscriptionState = "loading" | "unsupported" | "denied" | "subscribed" | "unsubscribed";
 
@@ -18,8 +17,11 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
     return outputArray.buffer as ArrayBuffer;
 }
 
-export default function PushNotificationToggle() {
-    const { data: session } = useSession();
+interface PushNotificationToggleProps {
+    userEmail: string | null;
+}
+
+export default function PushNotificationToggle({ userEmail }: PushNotificationToggleProps) {
     const [state, setState] = useState<SubscriptionState>("loading");
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -52,7 +54,7 @@ export default function PushNotificationToggle() {
     }, [checkSubscription]);
 
     const subscribe = async () => {
-        if (!session?.user?.email) {
+        if (!userEmail) {
             console.error("User not logged in");
             return;
         }
@@ -81,7 +83,7 @@ export default function PushNotificationToggle() {
             });
 
             // 学籍番号を抽出（メールアドレスの@より前の部分）
-            const studentId = session.user.email.split("@")[0];
+            const studentId = userEmail.split("@")[0];
 
             // サーバーに登録
             const response = await fetch("/api/push-subscribe", {
@@ -109,7 +111,7 @@ export default function PushNotificationToggle() {
     };
 
     const unsubscribe = async () => {
-        if (!session?.user?.email) return;
+        if (!userEmail) return;
 
         setIsProcessing(true);
         try {
