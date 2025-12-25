@@ -836,43 +836,32 @@ const documents: Document[] = [
 
                 <section>
                     <h3 className="text-lg font-bold mb-2">注意事項</h3>
-                    <div className="alert alert-info">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            className="stroke-current shrink-0 w-6 h-6"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            ></path>
-                        </svg>
-                        <div>
-                            <p className="text-sm">
-                                録画を部室NASに入れるための回線あり。
-                                Danteは必ず本体の有線LANポートに接続。
-                            </p>
-                        </div>
-                    </div>
-                    <div className="alert alert-warning mt-2">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="stroke-current shrink-0 h-6 w-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            />
-                        </svg>
-                        <span>MacminiはQUAD CAPTURE使用不可</span>
-                    </div>
+                    <ul className="space-y-2">
+                        <li className="flex items-start gap-2">
+                            <span className="badge badge-error badge-sm mt-1">重要</span>
+                            <span>Danteは必ず本体の有線LANポートに接続する</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="badge badge-warning badge-sm mt-1">注意</span>
+                            <span>Danteポートに学内Internet回線を挿さないように注意</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="badge badge-warning badge-sm mt-1">注意</span>
+                            <span>MacminiはQUAD CAPTURE使用不可</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="badge badge-info badge-sm mt-1">情報</span>
+                            <span>TF Editor / Stage Mixの回線及びWiFi接続が必要</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="badge badge-info badge-sm mt-1">情報</span>
+                            <span>録画を部室NASに入れるための回線あり（学内Internet使用）</span>
+                        </li>
+                        <li className="flex items-start gap-2">
+                            <span className="badge badge-ghost badge-sm mt-1">任意</span>
+                            <span>NDI受信PCはなくても困らない（MIX部屋で別のPC使うなら必要）</span>
+                        </li>
+                    </ul>
                 </section>
 
                 <div className="divider"></div>
