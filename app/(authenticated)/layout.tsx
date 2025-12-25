@@ -15,7 +15,7 @@ export default async function AuthenticatedLayout({
             {/* 小画面用のコンテンツラッパー */}
             <div className="lg:hidden flex flex-col min-h-dvh">
                 <Header />
-                <div className="flex-1 pb-20">{children}</div>
+                <div className="flex-1 pb-28">{children}</div>
             </div>
 
             {/* Bottom dock - 小画面のみ表示 */}
