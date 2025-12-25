@@ -3,30 +3,6 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
 
-// Microsoft Graph APIからプロファイル画像を取得
-const fetchProfileImage = async (
-    accessToken: string
-): Promise<string | null> => {
-    try {
-        const response = await fetch(
-            "https://graph.microsoft.com/v1.0/me/photo/$value",
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
-        );
-        if (!response.ok) return null;
-
-        const arrayBuffer = await response.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString("base64");
-        const contentType = response.headers.get("content-type") || "image/jpeg";
-        return `data:${contentType};base64,${base64}`;
-    } catch {
-        return null;
-    }
-};
-
 // メールアドレスから学籍番号（最初の7文字）を抽出
 const extractStudentId = (email: string | null | undefined): string | null => {
     if (!email) return null;
@@ -82,27 +58,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             return true;
         },
-        async jwt({ token, user, account }) {
-            // 初回ログイン時にstudentIdとプロファイル画像をトークンに追加
+        async jwt({ token, user }) {
+            // 初回ログイン時にstudentIdをトークンに追加
             if (user?.email) {
                 token.studentId = extractStudentId(user.email);
-            }
-            // アクセストークンでプロファイル画像を取得
-            if (account?.access_token) {
-                const image = await fetchProfileImage(account.access_token);
-                if (image) {
-                    token.picture = image;
-                }
             }
             return token;
         },
         async session({ session, token }) {
-            // セッションにstudentIdとプロファイル画像を追加
+            // セッションにstudentIdを追加
             if (token.studentId) {
                 session.studentId = token.studentId as string;
-            }
-            if (token.picture && session.user) {
-                session.user.image = token.picture as string;
             }
             return session;
         },
