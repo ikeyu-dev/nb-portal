@@ -157,13 +157,14 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 <img
                     src={src}
                     alt="拡大画像"
-                    className="max-h-[90vh] max-w-[95vw] object-contain select-none"
+                    className="max-h-[95vh] w-[95vw] object-contain select-none"
                     style={{
                         transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
                         transition: isDragging ? "none" : "transform 0.1s",
                         willChange: "transform",
                         backfaceVisibility: "hidden",
                         WebkitBackfaceVisibility: "hidden",
+                        backgroundColor: src.endsWith(".svg") ? "white" : undefined,
                     }}
                     onDoubleClick={handleDoubleClick}
                     draggable={false}
