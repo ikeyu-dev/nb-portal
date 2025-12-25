@@ -372,18 +372,7 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
 
 // PDFビューアーコンポーネント
 function PdfViewer({ src }: { src: string }) {
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const filename = src.split("/").pop() || "document.pdf";
-
-    // Google Docs Viewer用のURL（モバイル用）
-    const getGoogleDocsViewerUrl = () => {
-        const baseUrl =
-            typeof window !== "undefined"
-                ? window.location.origin
-                : "https://nb-portal.vercel.app";
-        const fullUrl = `${baseUrl}${src}`;
-        return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
-    };
 
     return (
         <>
@@ -402,7 +391,7 @@ function PdfViewer({ src }: { src: string }) {
                     </p>
                 </section>
 
-                {/* モバイル用: ボタンで開く */}
+                {/* モバイル用: 新しいタブで開く */}
                 <section className="lg:hidden">
                     <div className="flex flex-col items-center gap-4 py-8">
                         <div className="p-6 rounded-full bg-base-200">
@@ -420,8 +409,10 @@ function PdfViewer({ src }: { src: string }) {
                             <br />
                             下のボタンをタップしてください
                         </p>
-                        <button
-                            onClick={() => setIsFullscreen(true)}
+                        <a
+                            href={src}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="btn btn-primary gap-2"
                         >
                             <svg
@@ -435,17 +426,14 @@ function PdfViewer({ src }: { src: string }) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
                                 />
                             </svg>
                             PDFを開く
-                        </button>
+                        </a>
+                        <p className="text-xs text-base-content/50 text-center">
+                            ※ 新しいタブで開きます。閲覧後はタブを閉じてお戻りください。
+                        </p>
                     </div>
                 </section>
 
@@ -481,42 +469,6 @@ function PdfViewer({ src }: { src: string }) {
                     <p>{filename.replace(".pdf", "")}</p>
                 </div>
             </div>
-
-            {/* フルスクリーンモーダル（モバイル用） */}
-            {isFullscreen && (
-                <div className="fixed inset-0 z-50 bg-base-100 flex flex-col">
-                    <div className="flex items-center justify-between p-3 border-b border-base-300 bg-base-200">
-                        <span className="text-sm font-medium truncate flex-1 mr-2">
-                            {filename.replace(".pdf", "")}
-                        </span>
-                        <button
-                            onClick={() => setIsFullscreen(false)}
-                            className="btn btn-sm btn-ghost gap-1"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-5 w-5"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                            閉じる
-                        </button>
-                    </div>
-                    <iframe
-                        src={getGoogleDocsViewerUrl()}
-                        className="flex-1 w-full border-0"
-                        title={filename}
-                    />
-                </div>
-            )}
         </>
     );
 }
