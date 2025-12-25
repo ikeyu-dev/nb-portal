@@ -15,16 +15,13 @@ interface PdfViewerProps {
 export default function PdfViewer({ src }: PdfViewerProps) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [numPages, setNumPages] = useState<number | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
     const [containerWidth, setContainerWidth] = useState<number>(0);
     const [scale, setScale] = useState(1);
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
+    const [isPinching, setIsPinching] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
-    const lastDistanceRef = useRef<number | null>(null);
-    const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const initialDistanceRef = useRef<number | null>(null);
+    const initialScaleRef = useRef<number>(1);
     const filename = src.split("/").pop() || "document.pdf";
 
     // コンテナの幅を監視
@@ -42,119 +39,62 @@ export default function PdfViewer({ src }: PdfViewerProps) {
         return () => window.removeEventListener("resize", updateWidth);
     }, [isFullscreen]);
 
-    // ページ変更時にズームをリセット
-    useEffect(() => {
-        setScale(1);
-        setPosition({ x: 0, y: 0 });
-    }, [currentPage]);
-
     const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
         setNumPages(numPages);
-        setCurrentPage(1);
-    };
-
-    const goToPrevPage = () => {
-        setCurrentPage((prev) => Math.max(prev - 1, 1));
-    };
-
-    const goToNextPage = () => {
-        setCurrentPage((prev) => Math.min(prev + 1, numPages || 1));
     };
 
     const resetZoom = useCallback(() => {
         setScale(1);
-        setPosition({ x: 0, y: 0 });
     }, []);
 
+    // ピンチズーム処理
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         if (e.touches.length === 2) {
+            e.preventDefault();
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
-            lastDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
-            lastPinchCenterRef.current = {
-                x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-                y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-            };
-        } else if (e.touches.length === 1) {
-            setIsDragging(true);
-            lastTouchRef.current = {
-                x: e.touches[0].clientX,
-                y: e.touches[0].clientY,
-            };
+            initialDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
+            initialScaleRef.current = scale;
+            setIsPinching(true);
         }
-    }, []);
+    }, [scale]);
 
     const handleTouchMove = useCallback(
         (e: React.TouchEvent) => {
-            if (e.touches.length === 2 && lastDistanceRef.current !== null) {
+            if (e.touches.length === 2 && initialDistanceRef.current !== null) {
                 e.preventDefault();
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                const delta = distance / lastDistanceRef.current;
-                const newScale = Math.min(Math.max(scale * delta, 1), 5);
-
-                const centerX =
-                    (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const centerY =
-                    (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
-                if (containerRef.current && lastPinchCenterRef.current) {
-                    const rect = containerRef.current.getBoundingClientRect();
-                    const pinchX = centerX - rect.left;
-                    const pinchY = centerY - rect.top;
-                    const contentX = (pinchX - position.x) / scale;
-                    const contentY = (pinchY - position.y) / scale;
-                    const newX = pinchX - contentX * newScale;
-                    const newY = pinchY - contentY * newScale;
-                    setPosition({ x: newX, y: newY });
-                }
-
+                const scaleChange = distance / initialDistanceRef.current;
+                const newScale = Math.min(
+                    Math.max(initialScaleRef.current * scaleChange, 1),
+                    4
+                );
                 setScale(newScale);
-                lastDistanceRef.current = distance;
-                lastPinchCenterRef.current = { x: centerX, y: centerY };
-
-                if (newScale <= 1) {
-                    setPosition({ x: 0, y: 0 });
-                }
-            } else if (
-                e.touches.length === 1 &&
-                isDragging &&
-                lastTouchRef.current &&
-                scale > 1
-            ) {
-                const deltaX = e.touches[0].clientX - lastTouchRef.current.x;
-                const deltaY = e.touches[0].clientY - lastTouchRef.current.y;
-                setPosition((prev) => ({
-                    x: prev.x + deltaX,
-                    y: prev.y + deltaY,
-                }));
-                lastTouchRef.current = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY,
-                };
             }
         },
-        [isDragging, scale, position]
+        []
     );
 
     const handleTouchEnd = useCallback(() => {
-        setIsDragging(false);
-        lastTouchRef.current = null;
-        lastDistanceRef.current = null;
-        lastPinchCenterRef.current = null;
-        if (scale <= 1) {
-            setPosition({ x: 0, y: 0 });
-        }
-    }, [scale]);
+        initialDistanceRef.current = null;
+        setIsPinching(false);
+    }, []);
 
-    const handleDoubleClick = useCallback(() => {
-        if (scale > 1) {
-            resetZoom();
-        } else {
-            setScale(2);
+    // ダブルタップでズーム
+    const lastTapRef = useRef<number>(0);
+    const handleTap = useCallback(() => {
+        const now = Date.now();
+        if (now - lastTapRef.current < 300) {
+            if (scale > 1) {
+                setScale(1);
+            } else {
+                setScale(2);
+            }
         }
-    }, [scale, resetZoom]);
+        lastTapRef.current = now;
+    }, [scale]);
 
     return (
         <>
@@ -258,9 +198,16 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                 <div className="fixed inset-0 z-50 bg-base-100 flex flex-col">
                     {/* ヘッダー */}
                     <div className="flex items-center justify-between p-3 border-b border-base-300 bg-base-200">
-                        <span className="text-sm font-medium truncate flex-1 mr-2">
-                            {filename.replace(".pdf", "")}
-                        </span>
+                        <div className="flex items-center gap-2 flex-1 mr-2">
+                            <span className="text-sm font-medium truncate">
+                                {filename.replace(".pdf", "")}
+                            </span>
+                            {numPages && (
+                                <span className="text-xs text-base-content/60">
+                                    ({numPages}ページ)
+                                </span>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2">
                             {scale > 1 && (
                                 <button
@@ -281,7 +228,7 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
                                         />
                                     </svg>
-                                    リセット
+                                    {Math.round(scale * 100)}%
                                 </button>
                             )}
                             <button
@@ -310,108 +257,84 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                         </div>
                     </div>
 
-                    {/* PDFコンテンツ */}
+                    {/* PDFコンテンツ - 縦スクロール */}
                     <div
                         ref={containerRef}
-                        className="flex-1 overflow-hidden bg-base-300 touch-none"
+                        className="flex-1 overflow-hidden bg-base-300"
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
-                        onDoubleClick={handleDoubleClick}
+                        onClick={handleTap}
                     >
                         <div
-                            ref={contentRef}
-                            className="w-full h-full overflow-auto"
+                            ref={scrollContainerRef}
+                            className="h-full overflow-auto"
                             style={{
-                                transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                                transformOrigin: "0 0",
-                                transition: isDragging
-                                    ? "none"
-                                    : "transform 0.1s",
+                                touchAction: isPinching ? "none" : "pan-y",
                             }}
                         >
-                            <Document
-                                file={src}
-                                onLoadSuccess={onDocumentLoadSuccess}
-                                loading={
-                                    <div className="flex items-center justify-center h-full">
-                                        <span className="loading loading-spinner loading-lg"></span>
-                                    </div>
-                                }
-                                error={
-                                    <div className="flex items-center justify-center h-full">
-                                        <p className="text-error">
-                                            PDFの読み込みに失敗しました
-                                        </p>
-                                    </div>
-                                }
+                            <div
+                                style={{
+                                    transform: `scale(${scale})`,
+                                    transformOrigin: "top center",
+                                    width: scale > 1 ? `${100 / scale}%` : "100%",
+                                    marginLeft: scale > 1 ? "auto" : undefined,
+                                    marginRight: scale > 1 ? "auto" : undefined,
+                                }}
                             >
-                                <Page
-                                    pageNumber={currentPage}
-                                    width={containerWidth || undefined}
+                                <Document
+                                    file={src}
+                                    onLoadSuccess={onDocumentLoadSuccess}
                                     loading={
-                                        <div className="flex items-center justify-center py-8">
-                                            <span className="loading loading-spinner loading-md"></span>
+                                        <div className="flex items-center justify-center h-64">
+                                            <span className="loading loading-spinner loading-lg"></span>
                                         </div>
                                     }
-                                />
-                            </Document>
+                                    error={
+                                        <div className="flex items-center justify-center h-64">
+                                            <p className="text-error">
+                                                PDFの読み込みに失敗しました
+                                            </p>
+                                        </div>
+                                    }
+                                >
+                                    {numPages &&
+                                        Array.from(
+                                            { length: numPages },
+                                            (_, index) => (
+                                                <div
+                                                    key={`page_${index + 1}`}
+                                                    className="mb-2"
+                                                >
+                                                    <Page
+                                                        pageNumber={index + 1}
+                                                        width={
+                                                            containerWidth ||
+                                                            undefined
+                                                        }
+                                                        loading={
+                                                            <div className="flex items-center justify-center py-8 bg-white">
+                                                                <span className="loading loading-spinner loading-md"></span>
+                                                            </div>
+                                                        }
+                                                    />
+                                                    <div className="text-center text-xs text-base-content/50 py-1 bg-base-300">
+                                                        {index + 1} / {numPages}
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
+                                </Document>
+                            </div>
                         </div>
                     </div>
 
-                    {/* フッター（ページ操作） */}
-                    <div className="flex items-center justify-between p-3 border-t border-base-300 bg-base-200">
-                        <div className="text-xs text-base-content/60">
-                            ピンチで拡大・縮小
-                        </div>
-                        {numPages && numPages > 1 && (
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={goToPrevPage}
-                                    disabled={currentPage <= 1}
-                                    className="btn btn-sm btn-ghost"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-5 w-5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M15 19l-7-7 7-7"
-                                        />
-                                    </svg>
-                                </button>
-                                <span className="text-sm">
-                                    {currentPage} / {numPages}
-                                </span>
-                                <button
-                                    onClick={goToNextPage}
-                                    disabled={currentPage >= numPages}
-                                    className="btn btn-sm btn-ghost"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-5 w-5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M9 5l7 7-7 7"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-                        )}
-                        {(!numPages || numPages <= 1) && <div />}
+                    {/* フッター */}
+                    <div className="p-2 border-t border-base-300 bg-base-200">
+                        <p className="text-xs text-base-content/60 text-center">
+                            スクロールでページ移動 / ピンチで拡大・縮小 /
+                            ダブルタップでズーム
+                        </p>
                     </div>
                 </div>
             )}
