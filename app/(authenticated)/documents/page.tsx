@@ -37,7 +37,12 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const delta = distance / lastDistanceRef.current;
-                setScale((prev) => Math.min(Math.max(prev * delta, 0.5), 5));
+                const newScale = Math.min(Math.max(scale * delta, 0.5), 5);
+                setScale(newScale);
+                // スケールが1以下になったらpositionをリセット
+                if (newScale <= 1) {
+                    setPosition({ x: 0, y: 0 });
+                }
                 lastDistanceRef.current = distance;
             } else if (
                 e.touches.length === 1 &&
@@ -65,7 +70,11 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
         setIsDragging(false);
         lastTouchRef.current = null;
         lastDistanceRef.current = null;
-    }, []);
+        // スケールが1以下の場合はpositionをリセット
+        if (scale <= 1) {
+            setPosition({ x: 0, y: 0 });
+        }
+    }, [scale]);
 
     const handleDoubleClick = useCallback(() => {
         if (scale === 1) {
