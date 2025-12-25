@@ -77,13 +77,13 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
     }, [scale]);
 
     return (
-        <dialog
-            className="modal modal-open"
+        <div
+            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
             onClick={onClose}
         >
             <div
                 ref={containerRef}
-                className="fixed inset-0 flex items-center justify-center overflow-hidden touch-none"
+                className="w-full h-full flex items-center justify-center overflow-hidden touch-none"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -103,7 +103,7 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 />
             </div>
             <button
-                className="btn btn-circle btn-ghost absolute top-4 right-4 text-white z-50"
+                className="btn btn-circle btn-ghost absolute top-4 right-4 text-white"
                 onClick={onClose}
             >
                 <svg
@@ -121,13 +121,7 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                     />
                 </svg>
             </button>
-            <form
-                method="dialog"
-                className="modal-backdrop bg-black/90"
-            >
-                <button onClick={onClose}>close</button>
-            </form>
-        </dialog>
+        </div>
     );
 }
 
