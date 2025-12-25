@@ -91,7 +91,12 @@ export default function PushNotificationToggle({
             // 通知許可をリクエスト
             const permission = await Notification.requestPermission();
             if (permission !== "granted") {
-                setState("denied");
+                // ブラウザで完全にブロックされている場合のみdenied
+                // キャンセルや後での場合はunsubscribedのまま（再度オンにできる）
+                if (Notification.permission === "denied") {
+                    setState("denied");
+                }
+                // それ以外（default）はunsubscribedのまま
                 return;
             }
 
