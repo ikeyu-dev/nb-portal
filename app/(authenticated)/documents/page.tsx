@@ -466,19 +466,12 @@ const documents: Document[] = [
                             },
                         ].map((item) => (
                             <li key={item.id}>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        document
-                                            .getElementById(item.id)
-                                            ?.scrollIntoView({
-                                                behavior: "smooth",
-                                            });
-                                    }}
-                                    className="link link-hover text-left"
+                                <a
+                                    href={`#${item.id}`}
+                                    className="link link-hover"
                                 >
                                     {item.label}
-                                </button>
+                                </a>
                             </li>
                         ))}
                     </ul>
@@ -487,7 +480,12 @@ const documents: Document[] = [
                 <div className="divider"></div>
 
                 <section>
-                    <h3 id="rain-overview" className="text-lg font-bold mb-2">概要</h3>
+                    <h3
+                        id="rain-overview"
+                        className="text-lg font-bold mb-2"
+                    >
+                        概要
+                    </h3>
                     <p>
                         雨量・大学祭実行委員会（学祭委）の判断で対応を変更する。
                         ステージ、卓、NB本部、学祭委と連絡を密にし状況を判断する必要がある。
@@ -495,7 +493,12 @@ const documents: Document[] = [
                 </section>
 
                 <section>
-                    <h3 id="rain-patterns" className="text-lg font-bold mb-2">対応パターン</h3>
+                    <h3
+                        id="rain-patterns"
+                        className="text-lg font-bold mb-2"
+                    >
+                        対応パターン
+                    </h3>
                     <ol className="list-decimal list-inside space-y-1">
                         {[
                             { id: "pattern-1", label: "全日程の場合" },
@@ -509,26 +512,24 @@ const documents: Document[] = [
                             },
                         ].map((item) => (
                             <li key={item.id}>
-                                <button
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        document
-                                            .getElementById(item.id)
-                                            ?.scrollIntoView({
-                                                behavior: "smooth",
-                                            });
-                                    }}
+                                <a
+                                    href={`#${item.id}`}
                                     className="link link-primary"
                                 >
                                     {item.label}
-                                </button>
+                                </a>
                             </li>
                         ))}
                     </ol>
                 </section>
 
                 <section>
-                    <h3 id="rain-setup" className="text-lg font-bold mb-2">NBCの設営</h3>
+                    <h3
+                        id="rain-setup"
+                        className="text-lg font-bold mb-2"
+                    >
+                        NBCの設営
+                    </h3>
                     <ul className="list-disc list-inside space-y-2">
                         <li>
                             雨天トラブル等が予想されるため、スチューデントホールには小規模編成の機材を準備しておく
@@ -548,7 +549,10 @@ const documents: Document[] = [
                 </section>
 
                 <section>
-                    <h3 id="rain-flow" className="text-lg font-bold mb-2">
+                    <h3
+                        id="rain-flow"
+                        className="text-lg font-bold mb-2"
+                    >
                         行動図（天気判断フロー）
                     </h3>
                     <div className="bg-base-200 p-4 rounded-lg overflow-x-auto">
@@ -559,7 +563,12 @@ const documents: Document[] = [
                 <div className="divider"></div>
 
                 <section>
-                    <h3 id="pattern-1" className="text-lg font-bold mb-2">1. 全日程の場合</h3>
+                    <h3
+                        id="pattern-1"
+                        className="text-lg font-bold mb-2"
+                    >
+                        1. 全日程の場合
+                    </h3>
                     <p>
                         スチューデントホールにステージ等を展開する。 構成表は{" "}
                         <strong>『中規模』</strong> を参照し、適切に展開する。
@@ -569,7 +578,10 @@ const documents: Document[] = [
                 <div className="divider"></div>
 
                 <section>
-                    <h3 id="pattern-2" className="text-lg font-bold mb-2">
+                    <h3
+                        id="pattern-2"
+                        className="text-lg font-bold mb-2"
+                    >
                         2. 音団ライブ前、途中の場合
                     </h3>
 
@@ -695,7 +707,10 @@ const documents: Document[] = [
                 <div className="divider"></div>
 
                 <section>
-                    <h3 id="pattern-3" className="text-lg font-bold mb-2">
+                    <h3
+                        id="pattern-3"
+                        className="text-lg font-bold mb-2"
+                    >
                         3. ステージ企画前、途中の場合
                     </h3>
 
