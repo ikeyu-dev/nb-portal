@@ -202,7 +202,7 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                             <select
                                 value={scale}
                                 onChange={handleScaleChange}
-                                className="select select-sm select-bordered"
+                                className="select select-bordered"
                             >
                                 {SCALE_OPTIONS.map((option) => (
                                     <option
@@ -218,7 +218,7 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                                     setIsFullscreen(false);
                                     setScale(1);
                                 }}
-                                className="btn btn-sm btn-ghost gap-1"
+                                className="btn btn-sm btn-circle btn-ghost"
                             >
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -234,7 +234,6 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                                         d="M6 18L18 6M6 6l12 12"
                                     />
                                 </svg>
-                                閉じる
                             </button>
                         </div>
                     </div>
