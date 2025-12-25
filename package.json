@@ -16,6 +16,7 @@
         "next-auth": "^5.0.0-beta.30",
         "react": "19.2.0",
         "react-dom": "19.2.0",
+        "react-pdf": "^10.2.0",
         "web-push": "^3.6.7"
     },
     "devDependencies": {
