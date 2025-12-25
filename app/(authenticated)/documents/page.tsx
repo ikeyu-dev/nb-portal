@@ -74,19 +74,15 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
 
                 if (containerRef.current && lastPinchCenterRef.current) {
                     const rect = containerRef.current.getBoundingClientRect();
-                    const screenCenterX = rect.width / 2;
-                    const screenCenterY = rect.height / 2;
-                    const pinchOffsetX = centerX - rect.left - screenCenterX;
-                    const pinchOffsetY = centerY - rect.top - screenCenterY;
-                    const scaleChange = newScale / scale;
-                    const newX =
-                        position.x -
-                        pinchOffsetX * (scaleChange - 1) +
-                        (centerX - lastPinchCenterRef.current.x);
-                    const newY =
-                        position.y -
-                        pinchOffsetY * (scaleChange - 1) +
-                        (centerY - lastPinchCenterRef.current.y);
+                    // ピンチ位置（画面上の座標）
+                    const pinchX = centerX - rect.left;
+                    const pinchY = centerY - rect.top;
+                    // 画像上のピンチ位置
+                    const imageX = (pinchX - position.x) / scale;
+                    const imageY = (pinchY - position.y) / scale;
+                    // 新しい位置を計算（ピンチ位置が同じ画像位置を指すように）
+                    const newX = pinchX - imageX * newScale;
+                    const newY = pinchY - imageY * newScale;
                     setPosition({ x: newX, y: newY });
                 }
 
@@ -134,17 +130,19 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 const rect = containerRef.current.getBoundingClientRect();
                 const tapX = e.clientX - rect.left;
                 const tapY = e.clientY - rect.top;
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                const offsetX = (centerX - tapX) * 2;
-                const offsetY = (centerY - tapY) * 2;
-                setScale(3);
-                setPosition({ x: offsetX, y: offsetY });
+                // タップ位置を中心に3倍ズーム（左上基準）
+                const imageX = (tapX - position.x) / scale;
+                const imageY = (tapY - position.y) / scale;
+                const newScale = 3;
+                const newX = tapX - imageX * newScale;
+                const newY = tapY - imageY * newScale;
+                setScale(newScale);
+                setPosition({ x: newX, y: newY });
             } else {
                 resetZoom();
             }
         },
-        [scale, minScale, resetZoom]
+        [scale, minScale, position, resetZoom]
     );
 
     const openFullscreen = () => {
@@ -183,7 +181,11 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 >
                     <div
                         ref={containerRef}
-                        className="w-full h-full flex items-center justify-center overflow-hidden touch-none"
+                        className={`w-full h-full overflow-hidden touch-none ${
+                            src.endsWith(".svg")
+                                ? "relative"
+                                : "flex items-center justify-center"
+                        }`}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
@@ -194,10 +196,10 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                             <iframe
                                 src={src}
                                 title={alt}
-                                className="select-none pointer-events-none border-0"
+                                className="select-none pointer-events-none border-0 absolute top-0 left-0"
                                 style={{
                                     transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                                    transformOrigin: "center center",
+                                    transformOrigin: "0 0",
                                     transition: isDragging
                                         ? "none"
                                         : "transform 0.1s",
