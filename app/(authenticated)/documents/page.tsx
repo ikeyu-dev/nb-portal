@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import mermaid from "mermaid";
 
-// ピンチズーム対応画像ビューアー
-function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
+// ピンチズーム対応画像コンポーネント（インライン表示）
+function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const [scale, setScale] = useState(1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
@@ -15,17 +15,14 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         if (e.touches.length === 2) {
-            // ピンチ開始
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             lastDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
-            // ピンチの中心点を記録
             lastPinchCenterRef.current = {
                 x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
                 y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
             };
         } else if (e.touches.length === 1) {
-            // ドラッグ開始
             setIsDragging(true);
             lastTouchRef.current = {
                 x: e.touches[0].clientX,
@@ -37,7 +34,6 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
     const handleTouchMove = useCallback(
         (e: React.TouchEvent) => {
             if (e.touches.length === 2 && lastDistanceRef.current !== null) {
-                // ピンチズーム
                 e.preventDefault();
                 const dx = e.touches[0].clientX - e.touches[1].clientX;
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -45,7 +41,6 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 const delta = distance / lastDistanceRef.current;
                 const newScale = Math.min(Math.max(scale * delta, 1), 5);
 
-                // ピンチの中心点
                 const centerX =
                     (e.touches[0].clientX + e.touches[1].clientX) / 2;
                 const centerY =
@@ -53,15 +48,10 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
 
                 if (containerRef.current && lastPinchCenterRef.current) {
                     const rect = containerRef.current.getBoundingClientRect();
-                    // 画面中心からの距離
                     const screenCenterX = rect.width / 2;
                     const screenCenterY = rect.height / 2;
-
-                    // ピンチ中心点の画面中心からのオフセット
                     const pinchOffsetX = centerX - rect.left - screenCenterX;
                     const pinchOffsetY = centerY - rect.top - screenCenterY;
-
-                    // スケール変化に応じて位置を調整
                     const scaleChange = newScale / scale;
                     const newX =
                         position.x -
@@ -71,7 +61,6 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                         position.y -
                         pinchOffsetY * (scaleChange - 1) +
                         (centerY - lastPinchCenterRef.current.y);
-
                     setPosition({ x: newX, y: newY });
                 }
 
@@ -79,7 +68,6 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 lastDistanceRef.current = distance;
                 lastPinchCenterRef.current = { x: centerX, y: centerY };
 
-                // スケールが1以下になったらpositionをリセット
                 if (newScale <= 1) {
                     setPosition({ x: 0, y: 0 });
                 }
@@ -89,7 +77,6 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 lastTouchRef.current &&
                 scale > 1
             ) {
-                // ドラッグ移動（ズーム時のみ）
                 const deltaX = e.touches[0].clientX - lastTouchRef.current.x;
                 const deltaY = e.touches[0].clientY - lastTouchRef.current.y;
                 setPosition((prev) => ({
@@ -110,13 +97,11 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
         lastTouchRef.current = null;
         lastDistanceRef.current = null;
         lastPinchCenterRef.current = null;
-        // スケールが1以下の場合はpositionをリセット
         if (scale <= 1) {
             setPosition({ x: 0, y: 0 });
         }
     }, [scale]);
 
-    // ダブルタップでタップ位置を中心に拡大
     const handleDoubleClick = useCallback(
         (e: React.MouseEvent) => {
             if (scale === 1 && containerRef.current) {
@@ -125,11 +110,8 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 const tapY = e.clientY - rect.top;
                 const centerX = rect.width / 2;
                 const centerY = rect.height / 2;
-
-                // タップ位置を中心にするためのオフセット
-                const offsetX = (centerX - tapX) * 1; // 2倍に拡大するので1倍分オフセット
+                const offsetX = (centerX - tapX) * 1;
                 const offsetY = (centerY - tapY) * 1;
-
                 setScale(2);
                 setPosition({ x: offsetX, y: offsetY });
             } else {
@@ -142,69 +124,45 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-black flex items-center justify-center"
-            onClick={onClose}
+            ref={containerRef}
+            className="overflow-hidden touch-none"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
         >
-            <div
-                ref={containerRef}
-                className="w-full h-full flex items-center justify-center overflow-hidden touch-none"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                onClick={(e) => e.stopPropagation()}
-            >
-                {src.endsWith(".svg") ? (
-                    <object
-                        data={src}
-                        type="image/svg+xml"
-                        className="max-h-[95vh] w-[95vw] select-none"
-                        style={{
-                            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                            transition: isDragging ? "none" : "transform 0.1s",
-                            willChange: "transform",
-                            backfaceVisibility: "hidden",
-                            WebkitBackfaceVisibility: "hidden",
-                            backgroundColor: "white",
-                        }}
-                        onDoubleClick={handleDoubleClick}
-                    />
-                ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                        src={src}
-                        alt="拡大画像"
-                        className="max-h-[95vh] w-[95vw] object-contain select-none"
-                        style={{
-                            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                            transition: isDragging ? "none" : "transform 0.1s",
-                            willChange: "transform",
-                            backfaceVisibility: "hidden",
-                            WebkitBackfaceVisibility: "hidden",
-                        }}
-                        onDoubleClick={handleDoubleClick}
-                        draggable={false}
-                    />
-                )}
-            </div>
-            <button
-                className="btn btn-circle btn-ghost absolute top-4 right-4 text-white"
-                onClick={onClose}
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M6 18L18 6M6 6l12 12"
-                    />
-                </svg>
-            </button>
+            {src.endsWith(".svg") ? (
+                <object
+                    data={src}
+                    type="image/svg+xml"
+                    className="w-full select-none"
+                    style={{
+                        transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                        transformOrigin: "center center",
+                        transition: isDragging ? "none" : "transform 0.1s",
+                        willChange: "transform",
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                    }}
+                    onDoubleClick={handleDoubleClick}
+                />
+            ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                    src={src}
+                    alt={alt}
+                    className="w-full select-none"
+                    style={{
+                        transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                        transformOrigin: "center center",
+                        transition: isDragging ? "none" : "transform 0.1s",
+                        willChange: "transform",
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                    }}
+                    onDoubleClick={handleDoubleClick}
+                    draggable={false}
+                />
+            )}
         </div>
     );
 }
@@ -599,17 +557,12 @@ const documents: Document[] = [
                 <section>
                     <h3 className="text-lg font-bold mb-2">結線図</h3>
                     <p className="text-sm text-base-content/60 mb-2">
-                        タップして拡大
+                        ピンチで拡大・縮小
                     </p>
-                    <div className="overflow-x-auto">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src="/documents/gakuyukaikan-wiring.svg"
-                            alt="学友会館ライブ 標準結線図 Ver2.0"
-                            className="w-full max-w-none cursor-pointer hover:opacity-90 transition-opacity expandable-image"
-                            data-image-src="/documents/gakuyukaikan-wiring.svg"
-                        />
-                    </div>
+                    <ZoomableImage
+                        src="/documents/gakuyukaikan-wiring.svg"
+                        alt="学友会館ライブ 標準結線図 Ver2.0"
+                    />
                 </section>
 
                 <div className="divider"></div>
@@ -667,25 +620,8 @@ const documents: Document[] = [
 
 export default function DocumentsPage() {
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-    const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
     const categories = [...new Set(documents.map((doc) => doc.category))];
-
-    // 拡大可能な画像のクリックイベントを処理
-    useEffect(() => {
-        const handleImageClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            if (target.classList.contains("expandable-image")) {
-                const imageSrc = target.getAttribute("data-image-src");
-                if (imageSrc) {
-                    setExpandedImage(imageSrc);
-                }
-            }
-        };
-
-        document.addEventListener("click", handleImageClick);
-        return () => document.removeEventListener("click", handleImageClick);
-    }, []);
 
     return (
         <div className="p-4 lg:p-6 w-full">
@@ -789,13 +725,6 @@ export default function DocumentsPage() {
                 )}
             </div>
 
-            {/* 画像拡大モーダル */}
-            {expandedImage && (
-                <ImageViewer
-                    src={expandedImage}
-                    onClose={() => setExpandedImage(null)}
-                />
-            )}
         </div>
     );
 }
