@@ -153,22 +153,38 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 onTouchEnd={handleTouchEnd}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                    src={src}
-                    alt="拡大画像"
-                    className="max-h-[95vh] w-[95vw] object-contain select-none"
-                    style={{
-                        transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                        transition: isDragging ? "none" : "transform 0.1s",
-                        willChange: "transform",
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                        backgroundColor: src.endsWith(".svg") ? "white" : undefined,
-                    }}
-                    onDoubleClick={handleDoubleClick}
-                    draggable={false}
-                />
+                {src.endsWith(".svg") ? (
+                    <object
+                        data={src}
+                        type="image/svg+xml"
+                        className="max-h-[95vh] w-[95vw] select-none"
+                        style={{
+                            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                            transition: isDragging ? "none" : "transform 0.1s",
+                            willChange: "transform",
+                            backfaceVisibility: "hidden",
+                            WebkitBackfaceVisibility: "hidden",
+                            backgroundColor: "white",
+                        }}
+                        onDoubleClick={handleDoubleClick}
+                    />
+                ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                        src={src}
+                        alt="拡大画像"
+                        className="max-h-[95vh] w-[95vw] object-contain select-none"
+                        style={{
+                            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                            transition: isDragging ? "none" : "transform 0.1s",
+                            willChange: "transform",
+                            backfaceVisibility: "hidden",
+                            WebkitBackfaceVisibility: "hidden",
+                        }}
+                        onDoubleClick={handleDoubleClick}
+                        draggable={false}
+                    />
+                )}
             </div>
             <button
                 className="btn btn-circle btn-ghost absolute top-4 right-4 text-white"
