@@ -392,12 +392,16 @@ const documents: Document[] = [
             <div className="space-y-6">
                 <section>
                     <h3 className="text-lg font-bold mb-2">結線図</h3>
+                    <p className="text-sm text-base-content/60 mb-2">
+                        タップして拡大
+                    </p>
                     <div className="overflow-x-auto">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src="/documents/gakuyukaikan-wiring.jpg"
                             alt="学友会館ライブ 標準結線図 Ver2.0"
-                            className="w-full max-w-none"
+                            className="w-full max-w-none cursor-pointer hover:opacity-90 transition-opacity expandable-image"
+                            data-image-src="/documents/gakuyukaikan-wiring.jpg"
                         />
                     </div>
                 </section>
@@ -457,8 +461,25 @@ const documents: Document[] = [
 
 export default function DocumentsPage() {
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+    const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
     const categories = [...new Set(documents.map((doc) => doc.category))];
+
+    // 拡大可能な画像のクリックイベントを処理
+    useEffect(() => {
+        const handleImageClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.classList.contains("expandable-image")) {
+                const imageSrc = target.getAttribute("data-image-src");
+                if (imageSrc) {
+                    setExpandedImage(imageSrc);
+                }
+            }
+        };
+
+        document.addEventListener("click", handleImageClick);
+        return () => document.removeEventListener("click", handleImageClick);
+    }, []);
 
     return (
         <div className="p-4 lg:p-6 w-full">
@@ -561,6 +582,32 @@ export default function DocumentsPage() {
                     </div>
                 )}
             </div>
+
+            {/* 画像拡大モーダル */}
+            {expandedImage && (
+                <dialog
+                    className="modal modal-open"
+                    onClick={() => setExpandedImage(null)}
+                >
+                    <div className="modal-box max-w-full w-auto h-auto max-h-[90vh] p-2 bg-base-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src={expandedImage}
+                            alt="拡大画像"
+                            className="max-h-[85vh] w-auto object-contain"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                    <form
+                        method="dialog"
+                        className="modal-backdrop bg-black/80"
+                    >
+                        <button onClick={() => setExpandedImage(null)}>
+                            close
+                        </button>
+                    </form>
+                </dialog>
+            )}
         </div>
     );
 }
