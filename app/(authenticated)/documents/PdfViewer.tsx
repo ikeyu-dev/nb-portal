@@ -22,6 +22,11 @@ export default function PdfViewer({ src }: PdfViewerProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const initialDistanceRef = useRef<number | null>(null);
     const initialScaleRef = useRef<number>(1);
+    const initialScrollRef = useRef<{ top: number; left: number }>({
+        top: 0,
+        left: 0,
+    });
+    const pinchCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const filename = src.split("/").pop() || "document.pdf";
 
     // コンテナの幅を監視
@@ -48,16 +53,35 @@ export default function PdfViewer({ src }: PdfViewerProps) {
     }, []);
 
     // ピンチズーム処理
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        if (e.touches.length === 2) {
-            e.preventDefault();
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            initialDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
-            initialScaleRef.current = scale;
-            setIsPinching(true);
-        }
-    }, [scale]);
+    const handleTouchStart = useCallback(
+        (e: React.TouchEvent) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
+                initialScaleRef.current = scale;
+
+                // ピンチの中心点を記録
+                const centerX =
+                    (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const centerY =
+                    (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                pinchCenterRef.current = { x: centerX, y: centerY };
+
+                // 現在のスクロール位置を記録
+                if (scrollContainerRef.current) {
+                    initialScrollRef.current = {
+                        top: scrollContainerRef.current.scrollTop,
+                        left: scrollContainerRef.current.scrollLeft,
+                    };
+                }
+
+                setIsPinching(true);
+            }
+        },
+        [scale]
+    );
 
     const handleTouchMove = useCallback(
         (e: React.TouchEvent) => {
@@ -71,6 +95,28 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                     Math.max(initialScaleRef.current * scaleChange, 1),
                     4
                 );
+
+                // スケール変更に合わせてスクロール位置を調整
+                if (scrollContainerRef.current && containerRef.current) {
+                    const container = scrollContainerRef.current;
+                    const containerRect = containerRef.current.getBoundingClientRect();
+
+                    // ピンチ中心のコンテナ内での相対位置
+                    const relativeY =
+                        pinchCenterRef.current.y - containerRect.top;
+
+                    // 現在のスクロール位置からピンチ中心までの距離
+                    const scrollCenterY =
+                        initialScrollRef.current.top + relativeY;
+
+                    // 新しいスケールでのスクロール位置を計算
+                    const scaleRatio = newScale / initialScaleRef.current;
+                    const newScrollTop =
+                        scrollCenterY * scaleRatio - relativeY;
+
+                    container.scrollTop = Math.max(0, newScrollTop);
+                }
+
                 setScale(newScale);
             }
         },
