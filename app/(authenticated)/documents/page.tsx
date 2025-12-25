@@ -587,10 +587,10 @@ const documents: Document[] = [
                     <div className="overflow-x-auto">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                            src="/documents/gakuyukaikan-wiring.jpg"
+                            src="/documents/gakuyukaikan-wiring.svg"
                             alt="学友会館ライブ 標準結線図 Ver2.0"
                             className="w-full max-w-none cursor-pointer hover:opacity-90 transition-opacity expandable-image"
-                            data-image-src="/documents/gakuyukaikan-wiring.jpg"
+                            data-image-src="/documents/gakuyukaikan-wiring.svg"
                         />
                     </div>
                 </section>
