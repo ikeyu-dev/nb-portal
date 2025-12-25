@@ -5,7 +5,6 @@ import mermaid from "mermaid";
 
 // SVGのネイティブサイズ
 const SVG_WIDTH = 2525;
-const SVG_HEIGHT = 2078;
 
 // ピンチズーム対応画像コンポーネント（フルスクリーンモーダル）
 function ZoomableImage({ src, alt }: { src: string; alt: string }) {
@@ -19,27 +18,21 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // 画面サイズに合わせた初期スケールを計算
+    // 画面サイズに合わせた初期スケールを計算（横幅に合わせる）
     useEffect(() => {
         if (isFullscreen && src.endsWith(".svg")) {
             const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
             const scaleX = viewportWidth / SVG_WIDTH;
-            const scaleY = viewportHeight / SVG_HEIGHT;
-            const fitScale = Math.min(scaleX, scaleY) * 0.95; // 95%で余白を確保
-            setMinScale(fitScale);
-            setScale(fitScale);
+            setMinScale(scaleX * 0.5); // 最小スケールは横幅フィットの半分
+            setScale(scaleX); // 横幅いっぱいに表示
         }
     }, [isFullscreen, src]);
 
     const resetZoom = useCallback(() => {
         if (src.endsWith(".svg")) {
             const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
             const scaleX = viewportWidth / SVG_WIDTH;
-            const scaleY = viewportHeight / SVG_HEIGHT;
-            const fitScale = Math.min(scaleX, scaleY) * 0.95;
-            setScale(fitScale);
+            setScale(scaleX);
         } else {
             setScale(1);
         }
