@@ -5,6 +5,7 @@ import mermaid from "mermaid";
 
 // SVGのネイティブサイズ
 const SVG_WIDTH = 2525;
+const SVG_HEIGHT = 2078;
 
 // ピンチズーム対応画像コンポーネント（フルスクリーンモーダル）
 function ZoomableImage({ src, alt }: { src: string; alt: string }) {
@@ -16,27 +17,34 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
     const lastDistanceRef = useRef<number | null>(null);
     const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
+    const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-
-    // 画面サイズに合わせた初期スケールを計算（横幅に合わせる）
-    useEffect(() => {
-        if (isFullscreen && src.endsWith(".svg")) {
-            const viewportWidth = window.innerWidth;
-            const scaleX = viewportWidth / SVG_WIDTH;
-            setMinScale(scaleX * 0.5); // 最小スケールは横幅フィットの半分
-            setScale(scaleX); // 横幅いっぱいに表示
-        }
-    }, [isFullscreen, src]);
 
     const resetZoom = useCallback(() => {
         if (src.endsWith(".svg")) {
             const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const isPC = viewportWidth >= 1024;
             const scaleX = viewportWidth / SVG_WIDTH;
-            setScale(scaleX);
+            const scaleY = viewportHeight / SVG_HEIGHT;
+            // PCは画面全体にフィット、モバイルは横幅フィット
+            const fitScale = Math.min(scaleX, scaleY);
+            const newScale = isPC ? fitScale : scaleX;
+            setScale(newScale);
+            // PCは中央配置、モバイルは左上
+            if (isPC) {
+                const scaledWidth = SVG_WIDTH * newScale;
+                const scaledHeight = SVG_HEIGHT * newScale;
+                const centerX = (viewportWidth - scaledWidth) / 2;
+                const centerY = (viewportHeight - scaledHeight) / 2;
+                setPosition({ x: centerX, y: centerY });
+            } else {
+                setPosition({ x: 0, y: 0 });
+            }
         } else {
             setScale(1);
+            setPosition({ x: 0, y: 0 });
         }
-        setPosition({ x: 0, y: 0 });
     }, [src]);
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -65,7 +73,10 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const delta = distance / lastDistanceRef.current;
-                const newScale = Math.min(Math.max(scale * delta, minScale), 10);
+                const newScale = Math.min(
+                    Math.max(scale * delta, minScale),
+                    10
+                );
 
                 const centerX =
                     (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -124,6 +135,73 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
         }
     }, [scale, minScale]);
 
+    // PC用: マウスホイールでズーム
+    const handleWheel = useCallback(
+        (e: React.WheelEvent) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.min(Math.max(scale * delta, minScale), 10);
+
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const imageX = (mouseX - position.x) / scale;
+                const imageY = (mouseY - position.y) / scale;
+                const newX = mouseX - imageX * newScale;
+                const newY = mouseY - imageY * newScale;
+                setPosition({ x: newX, y: newY });
+            }
+
+            setScale(newScale);
+
+            // 最小スケール付近ではPCは中央配置、モバイルは左上
+            if (newScale <= minScale * 1.1) {
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                const isPC = viewportWidth >= 1024;
+                if (isPC) {
+                    const scaledWidth = SVG_WIDTH * newScale;
+                    const scaledHeight = SVG_HEIGHT * newScale;
+                    const centerX = (viewportWidth - scaledWidth) / 2;
+                    const centerY = (viewportHeight - scaledHeight) / 2;
+                    setPosition({ x: centerX, y: centerY });
+                } else {
+                    setPosition({ x: 0, y: 0 });
+                }
+            }
+        },
+        [scale, position, minScale]
+    );
+
+    // PC用: マウスドラッグで移動
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        if (e.button === 0) {
+            setIsDragging(true);
+            lastMouseRef.current = { x: e.clientX, y: e.clientY };
+        }
+    }, []);
+
+    const handleMouseMove = useCallback(
+        (e: React.MouseEvent) => {
+            if (isDragging && lastMouseRef.current) {
+                const deltaX = e.clientX - lastMouseRef.current.x;
+                const deltaY = e.clientY - lastMouseRef.current.y;
+                setPosition((prev) => ({
+                    x: prev.x + deltaX,
+                    y: prev.y + deltaY,
+                }));
+                lastMouseRef.current = { x: e.clientX, y: e.clientY };
+            }
+        },
+        [isDragging]
+    );
+
+    const handleMouseUp = useCallback(() => {
+        setIsDragging(false);
+        lastMouseRef.current = null;
+    }, []);
+
     const handleDoubleClick = useCallback(
         (e: React.MouseEvent) => {
             if (scale <= minScale * 1.1 && containerRef.current) {
@@ -147,7 +225,30 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
 
     const openFullscreen = () => {
         setIsFullscreen(true);
-        resetZoom();
+        if (src.endsWith(".svg")) {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const isPC = viewportWidth >= 1024;
+            const scaleX = viewportWidth / SVG_WIDTH;
+            const scaleY = viewportHeight / SVG_HEIGHT;
+            const fitScale = Math.min(scaleX, scaleY);
+            const newScale = isPC ? fitScale : scaleX;
+            setMinScale(fitScale * 0.5);
+            setScale(newScale);
+            // PCは中央配置、モバイルは左上
+            if (isPC) {
+                const scaledWidth = SVG_WIDTH * newScale;
+                const scaledHeight = SVG_HEIGHT * newScale;
+                const centerX = (viewportWidth - scaledWidth) / 2;
+                const centerY = (viewportHeight - scaledHeight) / 2;
+                setPosition({ x: centerX, y: centerY });
+            } else {
+                setPosition({ x: 0, y: 0 });
+            }
+        } else {
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
+        }
     };
 
     const closeFullscreen = () => {
@@ -185,10 +286,15 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                             src.endsWith(".svg")
                                 ? "relative"
                                 : "flex items-center justify-center"
-                        }`}
+                        } ${isDragging ? "cursor-grabbing" : "cursor-grab"}`}
                         onTouchStart={handleTouchStart}
                         onTouchMove={handleTouchMove}
                         onTouchEnd={handleTouchEnd}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onWheel={handleWheel}
                         onDoubleClick={handleDoubleClick}
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -248,8 +354,14 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                             />
                         </svg>
                     </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-500 text-sm">
-                        ピンチで拡大・縮小 / ダブルタップで3倍ズーム
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-500 text-sm text-center">
+                        <span className="hidden lg:inline">
+                            ホイールで拡大・縮小 / ダブルクリックで3倍ズーム /
+                            ドラッグで移動
+                        </span>
+                        <span className="lg:hidden">
+                            ピンチで拡大・縮小 / ダブルタップで3倍ズーム
+                        </span>
                     </div>
                 </div>
             )}
@@ -645,7 +757,6 @@ const documents: Document[] = [
         content: (
             <div className="space-y-6">
                 <section>
-                    <h3 className="text-lg font-bold mb-2">結線図</h3>
                     <ZoomableImage
                         src="/documents/gakuyukaikan-wiring.svg"
                         alt="学友会館ライブ 標準結線図 Ver2.0"
@@ -811,7 +922,6 @@ export default function DocumentsPage() {
                     </div>
                 )}
             </div>
-
         </div>
     );
 }

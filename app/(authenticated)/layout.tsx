@@ -1,15 +1,12 @@
 import { Header } from "@/src/widgets/header";
 import { Sidebar } from "@/src/widgets/sidebar";
 import { Dock } from "@/src/widgets/dock";
-import { auth } from "@/src/auth";
 
 export default async function AuthenticatedLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
-    const session = await auth();
-
     return (
         <>
             {/* Drawer - 大画面のみ表示 */}
@@ -22,7 +19,7 @@ export default async function AuthenticatedLayout({
             </div>
 
             {/* Bottom dock - 小画面のみ表示 */}
-            <Dock user={session?.user} />
+            <Dock />
         </>
     );
 }
