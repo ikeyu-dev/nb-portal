@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -12,21 +12,19 @@ interface PdfViewerProps {
     src: string;
 }
 
+const SCALE_OPTIONS = [
+    { value: 1, label: "100%" },
+    { value: 1.5, label: "150%" },
+    { value: 1.75, label: "175%" },
+    { value: 2, label: "200%" },
+];
+
 export default function PdfViewer({ src }: PdfViewerProps) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [numPages, setNumPages] = useState<number | null>(null);
     const [containerWidth, setContainerWidth] = useState<number>(0);
     const [scale, setScale] = useState(1);
-    const [isPinching, setIsPinching] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const initialDistanceRef = useRef<number | null>(null);
-    const initialScaleRef = useRef<number>(1);
-    const initialScrollRef = useRef<{ top: number; left: number }>({
-        top: 0,
-        left: 0,
-    });
-    const pinchCenterRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const filename = src.split("/").pop() || "document.pdf";
 
     // コンテナの幅を監視
@@ -48,99 +46,9 @@ export default function PdfViewer({ src }: PdfViewerProps) {
         setNumPages(numPages);
     };
 
-    const resetZoom = useCallback(() => {
-        setScale(1);
-    }, []);
-
-    // ピンチズーム処理
-    const handleTouchStart = useCallback(
-        (e: React.TouchEvent) => {
-            if (e.touches.length === 2) {
-                e.preventDefault();
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
-                initialDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
-                initialScaleRef.current = scale;
-
-                // ピンチの中心点を記録
-                const centerX =
-                    (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const centerY =
-                    (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                pinchCenterRef.current = { x: centerX, y: centerY };
-
-                // 現在のスクロール位置を記録
-                if (scrollContainerRef.current) {
-                    initialScrollRef.current = {
-                        top: scrollContainerRef.current.scrollTop,
-                        left: scrollContainerRef.current.scrollLeft,
-                    };
-                }
-
-                setIsPinching(true);
-            }
-        },
-        [scale]
-    );
-
-    const handleTouchMove = useCallback(
-        (e: React.TouchEvent) => {
-            if (e.touches.length === 2 && initialDistanceRef.current !== null) {
-                e.preventDefault();
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const scaleChange = distance / initialDistanceRef.current;
-                const newScale = Math.min(
-                    Math.max(initialScaleRef.current * scaleChange, 1),
-                    4
-                );
-
-                // スケール変更に合わせてスクロール位置を調整
-                if (scrollContainerRef.current && containerRef.current) {
-                    const container = scrollContainerRef.current;
-                    const containerRect = containerRef.current.getBoundingClientRect();
-
-                    // ピンチ中心のコンテナ内での相対位置
-                    const relativeY =
-                        pinchCenterRef.current.y - containerRect.top;
-
-                    // 現在のスクロール位置からピンチ中心までの距離
-                    const scrollCenterY =
-                        initialScrollRef.current.top + relativeY;
-
-                    // 新しいスケールでのスクロール位置を計算
-                    const scaleRatio = newScale / initialScaleRef.current;
-                    const newScrollTop =
-                        scrollCenterY * scaleRatio - relativeY;
-
-                    container.scrollTop = Math.max(0, newScrollTop);
-                }
-
-                setScale(newScale);
-            }
-        },
-        []
-    );
-
-    const handleTouchEnd = useCallback(() => {
-        initialDistanceRef.current = null;
-        setIsPinching(false);
-    }, []);
-
-    // ダブルタップでズーム
-    const lastTapRef = useRef<number>(0);
-    const handleTap = useCallback(() => {
-        const now = Date.now();
-        if (now - lastTapRef.current < 300) {
-            if (scale > 1) {
-                setScale(1);
-            } else {
-                setScale(2);
-            }
-        }
-        lastTapRef.current = now;
-    }, [scale]);
+    const handleScaleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setScale(Number(e.target.value));
+    };
 
     return (
         <>
@@ -255,32 +163,24 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                             )}
                         </div>
                         <div className="flex items-center gap-2">
-                            {scale > 1 && (
-                                <button
-                                    onClick={resetZoom}
-                                    className="btn btn-sm btn-ghost gap-1"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
+                            <select
+                                value={scale}
+                                onChange={handleScaleChange}
+                                className="select select-sm select-bordered"
+                            >
+                                {SCALE_OPTIONS.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
                                     >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
-                                        />
-                                    </svg>
-                                    {Math.round(scale * 100)}%
-                                </button>
-                            )}
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
                             <button
                                 onClick={() => {
                                     setIsFullscreen(false);
-                                    resetZoom();
+                                    setScale(1);
                                 }}
                                 className="btn btn-sm btn-ghost gap-1"
                             >
@@ -306,80 +206,67 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                     {/* PDFコンテンツ - 縦スクロール */}
                     <div
                         ref={containerRef}
-                        className="flex-1 overflow-hidden bg-base-300"
-                        onTouchStart={handleTouchStart}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        onClick={handleTap}
+                        className="flex-1 overflow-auto bg-base-300"
                     >
                         <div
-                            ref={scrollContainerRef}
-                            className="h-full overflow-auto"
                             style={{
-                                touchAction: isPinching ? "none" : "pan-y",
+                                transform: `scale(${scale})`,
+                                transformOrigin: "top center",
+                                width: scale > 1 ? `${100 / scale}%` : "100%",
+                                marginLeft: scale > 1 ? "auto" : undefined,
+                                marginRight: scale > 1 ? "auto" : undefined,
                             }}
                         >
-                            <div
-                                style={{
-                                    transform: `scale(${scale})`,
-                                    transformOrigin: "top center",
-                                    width: scale > 1 ? `${100 / scale}%` : "100%",
-                                    marginLeft: scale > 1 ? "auto" : undefined,
-                                    marginRight: scale > 1 ? "auto" : undefined,
-                                }}
+                            <Document
+                                file={src}
+                                onLoadSuccess={onDocumentLoadSuccess}
+                                loading={
+                                    <div className="flex items-center justify-center h-64">
+                                        <span className="loading loading-spinner loading-lg"></span>
+                                    </div>
+                                }
+                                error={
+                                    <div className="flex items-center justify-center h-64">
+                                        <p className="text-error">
+                                            PDFの読み込みに失敗しました
+                                        </p>
+                                    </div>
+                                }
                             >
-                                <Document
-                                    file={src}
-                                    onLoadSuccess={onDocumentLoadSuccess}
-                                    loading={
-                                        <div className="flex items-center justify-center h-64">
-                                            <span className="loading loading-spinner loading-lg"></span>
-                                        </div>
-                                    }
-                                    error={
-                                        <div className="flex items-center justify-center h-64">
-                                            <p className="text-error">
-                                                PDFの読み込みに失敗しました
-                                            </p>
-                                        </div>
-                                    }
-                                >
-                                    {numPages &&
-                                        Array.from(
-                                            { length: numPages },
-                                            (_, index) => (
-                                                <div
-                                                    key={`page_${index + 1}`}
-                                                    className="mb-2"
-                                                >
-                                                    <Page
-                                                        pageNumber={index + 1}
-                                                        width={
-                                                            containerWidth ||
-                                                            undefined
-                                                        }
-                                                        loading={
-                                                            <div className="flex items-center justify-center py-8 bg-white">
-                                                                <span className="loading loading-spinner loading-md"></span>
-                                                            </div>
-                                                        }
-                                                    />
-                                                    <div className="text-center text-xs text-base-content/50 py-1 bg-base-300">
-                                                        {index + 1} / {numPages}
-                                                    </div>
+                                {numPages &&
+                                    Array.from(
+                                        { length: numPages },
+                                        (_, index) => (
+                                            <div
+                                                key={`page_${index + 1}`}
+                                                className="mb-2"
+                                            >
+                                                <Page
+                                                    pageNumber={index + 1}
+                                                    width={
+                                                        containerWidth ||
+                                                        undefined
+                                                    }
+                                                    loading={
+                                                        <div className="flex items-center justify-center py-8 bg-white">
+                                                            <span className="loading loading-spinner loading-md"></span>
+                                                        </div>
+                                                    }
+                                                />
+                                                <div className="text-center text-xs text-base-content/50 py-1 bg-base-300">
+                                                    {index + 1} / {numPages}
                                                 </div>
-                                            )
-                                        )}
-                                </Document>
-                            </div>
+                                            </div>
+                                        )
+                                    )}
+                            </Document>
                         </div>
                     </div>
 
                     {/* フッター */}
                     <div className="p-2 border-t border-base-300 bg-base-200">
                         <p className="text-xs text-base-content/60 text-center">
-                            スクロールでページ移動 / ピンチで拡大・縮小 /
-                            ダブルタップでズーム
+                            スクロールでページ移動
                         </p>
                     </div>
                 </div>
