@@ -50,6 +50,23 @@ export default function PdfViewer({ src }: PdfViewerProps) {
         setScale(Number(e.target.value));
     };
 
+    const handleShare = async () => {
+        // Web Share APIが利用可能かチェック
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: filename.replace(".pdf", ""),
+                    url: src,
+                });
+            } catch {
+                // ユーザーがキャンセルした場合など
+            }
+        } else {
+            // Web Share APIが利用できない場合は新しいタブで開く
+            window.open(src, "_blank");
+        }
+    };
+
     return (
         <>
             <div className="space-y-6">
@@ -117,9 +134,8 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                 <div className="divider"></div>
 
                 <div className="flex justify-center">
-                    <a
-                        href={src}
-                        download
+                    <button
+                        onClick={handleShare}
                         className="btn btn-outline btn-sm gap-2"
                     >
                         <svg
@@ -133,11 +149,11 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
                             />
                         </svg>
-                        PDFをダウンロード
-                    </a>
+                        PDFを共有
+                    </button>
                 </div>
 
                 <div className="divider"></div>
