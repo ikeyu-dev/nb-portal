@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import mermaid from "mermaid";
 import dynamic from "next/dynamic";
+import AnchorLink from "./AnchorLink";
 
 // react-pdfはサーバーサイドで実行できないため、動的インポートを使用
 const PdfViewer = dynamic(() => import("./PdfViewer"), {
@@ -466,12 +467,12 @@ const documents: Document[] = [
                             },
                         ].map((item) => (
                             <li key={item.id}>
-                                <a
-                                    href={`#${item.id}`}
+                                <AnchorLink
+                                    targetId={item.id}
                                     className="link link-hover"
                                 >
                                     {item.label}
-                                </a>
+                                </AnchorLink>
                             </li>
                         ))}
                     </ul>
@@ -512,12 +513,12 @@ const documents: Document[] = [
                             },
                         ].map((item) => (
                             <li key={item.id}>
-                                <a
-                                    href={`#${item.id}`}
+                                <AnchorLink
+                                    targetId={item.id}
                                     className="link link-primary"
                                 >
                                     {item.label}
-                                </a>
+                                </AnchorLink>
                             </li>
                         ))}
                     </ol>
