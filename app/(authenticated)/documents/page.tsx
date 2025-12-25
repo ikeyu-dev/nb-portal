@@ -372,51 +372,84 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
 
 // PDFビューアーコンポーネント
 function PdfViewer({ src }: { src: string }) {
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const filename = src.split("/").pop() || "document.pdf";
 
     return (
-        <div className="space-y-6">
-            {/* PC用: iframeで表示 */}
-            <section className="hidden lg:block">
-                <div className="w-full">
-                    <iframe
-                        src={src}
-                        className="w-full h-screen border border-base-300 rounded-lg"
-                        title={filename}
-                    />
-                </div>
-                <p className="text-sm text-base-content/60 mt-2 text-center">
-                    PDFビューアーで表示中
-                </p>
-            </section>
-
-            {/* モバイル用: ボタンで開く */}
-            <section className="lg:hidden">
-                <div className="flex flex-col items-center gap-4 py-8">
-                    <div className="p-6 rounded-full bg-base-200">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 384 512"
-                            className="h-16 w-16 text-error"
-                            fill="currentColor"
-                        >
-                            <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 288c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128z" />
-                        </svg>
+        <>
+            <div className="space-y-6">
+                {/* PC用: iframeで表示 */}
+                <section className="hidden lg:block">
+                    <div className="w-full">
+                        <iframe
+                            src={src}
+                            className="w-full h-screen border border-base-300 rounded-lg"
+                            title={filename}
+                        />
                     </div>
-                    <p className="text-base-content/60 text-center">
-                        PDFファイルを表示するには
-                        <br />
-                        下のボタンをタップしてください
+                    <p className="text-sm text-base-content/60 mt-2 text-center">
+                        PDFビューアーで表示中
                     </p>
+                </section>
+
+                {/* モバイル用: ボタンで開く */}
+                <section className="lg:hidden">
+                    <div className="flex flex-col items-center gap-4 py-8">
+                        <div className="p-6 rounded-full bg-base-200">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 384 512"
+                                className="h-16 w-16 text-error"
+                                fill="currentColor"
+                            >
+                                <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 288c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128z" />
+                            </svg>
+                        </div>
+                        <p className="text-base-content/60 text-center">
+                            PDFファイルを表示するには
+                            <br />
+                            下のボタンをタップしてください
+                        </p>
+                        <button
+                            onClick={() => setIsFullscreen(true)}
+                            className="btn btn-primary gap-2"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                                />
+                            </svg>
+                            PDFを開く
+                        </button>
+                    </div>
+                </section>
+
+                <div className="divider"></div>
+
+                <div className="flex justify-center">
                     <a
                         href={src}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="btn btn-primary gap-2"
+                        download
+                        className="btn btn-outline btn-sm gap-2"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
+                            className="h-4 w-4"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -425,46 +458,56 @@ function PdfViewer({ src }: { src: string }) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
                             />
                         </svg>
-                        PDFを開く
+                        PDFをダウンロード
                     </a>
                 </div>
-            </section>
 
-            <div className="divider"></div>
+                <div className="divider"></div>
 
-            <div className="flex justify-center">
-                <a
-                    href={src}
-                    download
-                    className="btn btn-outline btn-sm gap-2"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-4 w-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        />
-                    </svg>
-                    PDFをダウンロード
-                </a>
+                <div className="text-sm text-base-content/60 text-right">
+                    <p>{filename.replace(".pdf", "")}</p>
+                </div>
             </div>
 
-            <div className="divider"></div>
-
-            <div className="text-sm text-base-content/60 text-right">
-                <p>{filename.replace(".pdf", "")}</p>
-            </div>
-        </div>
+            {/* フルスクリーンモーダル（モバイル用） */}
+            {isFullscreen && (
+                <div className="fixed inset-0 z-50 bg-base-100 flex flex-col">
+                    <div className="flex items-center justify-between p-3 border-b border-base-300 bg-base-200">
+                        <span className="text-sm font-medium truncate flex-1 mr-2">
+                            {filename.replace(".pdf", "")}
+                        </span>
+                        <button
+                            onClick={() => setIsFullscreen(false)}
+                            className="btn btn-sm btn-ghost gap-1"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                            閉じる
+                        </button>
+                    </div>
+                    <iframe
+                        src={src}
+                        className="flex-1 w-full border-0"
+                        title={filename}
+                    />
+                </div>
+            )}
+        </>
     );
 }
 
