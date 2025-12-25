@@ -369,12 +369,9 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                     </button>
                     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-gray-500 text-sm text-center">
                         <span className="hidden lg:inline">
-                            ホイールで拡大・縮小 / ダブルクリックで3倍ズーム /
-                            ドラッグで移動
+                            ホイールで拡大・縮小 / ドラッグで移動
                         </span>
-                        <span className="lg:hidden">
-                            ピンチで拡大・縮小 / ダブルタップで3倍ズーム
-                        </span>
+                        <span className="lg:hidden">ピンチで拡大・縮小</span>
                     </div>
                 </div>
             )}
