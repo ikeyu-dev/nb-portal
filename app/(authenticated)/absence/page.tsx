@@ -79,7 +79,7 @@ function AbsenceFormContent() {
     };
 
     return (
-        <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+        <div className="p-4 sm:p-6 max-w-4xl mx-auto">
             <h1
                 className="font-bold mb-6 max-lg:hidden"
                 style={{ fontSize: "clamp(1.5rem, 4vw, 1.875rem)" }}
@@ -330,7 +330,7 @@ export default function AbsencePage() {
     return (
         <Suspense
             fallback={
-                <div className="p-4 sm:p-6 max-w-3xl mx-auto">
+                <div className="p-4 sm:p-6 max-w-4xl mx-auto">
                     <h1
                         className="font-bold mb-6 max-lg:hidden"
                         style={{ fontSize: "clamp(1.5rem, 4vw, 1.875rem)" }}
