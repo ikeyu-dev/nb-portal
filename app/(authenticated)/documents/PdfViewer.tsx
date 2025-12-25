@@ -24,6 +24,7 @@ export default function PdfViewer({ src }: PdfViewerProps) {
     const [numPages, setNumPages] = useState<number | null>(null);
     const [containerWidth, setContainerWidth] = useState<number>(0);
     const [scale, setScale] = useState(1);
+    const [isSharing, setIsSharing] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const filename = src.split("/").pop() || "document.pdf";
 
@@ -51,19 +52,33 @@ export default function PdfViewer({ src }: PdfViewerProps) {
     };
 
     const handleShare = async () => {
-        // Web Share APIが利用可能かチェック
-        if (navigator.share) {
-            try {
+        setIsSharing(true);
+        try {
+            // PDFファイルを取得
+            const response = await fetch(src);
+            const blob = await response.blob();
+            const file = new File([blob], filename, { type: "application/pdf" });
+
+            // ファイル共有がサポートされているかチェック
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                await navigator.share({
+                    files: [file],
+                    title: filename.replace(".pdf", ""),
+                });
+            } else if (navigator.share) {
+                // ファイル共有非対応の場合はURLを共有
                 await navigator.share({
                     title: filename.replace(".pdf", ""),
                     url: src,
                 });
-            } catch {
-                // ユーザーがキャンセルした場合など
+            } else {
+                // Web Share API非対応の場合は新しいタブで開く
+                window.open(src, "_blank");
             }
-        } else {
-            // Web Share APIが利用できない場合は新しいタブで開く
-            window.open(src, "_blank");
+        } catch {
+            // ユーザーがキャンセルした場合やエラー
+        } finally {
+            setIsSharing(false);
         }
     };
 
@@ -136,23 +151,28 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                 <div className="flex justify-center">
                     <button
                         onClick={handleShare}
+                        disabled={isSharing}
                         className="btn btn-outline btn-sm gap-2"
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                            />
-                        </svg>
-                        PDFを共有
+                        {isSharing ? (
+                            <span className="loading loading-spinner loading-xs"></span>
+                        ) : (
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                                />
+                            </svg>
+                        )}
+                        {isSharing ? "準備中..." : "PDFを共有"}
                     </button>
                 </div>
 
