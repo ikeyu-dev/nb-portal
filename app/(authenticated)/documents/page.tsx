@@ -384,6 +384,75 @@ const documents: Document[] = [
             </div>
         ),
     },
+    {
+        id: "gakuyukaikan-wiring",
+        title: "学友会館ライブ 標準結線図",
+        category: "学友会館",
+        content: (
+            <div className="space-y-6">
+                <section>
+                    <h3 className="text-lg font-bold mb-2">結線図</h3>
+                    <div className="overflow-x-auto">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                            src="/documents/gakuyukaikan-wiring.jpg"
+                            alt="学友会館ライブ 標準結線図 Ver2.0"
+                            className="w-full max-w-none"
+                        />
+                    </div>
+                </section>
+
+                <div className="divider"></div>
+
+                <section>
+                    <h3 className="text-lg font-bold mb-2">注意事項</h3>
+                    <div className="alert alert-info">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            className="stroke-current shrink-0 w-6 h-6"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                        <div>
+                            <p className="text-sm">
+                                録画を部室NASに入れるための回線あり。
+                                Danteは必ず本体の有線LANポートに接続。
+                            </p>
+                        </div>
+                    </div>
+                    <div className="alert alert-warning mt-2">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="stroke-current shrink-0 h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                        </svg>
+                        <span>MacminiはQUAD CAPTURE使用不可</span>
+                    </div>
+                </section>
+
+                <div className="divider"></div>
+
+                <div className="text-sm text-base-content/60 text-right">
+                    <p>学友会館ライブ 標準結線図 Ver2.0</p>
+                </div>
+            </div>
+        ),
+    },
 ];
 
 export default function DocumentsPage() {
