@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import mermaid from "mermaid";
 
 // SVGのネイティブサイズ
@@ -369,6 +370,120 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     );
 }
 
+// PDFビューアーコンポーネント
+function PdfViewer({ src }: { src: string }) {
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const filename = src.split("/").pop() || "document.pdf";
+
+    return (
+        <>
+            <div className="space-y-6">
+                <section>
+                    <div className="w-full">
+                        <iframe
+                            src={src}
+                            className="w-full h-[70vh] lg:h-screen border border-base-300 rounded-lg"
+                            title={filename}
+                        />
+                    </div>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                        <p className="text-sm text-base-content/60">
+                            PDFビューアーで表示中
+                        </p>
+                        <button
+                            onClick={() => setIsFullscreen(true)}
+                            className="btn btn-ghost btn-xs lg:hidden gap-1"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
+                                />
+                            </svg>
+                            全画面
+                        </button>
+                    </div>
+                </section>
+
+                <div className="divider"></div>
+
+                <div className="flex justify-center">
+                    <a
+                        href={src}
+                        download
+                        className="btn btn-primary btn-sm gap-2"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                        </svg>
+                        PDFをダウンロード
+                    </a>
+                </div>
+
+                <div className="divider"></div>
+
+                <div className="text-sm text-base-content/60 text-right">
+                    <p>{filename.replace(".pdf", "")}</p>
+                </div>
+            </div>
+
+            {/* 全画面モーダル（モバイル用） */}
+            {isFullscreen && (
+                <div className="fixed inset-0 z-50 bg-white flex flex-col">
+                    <div className="flex items-center justify-between p-2 border-b border-base-300">
+                        <span className="text-sm font-medium truncate flex-1">
+                            {filename}
+                        </span>
+                        <button
+                            onClick={() => setIsFullscreen(false)}
+                            className="btn btn-circle btn-ghost btn-sm"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                    <iframe
+                        src={src}
+                        className="flex-1 w-full border-0"
+                        title={filename}
+                    />
+                </div>
+            )}
+        </>
+    );
+}
+
 // Mermaidフローチャートコンポーネント
 function MermaidChart({ chart }: { chart: string }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -426,7 +541,7 @@ const weatherFlowChart = `flowchart TD
 
 const documents: Document[] = [
     {
-        id: "wakasugi-rain-manual",
+        id: "nb-daigakusai-rain-manual",
         title: "大学祭 雨天時対応マニュアル",
         category: "大学祭",
         content: (
@@ -751,8 +866,8 @@ const documents: Document[] = [
         ),
     },
     {
-        id: "gakuyukaikan-wiring",
-        title: "学友会館ライブ 標準結線図",
+        id: "nb-gakuyu-wiring",
+        title: "学友会館ライブ 標準結線図 v2.0.0",
         category: "学友会館",
         content: (
             <div className="space-y-6">
@@ -814,17 +929,38 @@ const documents: Document[] = [
             </div>
         ),
     },
+    {
+        id: "nb-pa-plan-20250803",
+        title: "機材構成表 v3.0.2",
+        category: "機材構成表",
+        content: <PdfViewer src="/documents/機材構成表20250803.pdf" />,
+    },
 ];
 
 export default function DocumentsPage() {
-    const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const docId = searchParams.get("doc");
+
+    const selectedDoc = docId
+        ? documents.find((doc) => doc.id === docId) || null
+        : null;
+
+    const setSelectedDoc = (doc: Document | null) => {
+        if (doc) {
+            router.push(`/documents?doc=${doc.id}`);
+        } else {
+            router.push("/documents");
+        }
+    };
 
     const categories = [...new Set(documents.map((doc) => doc.category))];
 
     return (
         <div className="p-4 lg:p-6 w-full">
             <div className="max-w-4xl mx-auto">
-                <div className="flex items-center gap-2 mb-6 max-lg:hidden">
+                {/* ヘッダー */}
+                <div className="flex items-center gap-3 mb-6">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 384 512"
@@ -834,8 +970,8 @@ export default function DocumentsPage() {
                         <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 288c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128z" />
                     </svg>
                     <h1
-                        className="font-normal text-base-content"
-                        style={{ fontSize: "clamp(1.125rem, 3vw, 1.5rem)" }}
+                        className="font-bold"
+                        style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
                     >
                         資料
                     </h1>
