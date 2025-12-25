@@ -170,24 +170,42 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                         onDoubleClick={handleDoubleClick}
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={src}
-                            alt={alt}
-                            className="max-w-none select-none pointer-events-none"
-                            style={{
-                                transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                                transformOrigin: "center center",
-                                transition: isDragging
-                                    ? "none"
-                                    : "transform 0.1s",
-                                willChange: "transform",
-                                maxHeight: "100vh",
-                                maxWidth: "100vw",
-                                objectFit: "contain",
-                            }}
-                            draggable={false}
-                        />
+                        {src.endsWith(".svg") ? (
+                            <iframe
+                                src={src}
+                                title={alt}
+                                className="select-none pointer-events-none border-0"
+                                style={{
+                                    transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                                    transformOrigin: "center center",
+                                    transition: isDragging
+                                        ? "none"
+                                        : "transform 0.1s",
+                                    willChange: "transform",
+                                    width: "2525px",
+                                    height: "2078px",
+                                }}
+                            />
+                        ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={src}
+                                alt={alt}
+                                className="max-w-none select-none pointer-events-none"
+                                style={{
+                                    transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                                    transformOrigin: "center center",
+                                    transition: isDragging
+                                        ? "none"
+                                        : "transform 0.1s",
+                                    willChange: "transform",
+                                    maxHeight: "100vh",
+                                    maxWidth: "100vw",
+                                    objectFit: "contain",
+                                }}
+                                draggable={false}
+                            />
+                        )}
                     </div>
                     <button
                         className="btn btn-circle btn-ghost absolute top-4 right-4 text-gray-800"
