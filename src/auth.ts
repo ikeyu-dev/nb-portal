@@ -3,6 +3,31 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 
 const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
 
+// Microsoft Graph APIからプロファイル画像を取得（小さいサイズ）
+const fetchProfileImage = async (
+    accessToken: string
+): Promise<string | null> => {
+    try {
+        // 96x96の小さい画像を取得（URL長制限対策）
+        const response = await fetch(
+            "https://graph.microsoft.com/v1.0/me/photos/96x96/$value",
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        );
+        if (!response.ok) return null;
+
+        const arrayBuffer = await response.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString("base64");
+        const contentType = response.headers.get("content-type") || "image/jpeg";
+        return `data:${contentType};base64,${base64}`;
+    } catch {
+        return null;
+    }
+};
+
 // メールアドレスから学籍番号（最初の7文字）を抽出
 const extractStudentId = (email: string | null | undefined): string | null => {
     if (!email) return null;
@@ -58,10 +83,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             return true;
         },
-        async jwt({ token, user }) {
+        async jwt({ token, user, account }) {
             // 初回ログイン時にstudentIdをトークンに追加
             if (user?.email) {
                 token.studentId = extractStudentId(user.email);
+            }
+            // 初回ログイン時にプロファイル画像を取得（一度だけ）
+            if (account?.access_token && !token.profileImageFetched) {
+                const image = await fetchProfileImage(account.access_token);
+                if (image) {
+                    token.profileImage = image;
+                }
+                token.profileImageFetched = true;
             }
             return token;
         },
@@ -69,6 +102,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             // セッションにstudentIdを追加
             if (token.studentId) {
                 session.studentId = token.studentId as string;
+            }
+            // プロファイル画像を一度だけセッションに追加（クライアントで保存後は不要）
+            if (token.profileImage) {
+                session.profileImage = token.profileImage as string;
             }
             return session;
         },
