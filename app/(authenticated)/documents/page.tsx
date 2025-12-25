@@ -3,6 +3,12 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import mermaid from "mermaid";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
+
+// PDF.jsワーカーの設定
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 // SVGのネイティブサイズ
 const SVG_WIDTH = 2525;
@@ -372,7 +378,40 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
 
 // PDFビューアーコンポーネント
 function PdfViewer({ src }: { src: string }) {
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [numPages, setNumPages] = useState<number | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [containerWidth, setContainerWidth] = useState<number>(0);
+    const containerRef = useRef<HTMLDivElement>(null);
     const filename = src.split("/").pop() || "document.pdf";
+
+    // コンテナの幅を監視
+    useEffect(() => {
+        if (!isFullscreen) return;
+
+        const updateWidth = () => {
+            if (containerRef.current) {
+                setContainerWidth(containerRef.current.clientWidth);
+            }
+        };
+
+        updateWidth();
+        window.addEventListener("resize", updateWidth);
+        return () => window.removeEventListener("resize", updateWidth);
+    }, [isFullscreen]);
+
+    const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+        setNumPages(numPages);
+        setCurrentPage(1);
+    };
+
+    const goToPrevPage = () => {
+        setCurrentPage((prev) => Math.max(prev - 1, 1));
+    };
+
+    const goToNextPage = () => {
+        setCurrentPage((prev) => Math.min(prev + 1, numPages || 1));
+    };
 
     return (
         <>
@@ -391,7 +430,7 @@ function PdfViewer({ src }: { src: string }) {
                     </p>
                 </section>
 
-                {/* モバイル用: 新しいタブで開く */}
+                {/* モバイル用: react-pdfで表示 */}
                 <section className="lg:hidden">
                     <div className="flex flex-col items-center gap-4 py-8">
                         <div className="p-6 rounded-full bg-base-200">
@@ -409,10 +448,8 @@ function PdfViewer({ src }: { src: string }) {
                             <br />
                             下のボタンをタップしてください
                         </p>
-                        <a
-                            href={src}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        <button
+                            onClick={() => setIsFullscreen(true)}
                             className="btn btn-primary gap-2"
                         >
                             <svg
@@ -426,14 +463,17 @@ function PdfViewer({ src }: { src: string }) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     strokeWidth={2}
-                                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                                 />
                             </svg>
                             PDFを開く
-                        </a>
-                        <p className="text-xs text-base-content/50 text-center">
-                            ※ 新しいタブで開きます。閲覧後はタブを閉じてお戻りください。
-                        </p>
+                        </button>
                     </div>
                 </section>
 
@@ -469,6 +509,120 @@ function PdfViewer({ src }: { src: string }) {
                     <p>{filename.replace(".pdf", "")}</p>
                 </div>
             </div>
+
+            {/* フルスクリーンPDFビューアー（モバイル用） */}
+            {isFullscreen && (
+                <div className="fixed inset-0 z-50 bg-base-100 flex flex-col">
+                    {/* ヘッダー */}
+                    <div className="flex items-center justify-between p-3 border-b border-base-300 bg-base-200">
+                        <span className="text-sm font-medium truncate flex-1 mr-2">
+                            {filename.replace(".pdf", "")}
+                        </span>
+                        <button
+                            onClick={() => setIsFullscreen(false)}
+                            className="btn btn-sm btn-ghost gap-1"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                            閉じる
+                        </button>
+                    </div>
+
+                    {/* PDFコンテンツ */}
+                    <div
+                        ref={containerRef}
+                        className="flex-1 overflow-auto bg-base-300"
+                    >
+                        <Document
+                            file={src}
+                            onLoadSuccess={onDocumentLoadSuccess}
+                            loading={
+                                <div className="flex items-center justify-center h-full">
+                                    <span className="loading loading-spinner loading-lg"></span>
+                                </div>
+                            }
+                            error={
+                                <div className="flex items-center justify-center h-full">
+                                    <p className="text-error">
+                                        PDFの読み込みに失敗しました
+                                    </p>
+                                </div>
+                            }
+                        >
+                            <Page
+                                pageNumber={currentPage}
+                                width={containerWidth || undefined}
+                                loading={
+                                    <div className="flex items-center justify-center py-8">
+                                        <span className="loading loading-spinner loading-md"></span>
+                                    </div>
+                                }
+                            />
+                        </Document>
+                    </div>
+
+                    {/* フッター（ページ操作） */}
+                    {numPages && numPages > 1 && (
+                        <div className="flex items-center justify-center gap-4 p-3 border-t border-base-300 bg-base-200">
+                            <button
+                                onClick={goToPrevPage}
+                                disabled={currentPage <= 1}
+                                className="btn btn-sm btn-ghost"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 19l-7-7 7-7"
+                                    />
+                                </svg>
+                            </button>
+                            <span className="text-sm">
+                                {currentPage} / {numPages}
+                            </span>
+                            <button
+                                onClick={goToNextPage}
+                                disabled={currentPage >= numPages}
+                                className="btn btn-sm btn-ghost"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-5 w-5"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 5l7 7-7 7"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
         </>
     );
 }
