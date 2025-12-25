@@ -443,8 +443,51 @@ const documents: Document[] = [
         category: "大学祭",
         content: (
             <div className="space-y-6">
+                {/* 目次 */}
+                <nav className="bg-base-200 p-4 rounded-lg">
+                    <h3 className="text-lg font-bold mb-3">目次</h3>
+                    <ul className="space-y-1 text-sm">
+                        {[
+                            { id: "rain-overview", label: "概要" },
+                            { id: "rain-patterns", label: "対応パターン" },
+                            { id: "rain-setup", label: "NBCの設営" },
+                            {
+                                id: "rain-flow",
+                                label: "行動図（天気判断フロー）",
+                            },
+                            { id: "pattern-1", label: "1. 全日程の場合" },
+                            {
+                                id: "pattern-2",
+                                label: "2. 音団ライブ前、途中の場合",
+                            },
+                            {
+                                id: "pattern-3",
+                                label: "3. ステージ企画前、途中の場合",
+                            },
+                        ].map((item) => (
+                            <li key={item.id}>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        document
+                                            .getElementById(item.id)
+                                            ?.scrollIntoView({
+                                                behavior: "smooth",
+                                            });
+                                    }}
+                                    className="link link-hover text-left"
+                                >
+                                    {item.label}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </nav>
+
+                <div className="divider"></div>
+
                 <section>
-                    <h3 className="text-lg font-bold mb-2">概要</h3>
+                    <h3 id="rain-overview" className="text-lg font-bold mb-2">概要</h3>
                     <p>
                         雨量・大学祭実行委員会（学祭委）の判断で対応を変更する。
                         ステージ、卓、NB本部、学祭委と連絡を密にし状況を判断する必要がある。
@@ -452,37 +495,40 @@ const documents: Document[] = [
                 </section>
 
                 <section>
-                    <h3 className="text-lg font-bold mb-2">対応パターン</h3>
+                    <h3 id="rain-patterns" className="text-lg font-bold mb-2">対応パターン</h3>
                     <ol className="list-decimal list-inside space-y-1">
-                        <li>
-                            <a
-                                href="#pattern-1"
-                                className="link link-primary"
-                            >
-                                全日程の場合
-                            </a>
-                        </li>
-                        <li>
-                            <a
-                                href="#pattern-2"
-                                className="link link-primary"
-                            >
-                                音団ライブ前、途中の場合
-                            </a>
-                        </li>
-                        <li>
-                            <a
-                                href="#pattern-3"
-                                className="link link-primary"
-                            >
-                                ステージ企画前、途中の場合
-                            </a>
-                        </li>
+                        {[
+                            { id: "pattern-1", label: "全日程の場合" },
+                            {
+                                id: "pattern-2",
+                                label: "音団ライブ前、途中の場合",
+                            },
+                            {
+                                id: "pattern-3",
+                                label: "ステージ企画前、途中の場合",
+                            },
+                        ].map((item) => (
+                            <li key={item.id}>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        document
+                                            .getElementById(item.id)
+                                            ?.scrollIntoView({
+                                                behavior: "smooth",
+                                            });
+                                    }}
+                                    className="link link-primary"
+                                >
+                                    {item.label}
+                                </button>
+                            </li>
+                        ))}
                     </ol>
                 </section>
 
                 <section>
-                    <h3 className="text-lg font-bold mb-2">NBCの設営</h3>
+                    <h3 id="rain-setup" className="text-lg font-bold mb-2">NBCの設営</h3>
                     <ul className="list-disc list-inside space-y-2">
                         <li>
                             雨天トラブル等が予想されるため、スチューデントホールには小規模編成の機材を準備しておく
@@ -502,7 +548,7 @@ const documents: Document[] = [
                 </section>
 
                 <section>
-                    <h3 className="text-lg font-bold mb-2">
+                    <h3 id="rain-flow" className="text-lg font-bold mb-2">
                         行動図（天気判断フロー）
                     </h3>
                     <div className="bg-base-200 p-4 rounded-lg overflow-x-auto">
@@ -512,8 +558,8 @@ const documents: Document[] = [
 
                 <div className="divider"></div>
 
-                <section id="pattern-1">
-                    <h3 className="text-lg font-bold mb-2">1. 全日程の場合</h3>
+                <section>
+                    <h3 id="pattern-1" className="text-lg font-bold mb-2">1. 全日程の場合</h3>
                     <p>
                         スチューデントホールにステージ等を展開する。 構成表は{" "}
                         <strong>『中規模』</strong> を参照し、適切に展開する。
@@ -522,8 +568,8 @@ const documents: Document[] = [
 
                 <div className="divider"></div>
 
-                <section id="pattern-2">
-                    <h3 className="text-lg font-bold mb-2">
+                <section>
+                    <h3 id="pattern-2" className="text-lg font-bold mb-2">
                         2. 音団ライブ前、途中の場合
                     </h3>
 
@@ -584,61 +630,61 @@ const documents: Document[] = [
                         <table className="table table-sm">
                             <thead>
                                 <tr>
-                                    <th>担当</th>
-                                    <th>降雨〜</th>
-                                    <th>40分〜</th>
-                                    <th>60分〜</th>
-                                    <th>120分〜</th>
-                                    <th>完了 150分</th>
+                                    <th>時間</th>
+                                    <th>主卓</th>
+                                    <th>副卓</th>
+                                    <th>ステージ</th>
+                                    <th>サイド</th>
+                                    <th>演者</th>
+                                    <th>運び出し</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>主卓</td>
+                                    <td className="font-semibold">降雨〜</td>
                                     <td>安全対策</td>
-                                    <td>施設誘導</td>
-                                    <td>施設誘導</td>
-                                    <td>誘導完了</td>
-                                    <td className="text-error">完全停止</td>
-                                </tr>
-                                <tr>
-                                    <td>副卓</td>
                                     <td>移動開始</td>
-                                    <td>卓展開・周辺展開</td>
-                                    <td>卓チェック</td>
-                                    <td>卓完了</td>
-                                    <td className="text-success">演奏開始</td>
-                                </tr>
-                                <tr>
-                                    <td>ステージ</td>
                                     <td>ステージ保護</td>
-                                    <td>保護完了</td>
-                                    <td>撤収開始</td>
-                                    <td>撤収</td>
-                                    <td>撤収完了</td>
-                                </tr>
-                                <tr>
-                                    <td>サイド</td>
                                     <td>ステージ保護</td>
-                                    <td>移動開始</td>
-                                    <td>ステージ展開</td>
-                                    <td>展開完了</td>
-                                    <td>演奏補助</td>
-                                </tr>
-                                <tr>
-                                    <td>演者</td>
                                     <td>片付け</td>
-                                    <td>移動開始</td>
-                                    <td>ステージ準備</td>
-                                    <td>準備</td>
-                                    <td className="text-success">演奏開始</td>
+                                    <td>AMP・スピーカー</td>
                                 </tr>
                                 <tr>
-                                    <td>運び出し</td>
-                                    <td>AMP・スピーカー</td>
+                                    <td className="font-semibold">40分〜</td>
+                                    <td>施設誘導</td>
+                                    <td>卓展開・周辺展開</td>
+                                    <td>保護完了</td>
+                                    <td>移動開始</td>
+                                    <td>移動開始</td>
                                     <td>ケーブル系</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">60分〜</td>
+                                    <td>施設誘導</td>
+                                    <td>卓チェック</td>
+                                    <td>撤収開始</td>
+                                    <td>ステージ展開</td>
+                                    <td>ステージ準備</td>
                                     <td>Mic系</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">120分〜</td>
+                                    <td>誘導完了</td>
+                                    <td>卓完了</td>
+                                    <td>撤収</td>
+                                    <td>展開完了</td>
+                                    <td>準備</td>
                                     <td>BOX系</td>
+                                </tr>
+                                <tr className="bg-base-200">
+                                    <td className="font-semibold">
+                                        完了 150分
+                                    </td>
+                                    <td className="text-error">完全停止</td>
+                                    <td className="text-success">演奏開始</td>
+                                    <td>撤収完了</td>
+                                    <td>演奏補助</td>
+                                    <td className="text-success">演奏開始</td>
                                     <td className="text-info">早い方が良い</td>
                                 </tr>
                             </tbody>
@@ -648,8 +694,8 @@ const documents: Document[] = [
 
                 <div className="divider"></div>
 
-                <section id="pattern-3">
-                    <h3 className="text-lg font-bold mb-2">
+                <section>
+                    <h3 id="pattern-3" className="text-lg font-bold mb-2">
                         3. ステージ企画前、途中の場合
                     </h3>
 
@@ -692,61 +738,59 @@ const documents: Document[] = [
                         <table className="table table-sm">
                             <thead>
                                 <tr>
-                                    <th>担当</th>
-                                    <th>降雨〜</th>
-                                    <th>10分〜</th>
-                                    <th>20分〜</th>
-                                    <th>30分〜</th>
-                                    <th>完了 40分</th>
+                                    <th>時間</th>
+                                    <th>主卓</th>
+                                    <th>副卓</th>
+                                    <th>ステージ</th>
+                                    <th>サイド</th>
+                                    <th>演者</th>
+                                    <th>運び出し</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>主卓</td>
+                                    <td className="font-semibold">降雨〜</td>
                                     <td>安全対策</td>
-                                    <td>施設誘導</td>
-                                    <td>施設誘導</td>
-                                    <td>誘導完了</td>
-                                    <td className="text-error">完全停止</td>
-                                </tr>
-                                <tr>
-                                    <td>副卓</td>
                                     <td>移動開始</td>
-                                    <td>卓展開・周辺展開</td>
-                                    <td>卓チェック</td>
-                                    <td>卓完了</td>
-                                    <td className="text-success">演目開始</td>
-                                </tr>
-                                <tr>
-                                    <td>ステージ</td>
                                     <td>ステージ保護</td>
-                                    <td>保護完了</td>
-                                    <td>撤収開始</td>
-                                    <td>撤収</td>
-                                    <td>撤収完了</td>
-                                </tr>
-                                <tr>
-                                    <td>サイド</td>
                                     <td>ステージ保護</td>
-                                    <td>移動開始</td>
-                                    <td>ステージ展開</td>
-                                    <td>展開完了</td>
-                                    <td>演目補助</td>
-                                </tr>
-                                <tr>
-                                    <td>演者</td>
                                     <td>片付け</td>
-                                    <td>移動開始</td>
-                                    <td>ステージ準備</td>
-                                    <td>準備</td>
-                                    <td className="text-success">演目開始</td>
+                                    <td>AMP・スピーカー</td>
                                 </tr>
                                 <tr>
-                                    <td>運び出し</td>
-                                    <td>AMP・スピーカー</td>
+                                    <td className="font-semibold">10分〜</td>
+                                    <td>施設誘導</td>
+                                    <td>卓展開・周辺展開</td>
+                                    <td>保護完了</td>
+                                    <td>移動開始</td>
+                                    <td>移動開始</td>
                                     <td>ケーブル系</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">20分〜</td>
+                                    <td>施設誘導</td>
+                                    <td>卓チェック</td>
+                                    <td>撤収開始</td>
+                                    <td>ステージ展開</td>
+                                    <td>ステージ準備</td>
                                     <td>Mic系</td>
+                                </tr>
+                                <tr>
+                                    <td className="font-semibold">30分〜</td>
+                                    <td>誘導完了</td>
+                                    <td>卓完了</td>
+                                    <td>撤収</td>
+                                    <td>展開完了</td>
+                                    <td>準備</td>
                                     <td>BOX系</td>
+                                </tr>
+                                <tr className="bg-base-200">
+                                    <td className="font-semibold">完了 40分</td>
+                                    <td className="text-error">完全停止</td>
+                                    <td className="text-success">演目開始</td>
+                                    <td>撤収完了</td>
+                                    <td>演目補助</td>
+                                    <td className="text-success">演目開始</td>
                                     <td className="text-info">早い方が良い</td>
                                 </tr>
                             </tbody>
