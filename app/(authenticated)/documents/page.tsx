@@ -381,7 +381,6 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     );
 }
 
-
 // Mermaidフローチャートコンポーネント
 function MermaidChart({ chart }: { chart: string }) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -828,10 +827,10 @@ const documents: Document[] = [
         ),
     },
     {
-        id: "nb-pa-plan-20250803",
+        id: "nb-pa-plan-v3.0.2",
         title: "機材構成表 v3.0.2",
         category: "機材構成表",
-        content: <PdfViewer src="/documents/機材構成表20250803.pdf" />,
+        content: <PdfViewer src="/documents/機材構成表v3.0.2.pdf" />,
     },
 ];
 
