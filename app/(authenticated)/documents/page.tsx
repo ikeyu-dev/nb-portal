@@ -3,10 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import mermaid from "mermaid";
 
+// SVGのネイティブサイズ
+const SVG_WIDTH = 2525;
+const SVG_HEIGHT = 2078;
+
 // ピンチズーム対応画像コンポーネント（フルスクリーンモーダル）
 function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [scale, setScale] = useState(1);
+    const [minScale, setMinScale] = useState(0.1);
     const [position, setPosition] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
@@ -14,10 +19,32 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // 画面サイズに合わせた初期スケールを計算
+    useEffect(() => {
+        if (isFullscreen && src.endsWith(".svg")) {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const scaleX = viewportWidth / SVG_WIDTH;
+            const scaleY = viewportHeight / SVG_HEIGHT;
+            const fitScale = Math.min(scaleX, scaleY) * 0.95; // 95%で余白を確保
+            setMinScale(fitScale);
+            setScale(fitScale);
+        }
+    }, [isFullscreen, src]);
+
     const resetZoom = useCallback(() => {
-        setScale(1);
+        if (src.endsWith(".svg")) {
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const scaleX = viewportWidth / SVG_WIDTH;
+            const scaleY = viewportHeight / SVG_HEIGHT;
+            const fitScale = Math.min(scaleX, scaleY) * 0.95;
+            setScale(fitScale);
+        } else {
+            setScale(1);
+        }
         setPosition({ x: 0, y: 0 });
-    }, []);
+    }, [src]);
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         if (e.touches.length === 2) {
@@ -45,7 +72,7 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const delta = distance / lastDistanceRef.current;
-                const newScale = Math.min(Math.max(scale * delta, 1), 10);
+                const newScale = Math.min(Math.max(scale * delta, minScale), 10);
 
                 const centerX =
                     (e.touches[0].clientX + e.touches[1].clientX) / 2;
@@ -74,14 +101,14 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 lastDistanceRef.current = distance;
                 lastPinchCenterRef.current = { x: centerX, y: centerY };
 
-                if (newScale <= 1) {
+                if (newScale <= minScale) {
                     setPosition({ x: 0, y: 0 });
                 }
             } else if (
                 e.touches.length === 1 &&
                 isDragging &&
                 lastTouchRef.current &&
-                scale > 1
+                scale > minScale
             ) {
                 const deltaX = e.touches[0].clientX - lastTouchRef.current.x;
                 const deltaY = e.touches[0].clientY - lastTouchRef.current.y;
@@ -95,7 +122,7 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 };
             }
         },
-        [isDragging, scale, position]
+        [isDragging, scale, position, minScale]
     );
 
     const handleTouchEnd = useCallback(() => {
@@ -103,14 +130,14 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
         lastTouchRef.current = null;
         lastDistanceRef.current = null;
         lastPinchCenterRef.current = null;
-        if (scale <= 1) {
+        if (scale <= minScale) {
             setPosition({ x: 0, y: 0 });
         }
-    }, [scale]);
+    }, [scale, minScale]);
 
     const handleDoubleClick = useCallback(
         (e: React.MouseEvent) => {
-            if (scale === 1 && containerRef.current) {
+            if (scale <= minScale * 1.1 && containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
                 const tapX = e.clientX - rect.left;
                 const tapY = e.clientY - rect.top;
@@ -124,7 +151,7 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 resetZoom();
             }
         },
-        [scale, resetZoom]
+        [scale, minScale, resetZoom]
     );
 
     const openFullscreen = () => {
