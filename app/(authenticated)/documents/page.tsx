@@ -1,154 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import mermaid from "mermaid";
-
-// ピンチズーム対応画像コンポーネント（インライン表示）
-function ZoomableImage({ src, alt }: { src: string; alt: string }) {
-    const [scale, setScale] = useState(1);
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
-    const lastDistanceRef = useRef<number | null>(null);
-    const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        if (e.touches.length === 2) {
-            const dx = e.touches[0].clientX - e.touches[1].clientX;
-            const dy = e.touches[0].clientY - e.touches[1].clientY;
-            lastDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
-            lastPinchCenterRef.current = {
-                x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-                y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
-            };
-        } else if (e.touches.length === 1) {
-            setIsDragging(true);
-            lastTouchRef.current = {
-                x: e.touches[0].clientX,
-                y: e.touches[0].clientY,
-            };
-        }
-    }, []);
-
-    const handleTouchMove = useCallback(
-        (e: React.TouchEvent) => {
-            if (e.touches.length === 2 && lastDistanceRef.current !== null) {
-                e.preventDefault();
-                const dx = e.touches[0].clientX - e.touches[1].clientX;
-                const dy = e.touches[0].clientY - e.touches[1].clientY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                const delta = distance / lastDistanceRef.current;
-                const newScale = Math.min(Math.max(scale * delta, 1), 5);
-
-                const centerX =
-                    (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                const centerY =
-                    (e.touches[0].clientY + e.touches[1].clientY) / 2;
-
-                if (containerRef.current && lastPinchCenterRef.current) {
-                    const rect = containerRef.current.getBoundingClientRect();
-                    const screenCenterX = rect.width / 2;
-                    const screenCenterY = rect.height / 2;
-                    const pinchOffsetX = centerX - rect.left - screenCenterX;
-                    const pinchOffsetY = centerY - rect.top - screenCenterY;
-                    const scaleChange = newScale / scale;
-                    const newX =
-                        position.x -
-                        pinchOffsetX * (scaleChange - 1) +
-                        (centerX - lastPinchCenterRef.current.x);
-                    const newY =
-                        position.y -
-                        pinchOffsetY * (scaleChange - 1) +
-                        (centerY - lastPinchCenterRef.current.y);
-                    setPosition({ x: newX, y: newY });
-                }
-
-                setScale(newScale);
-                lastDistanceRef.current = distance;
-                lastPinchCenterRef.current = { x: centerX, y: centerY };
-
-                if (newScale <= 1) {
-                    setPosition({ x: 0, y: 0 });
-                }
-            } else if (
-                e.touches.length === 1 &&
-                isDragging &&
-                lastTouchRef.current &&
-                scale > 1
-            ) {
-                const deltaX = e.touches[0].clientX - lastTouchRef.current.x;
-                const deltaY = e.touches[0].clientY - lastTouchRef.current.y;
-                setPosition((prev) => ({
-                    x: prev.x + deltaX,
-                    y: prev.y + deltaY,
-                }));
-                lastTouchRef.current = {
-                    x: e.touches[0].clientX,
-                    y: e.touches[0].clientY,
-                };
-            }
-        },
-        [isDragging, scale, position]
-    );
-
-    const handleTouchEnd = useCallback(() => {
-        setIsDragging(false);
-        lastTouchRef.current = null;
-        lastDistanceRef.current = null;
-        lastPinchCenterRef.current = null;
-        if (scale <= 1) {
-            setPosition({ x: 0, y: 0 });
-        }
-    }, [scale]);
-
-    const handleDoubleClick = useCallback(
-        (e: React.MouseEvent) => {
-            if (scale === 1 && containerRef.current) {
-                const rect = containerRef.current.getBoundingClientRect();
-                const tapX = e.clientX - rect.left;
-                const tapY = e.clientY - rect.top;
-                const centerX = rect.width / 2;
-                const centerY = rect.height / 2;
-                const offsetX = (centerX - tapX) * 1;
-                const offsetY = (centerY - tapY) * 1;
-                setScale(2);
-                setPosition({ x: offsetX, y: offsetY });
-            } else {
-                setScale(1);
-                setPosition({ x: 0, y: 0 });
-            }
-        },
-        [scale]
-    );
-
-    return (
-        <div
-            ref={containerRef}
-            className="overflow-hidden touch-none relative"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            onDoubleClick={handleDoubleClick}
-        >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-                src={src}
-                alt={alt}
-                className="w-full select-none pointer-events-none"
-                style={{
-                    transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                    transformOrigin: "center center",
-                    transition: isDragging ? "none" : "transform 0.1s",
-                    willChange: "transform",
-                    backfaceVisibility: "hidden",
-                    WebkitBackfaceVisibility: "hidden",
-                }}
-                draggable={false}
-            />
-        </div>
-    );
-}
 
 // Mermaidフローチャートコンポーネント
 function MermaidChart({ chart }: { chart: string }) {
@@ -192,6 +45,56 @@ interface Document {
     category: string;
     content: React.ReactNode;
 }
+
+// 学友会館ライブ 標準結線図
+const wiringDiagram = `flowchart LR
+    subgraph 映像系統
+        direction TB
+        CAM1[カメラ1]
+        CAM2[カメラ2]
+        CAM3[カメラ3]
+        CAM4[カメラ4]
+        ATEM[ATEM Mini Pro ISO]
+        DISP3[ディスプレイ3<br/>SONY]
+        SW_CTRL[スイッチャー<br/>機器制御用]
+        TX_SW[発信スイッチャー]
+    end
+
+    subgraph PC系統
+        direction TB
+        PC_CAM[カメラSDカード<br/>データ取込用PC]
+        PC_DANTE[配信・Dante録音PC<br/>ThinkPad]
+        MACMINI[Macmini]
+    end
+
+    subgraph 音声系統
+        direction TB
+        DANTE[Dante<br/>BR-Q8]
+        USB_MIC[USB MIC]
+    end
+
+    subgraph ネットワーク
+        direction TB
+        INTERNET[Internet]
+        NAS[部室NAS]
+    end
+
+    CAM1 -->|HDMI| ATEM
+    CAM2 -->|HDMI| ATEM
+    CAM3 -->|HDMI| ATEM
+    CAM4 -->|HDMI| ATEM
+    ATEM -->|HDMI| DISP3
+    ATEM -->|USB-C| PC_DANTE
+    SW_CTRL -->|制御| ATEM
+    TX_SW --> INTERNET
+
+    DANTE -->|有線LAN| PC_DANTE
+    USB_MIC -->|USB| PC_DANTE
+    PC_DANTE -->|配信| TX_SW
+    PC_DANTE -->|録画データ| NAS
+
+    PC_CAM -->|データ取込| NAS
+`;
 
 const weatherFlowChart = `flowchart TD
     A["📅 準備日 9:00<br/>翌日の天気確認"]
@@ -539,13 +442,9 @@ const documents: Document[] = [
             <div className="space-y-6">
                 <section>
                     <h3 className="text-lg font-bold mb-2">結線図</h3>
-                    <p className="text-sm text-base-content/60 mb-2">
-                        ピンチで拡大・縮小
-                    </p>
-                    <ZoomableImage
-                        src="/documents/gakuyukaikan-wiring.svg"
-                        alt="学友会館ライブ 標準結線図 Ver2.0"
-                    />
+                    <div className="bg-base-200 p-4 rounded-lg overflow-x-auto">
+                        <MermaidChart chart={wiringDiagram} />
+                    </div>
                 </section>
 
                 <div className="divider"></div>
