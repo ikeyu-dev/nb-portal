@@ -3,6 +3,7 @@ import { ThemeToggle } from "@/features/theme-toggle";
 import { auth, signOut } from "@/src/auth";
 import { SidebarClient } from "./SidebarClient";
 import { SidebarNav } from "./SidebarNav";
+import packageJson from "@/package.json";
 
 interface SidebarProps {
     children: React.ReactNode;
@@ -113,6 +114,16 @@ export default async function Sidebar({ children }: SidebarProps) {
                             </form>
                         </div>
                     )}
+
+                    {/* Version Info */}
+                    <div className="p-4 border-t border-base-300">
+                        <p
+                            className="text-base-content/40 text-center"
+                            style={{ fontSize: "clamp(0.625rem, 1vw, 0.75rem)" }}
+                        >
+                            NB Portal v{packageJson.version}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
