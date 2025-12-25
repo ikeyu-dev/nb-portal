@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import mermaid from "mermaid";
 
@@ -937,7 +937,7 @@ const documents: Document[] = [
     },
 ];
 
-export default function DocumentsPage() {
+function DocumentsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const docId = searchParams.get("doc");
@@ -1059,5 +1059,41 @@ export default function DocumentsPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function DocumentsPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="p-4 lg:p-6 w-full">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="flex items-center gap-3 mb-6">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 384 512"
+                                className="h-6 w-6 text-primary"
+                                fill="currentColor"
+                            >
+                                <path d="M0 64C0 28.7 28.7 0 64 0L224 0l0 128c0 17.7 14.3 32 32 32l128 0 0 288c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm384 64l-128 0L256 0 384 128z" />
+                            </svg>
+                            <h1
+                                className="font-bold"
+                                style={{
+                                    fontSize: "clamp(1.25rem, 3vw, 1.5rem)",
+                                }}
+                            >
+                                資料
+                            </h1>
+                        </div>
+                        <div className="flex justify-center py-8">
+                            <span className="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
+                </div>
+            }
+        >
+            <DocumentsContent />
+        </Suspense>
     );
 }
