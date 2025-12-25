@@ -10,6 +10,7 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
     const [isDragging, setIsDragging] = useState(false);
     const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
     const lastDistanceRef = useRef<number | null>(null);
+    const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -18,6 +19,11 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             lastDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
+            // ピンチの中心点を記録
+            lastPinchCenterRef.current = {
+                x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+                y: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+            };
         } else if (e.touches.length === 1) {
             // ドラッグ開始
             setIsDragging(true);
@@ -37,13 +43,46 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 const dy = e.touches[0].clientY - e.touches[1].clientY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const delta = distance / lastDistanceRef.current;
-                const newScale = Math.min(Math.max(scale * delta, 0.5), 5);
+                const newScale = Math.min(Math.max(scale * delta, 1), 5);
+
+                // ピンチの中心点
+                const centerX =
+                    (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const centerY =
+                    (e.touches[0].clientY + e.touches[1].clientY) / 2;
+
+                if (containerRef.current && lastPinchCenterRef.current) {
+                    const rect = containerRef.current.getBoundingClientRect();
+                    // 画面中心からの距離
+                    const screenCenterX = rect.width / 2;
+                    const screenCenterY = rect.height / 2;
+
+                    // ピンチ中心点の画面中心からのオフセット
+                    const pinchOffsetX = centerX - rect.left - screenCenterX;
+                    const pinchOffsetY = centerY - rect.top - screenCenterY;
+
+                    // スケール変化に応じて位置を調整
+                    const scaleChange = newScale / scale;
+                    const newX =
+                        position.x -
+                        pinchOffsetX * (scaleChange - 1) +
+                        (centerX - lastPinchCenterRef.current.x);
+                    const newY =
+                        position.y -
+                        pinchOffsetY * (scaleChange - 1) +
+                        (centerY - lastPinchCenterRef.current.y);
+
+                    setPosition({ x: newX, y: newY });
+                }
+
                 setScale(newScale);
+                lastDistanceRef.current = distance;
+                lastPinchCenterRef.current = { x: centerX, y: centerY };
+
                 // スケールが1以下になったらpositionをリセット
                 if (newScale <= 1) {
                     setPosition({ x: 0, y: 0 });
                 }
-                lastDistanceRef.current = distance;
             } else if (
                 e.touches.length === 1 &&
                 isDragging &&
@@ -63,27 +102,43 @@ function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
                 };
             }
         },
-        [isDragging, scale]
+        [isDragging, scale, position]
     );
 
     const handleTouchEnd = useCallback(() => {
         setIsDragging(false);
         lastTouchRef.current = null;
         lastDistanceRef.current = null;
+        lastPinchCenterRef.current = null;
         // スケールが1以下の場合はpositionをリセット
         if (scale <= 1) {
             setPosition({ x: 0, y: 0 });
         }
     }, [scale]);
 
-    const handleDoubleClick = useCallback(() => {
-        if (scale === 1) {
-            setScale(2);
-        } else {
-            setScale(1);
-            setPosition({ x: 0, y: 0 });
-        }
-    }, [scale]);
+    // ダブルタップでタップ位置を中心に拡大
+    const handleDoubleClick = useCallback(
+        (e: React.MouseEvent) => {
+            if (scale === 1 && containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                const tapX = e.clientX - rect.left;
+                const tapY = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                // タップ位置を中心にするためのオフセット
+                const offsetX = (centerX - tapX) * 1; // 2倍に拡大するので1倍分オフセット
+                const offsetY = (centerY - tapY) * 1;
+
+                setScale(2);
+                setPosition({ x: offsetX, y: offsetY });
+            } else {
+                setScale(1);
+                setPosition({ x: 0, y: 0 });
+            }
+        },
+        [scale]
+    );
 
     return (
         <div
