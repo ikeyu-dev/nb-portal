@@ -1,7 +1,135 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import mermaid from "mermaid";
+
+// ピンチズーム対応画像ビューアー
+function ImageViewer({ src, onClose }: { src: string; onClose: () => void }) {
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const lastTouchRef = useRef<{ x: number; y: number } | null>(null);
+    const lastDistanceRef = useRef<number | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        if (e.touches.length === 2) {
+            // ピンチ開始
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            lastDistanceRef.current = Math.sqrt(dx * dx + dy * dy);
+        } else if (e.touches.length === 1) {
+            // ドラッグ開始
+            setIsDragging(true);
+            lastTouchRef.current = {
+                x: e.touches[0].clientX,
+                y: e.touches[0].clientY,
+            };
+        }
+    }, []);
+
+    const handleTouchMove = useCallback(
+        (e: React.TouchEvent) => {
+            if (e.touches.length === 2 && lastDistanceRef.current !== null) {
+                // ピンチズーム
+                e.preventDefault();
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const delta = distance / lastDistanceRef.current;
+                setScale((prev) => Math.min(Math.max(prev * delta, 0.5), 5));
+                lastDistanceRef.current = distance;
+            } else if (
+                e.touches.length === 1 &&
+                isDragging &&
+                lastTouchRef.current &&
+                scale > 1
+            ) {
+                // ドラッグ移動（ズーム時のみ）
+                const deltaX = e.touches[0].clientX - lastTouchRef.current.x;
+                const deltaY = e.touches[0].clientY - lastTouchRef.current.y;
+                setPosition((prev) => ({
+                    x: prev.x + deltaX,
+                    y: prev.y + deltaY,
+                }));
+                lastTouchRef.current = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY,
+                };
+            }
+        },
+        [isDragging, scale]
+    );
+
+    const handleTouchEnd = useCallback(() => {
+        setIsDragging(false);
+        lastTouchRef.current = null;
+        lastDistanceRef.current = null;
+    }, []);
+
+    const handleDoubleClick = useCallback(() => {
+        if (scale === 1) {
+            setScale(2);
+        } else {
+            setScale(1);
+            setPosition({ x: 0, y: 0 });
+        }
+    }, [scale]);
+
+    return (
+        <dialog
+            className="modal modal-open"
+            onClick={onClose}
+        >
+            <div
+                ref={containerRef}
+                className="fixed inset-0 flex items-center justify-center overflow-hidden touch-none"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={src}
+                    alt="拡大画像"
+                    className="max-h-[90vh] max-w-[95vw] object-contain select-none"
+                    style={{
+                        transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                        transition: isDragging ? "none" : "transform 0.1s",
+                    }}
+                    onDoubleClick={handleDoubleClick}
+                    draggable={false}
+                />
+            </div>
+            <button
+                className="btn btn-circle btn-ghost absolute top-4 right-4 text-white z-50"
+                onClick={onClose}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                    />
+                </svg>
+            </button>
+            <form
+                method="dialog"
+                className="modal-backdrop bg-black/90"
+            >
+                <button onClick={onClose}>close</button>
+            </form>
+        </dialog>
+    );
+}
 
 // Mermaidフローチャートコンポーネント
 function MermaidChart({ chart }: { chart: string }) {
@@ -585,28 +713,10 @@ export default function DocumentsPage() {
 
             {/* 画像拡大モーダル */}
             {expandedImage && (
-                <dialog
-                    className="modal modal-open"
-                    onClick={() => setExpandedImage(null)}
-                >
-                    <div className="modal-box max-w-full w-auto h-auto max-h-[90vh] p-2 bg-base-100">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                            src={expandedImage}
-                            alt="拡大画像"
-                            className="max-h-[85vh] w-auto object-contain"
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop bg-black/80"
-                    >
-                        <button onClick={() => setExpandedImage(null)}>
-                            close
-                        </button>
-                    </form>
-                </dialog>
+                <ImageViewer
+                    src={expandedImage}
+                    onClose={() => setExpandedImage(null)}
+                />
             )}
         </div>
     );
