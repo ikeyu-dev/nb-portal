@@ -125,32 +125,35 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     return (
         <div
             ref={containerRef}
-            className="overflow-hidden touch-none"
+            className="overflow-hidden touch-none relative"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
+            onDoubleClick={handleDoubleClick}
         >
             {src.endsWith(".svg") ? (
-                <object
-                    data={src}
-                    type="image/svg+xml"
-                    className="w-full select-none"
-                    style={{
-                        transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
-                        transformOrigin: "center center",
-                        transition: isDragging ? "none" : "transform 0.1s",
-                        willChange: "transform",
-                        backfaceVisibility: "hidden",
-                        WebkitBackfaceVisibility: "hidden",
-                    }}
-                    onDoubleClick={handleDoubleClick}
-                />
+                <>
+                    <object
+                        data={src}
+                        type="image/svg+xml"
+                        className="w-full select-none pointer-events-none"
+                        style={{
+                            transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
+                            transformOrigin: "center center",
+                            transition: isDragging ? "none" : "transform 0.1s",
+                            willChange: "transform",
+                            backfaceVisibility: "hidden",
+                            WebkitBackfaceVisibility: "hidden",
+                        }}
+                    />
+                    <div className="absolute inset-0" />
+                </>
             ) : (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                     src={src}
                     alt={alt}
-                    className="w-full select-none"
+                    className="w-full select-none pointer-events-none"
                     style={{
                         transform: `translate3d(${position.x}px, ${position.y}px, 0) scale(${scale})`,
                         transformOrigin: "center center",
@@ -159,7 +162,6 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                         backfaceVisibility: "hidden",
                         WebkitBackfaceVisibility: "hidden",
                     }}
-                    onDoubleClick={handleDoubleClick}
                     draggable={false}
                 />
             )}
