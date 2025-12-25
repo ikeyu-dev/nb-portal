@@ -4,8 +4,11 @@ import { AnalogClock } from "@/features/analog-clock";
 import { WeatherWidget } from "@/features/weather";
 import { ScheduleCard } from "@/features/schedule-card";
 import { DateDisplay } from "@/features/date-display";
+import { ProfileImageSaver } from "@/features/profile-image";
+import { auth } from "@/src/auth";
 
 export default async function HomePage() {
+    const session = await auth();
     let absences: Absence[] = [];
     let schedules: Schedule[] = [];
     let error: string | null = null;
@@ -82,8 +85,10 @@ export default async function HomePage() {
         });
 
     return (
-        <div className="p-4 sm:p-6 lg:p-10 max-w-full">
-            <h1
+        <>
+            <ProfileImageSaver profileImage={session?.profileImage} />
+            <div className="p-4 sm:p-6 lg:p-10 max-w-full">
+                <h1
                 className="font-bold mb-8 max-lg:hidden"
                 style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
             >
@@ -442,6 +447,7 @@ export default async function HomePage() {
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </>
     );
 }
