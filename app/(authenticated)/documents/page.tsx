@@ -375,6 +375,16 @@ function PdfViewer({ src }: { src: string }) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const filename = src.split("/").pop() || "document.pdf";
 
+    // Google Docs Viewer用のURL（モバイル用）
+    const getGoogleDocsViewerUrl = () => {
+        const baseUrl =
+            typeof window !== "undefined"
+                ? window.location.origin
+                : "https://nb-portal.vercel.app";
+        const fullUrl = `${baseUrl}${src}`;
+        return `https://docs.google.com/viewer?url=${encodeURIComponent(fullUrl)}&embedded=true`;
+    };
+
     return (
         <>
             <div className="space-y-6">
@@ -501,7 +511,7 @@ function PdfViewer({ src }: { src: string }) {
                         </button>
                     </div>
                     <iframe
-                        src={src}
+                        src={getGoogleDocsViewerUrl()}
                         className="flex-1 w-full border-0"
                         title={filename}
                     />
