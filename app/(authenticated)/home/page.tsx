@@ -88,12 +88,28 @@ export default async function HomePage() {
         <>
             <ProfileImageSaver profileImage={session?.profileImage} />
             <div className="p-4 sm:p-6 lg:p-10 max-w-full">
-                <h1
-                className="font-bold mb-8 max-lg:hidden"
-                style={{ fontSize: "clamp(1.5rem, 4vw, 2.25rem)" }}
-            >
-                ダッシュボード
-            </h1>
+                <div className="flex items-center gap-3 mb-8 max-lg:hidden">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6 text-primary"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                        />
+                    </svg>
+                    <h1
+                        className="font-bold"
+                        style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
+                    >
+                        ダッシュボード
+                    </h1>
+                </div>
             {error && (
                 <div className="alert alert-error mb-6">
                     <span>{error}</span>
