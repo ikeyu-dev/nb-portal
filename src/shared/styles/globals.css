@@ -6,12 +6,12 @@
 
 /* カスタムテーマカラー設定 */
 [data-theme="light"] {
-    --color-primary: #2a83a2;
+    --color-primary: #0086bf;
     --color-primary-content: #ffffff;
 }
 
 [data-theme="dark"] {
-    --color-primary: #2a83a2;
+    --color-primary: #0086bf;
     --color-primary-content: #ffffff;
 }
 
