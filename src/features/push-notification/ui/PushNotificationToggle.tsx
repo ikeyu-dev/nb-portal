@@ -155,21 +155,54 @@ export default function PushNotificationToggle({
                 try {
                     const newRegistration =
                         await navigator.serviceWorker.register("/sw.js");
-                    await newRegistration.update();
 
-                    // 登録完了を待機
-                    await new Promise((resolve) => setTimeout(resolve, 1000));
+                    // Service Workerがactiveになるまで待機
+                    if (newRegistration.installing) {
+                        await new Promise<void>((resolve) => {
+                            newRegistration.installing!.addEventListener(
+                                "statechange",
+                                function handler() {
+                                    if (this.state === "activated") {
+                                        this.removeEventListener(
+                                            "statechange",
+                                            handler
+                                        );
+                                        resolve();
+                                    }
+                                }
+                            );
+                        });
+                    } else if (newRegistration.waiting) {
+                        await new Promise<void>((resolve) => {
+                            newRegistration.waiting!.addEventListener(
+                                "statechange",
+                                function handler() {
+                                    if (this.state === "activated") {
+                                        this.removeEventListener(
+                                            "statechange",
+                                            handler
+                                        );
+                                        resolve();
+                                    }
+                                }
+                            );
+                        });
+                    }
 
                     // 再度取得を試みる
                     const retryRegistration =
                         await getServiceWorkerRegistration(3, 1000);
                     if (!retryRegistration) {
-                        throw new Error("Service Worker registration failed");
+                        throw new Error("Service Worker activation failed");
                     }
                 } catch (regError) {
                     console.error("Service Worker re-registration failed:", regError);
+                    const errorMessage =
+                        regError instanceof Error
+                            ? regError.message
+                            : "Unknown error";
                     alert(
-                        "Service Workerの登録に失敗しました。ブラウザを再起動してお試しください。"
+                        `Service Workerの登録に失敗しました: ${errorMessage}\nブラウザの設定でService Workerを有効にしてください。`
                     );
                     return;
                 }
