@@ -11,6 +11,9 @@ type SubscriptionState =
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
+/**
+ * Base64 URL形式の文字列をUint8Arrayに変換
+ */
 function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
     const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
     const base64 = (base64String + padding)
@@ -24,10 +27,64 @@ function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
     return outputArray.buffer as ArrayBuffer;
 }
 
+/**
+ * Service Workerの登録を取得（リトライ機能付き）
+ */
+async function getServiceWorkerRegistration(
+    maxRetries = 3,
+    retryDelay = 1000
+): Promise<ServiceWorkerRegistration | null> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            // まず既存の登録を確認
+            const existingRegistration =
+                await navigator.serviceWorker.getRegistration("/");
+            if (existingRegistration?.active) {
+                return existingRegistration;
+            }
+
+            // readyを待機（タイムアウト付き）
+            const timeoutPromise = new Promise<null>((resolve) => {
+                setTimeout(() => resolve(null), 5000);
+            });
+
+            const registration = await Promise.race([
+                navigator.serviceWorker.ready,
+                timeoutPromise,
+            ]);
+
+            if (registration) {
+                return registration;
+            }
+
+            // リトライ前に待機
+            if (attempt < maxRetries - 1) {
+                await new Promise((resolve) =>
+                    setTimeout(resolve, retryDelay)
+                );
+            }
+        } catch (error) {
+            console.error(
+                `Service Worker registration attempt ${attempt + 1} failed:`,
+                error
+            );
+            if (attempt < maxRetries - 1) {
+                await new Promise((resolve) =>
+                    setTimeout(resolve, retryDelay)
+                );
+            }
+        }
+    }
+    return null;
+}
+
 interface PushNotificationToggleProps {
     userEmail: string | null;
 }
 
+/**
+ * プッシュ通知のオン/オフを切り替えるトグルコンポーネント
+ */
 export default function PushNotificationToggle({
     userEmail,
 }: PushNotificationToggleProps) {
@@ -49,20 +106,10 @@ export default function PushNotificationToggle({
         }
 
         try {
-            // Service Workerの準備をタイムアウト付きで待機
-            const timeoutPromise = new Promise<null>((_, reject) => {
-                setTimeout(
-                    () => reject(new Error("Service Worker timeout")),
-                    5000
-                );
-            });
-
-            const registration = await Promise.race([
-                navigator.serviceWorker.ready,
-                timeoutPromise,
-            ]);
+            const registration = await getServiceWorkerRegistration();
 
             if (!registration) {
+                // Service Workerが利用できない場合もunsubscribedとして扱う
                 setState("unsubscribed");
                 return;
             }
@@ -100,32 +147,50 @@ export default function PushNotificationToggle({
                 return;
             }
 
-            // Service Workerの準備をタイムアウト付きで待機
-            const timeoutPromise = new Promise<null>((_, reject) => {
-                setTimeout(
-                    () => reject(new Error("Service Worker not ready")),
-                    10000
-                );
-            });
-
-            const registration = await Promise.race([
-                navigator.serviceWorker.ready,
-                timeoutPromise,
-            ]);
+            // Service Workerの登録を取得（リトライ付き）
+            const registration = await getServiceWorkerRegistration(5, 2000);
 
             if (!registration) {
+                // Service Workerが取得できない場合、再登録を試みる
+                try {
+                    const newRegistration =
+                        await navigator.serviceWorker.register("/sw.js");
+                    await newRegistration.update();
+
+                    // 登録完了を待機
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+                    // 再度取得を試みる
+                    const retryRegistration =
+                        await getServiceWorkerRegistration(3, 1000);
+                    if (!retryRegistration) {
+                        throw new Error("Service Worker registration failed");
+                    }
+                } catch (regError) {
+                    console.error("Service Worker re-registration failed:", regError);
+                    alert(
+                        "Service Workerの登録に失敗しました。ブラウザを再起動してお試しください。"
+                    );
+                    return;
+                }
+            }
+
+            // 最終的な登録を取得
+            const finalRegistration =
+                registration || (await getServiceWorkerRegistration(1, 0));
+            if (!finalRegistration) {
                 throw new Error("Service Worker not available");
             }
 
             // 既存のサブスクリプションがあれば解除
             const existingSubscription =
-                await registration.pushManager.getSubscription();
+                await finalRegistration.pushManager.getSubscription();
             if (existingSubscription) {
                 await existingSubscription.unsubscribe();
             }
 
             // 新しいサブスクリプションを作成
-            const subscription = await registration.pushManager.subscribe({
+            const subscription = await finalRegistration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
             });
@@ -152,16 +217,9 @@ export default function PushNotificationToggle({
             }
         } catch (error) {
             console.error("Error subscribing:", error);
-            if (
-                error instanceof Error &&
-                error.message.includes("Service Worker")
-            ) {
-                alert(
-                    "Service Workerが利用できません。ページを再読み込みしてください。"
-                );
-            } else {
-                alert("プッシュ通知の登録に失敗しました");
-            }
+            alert(
+                "プッシュ通知の登録に失敗しました。ページを再読み込みしてもう一度お試しください。"
+            );
         } finally {
             setIsProcessing(false);
         }
