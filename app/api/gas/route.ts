@@ -5,12 +5,17 @@ import {
     checkRateLimit,
     getClientIp,
 } from "@/src/shared/lib/rate-limit";
+import {
+    gasApiPathSchema,
+    queryParamSchema,
+    formatValidationErrors,
+} from "@/src/shared/lib/validation";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 /**
  * GAS APIへのプロキシエンドポイント
- * クライアント側からの直接呼び出しを防ぎ、セッション認証とレート制限を行う
+ * クライアント側からの直接呼び出しを防ぎ、セッション認証、レート制限、入力バリデーションを行う
  */
 export async function GET(request: NextRequest) {
     // レート制限チェック
@@ -45,18 +50,28 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // 許可されたパスのみを受け付ける
-        const allowedPaths = [
-            "schedules",
-            "items",
-            "absences",
-            "event-absences",
-            "health",
-            "notifications",
-        ];
-        if (!allowedPaths.includes(path)) {
+        // パスのバリデーション
+        const pathValidation = gasApiPathSchema.safeParse(path);
+        if (!pathValidation.success) {
             return NextResponse.json(
                 { error: "Invalid path" },
+                { status: 400 }
+            );
+        }
+
+        // クエリパラメータのバリデーション
+        const queryParams = {
+            eventId: searchParams.get("eventId") || undefined,
+            date: searchParams.get("date") || undefined,
+            limit: searchParams.get("limit") || undefined,
+        };
+        const queryValidation = queryParamSchema.safeParse(queryParams);
+        if (!queryValidation.success) {
+            return NextResponse.json(
+                {
+                    error: "バリデーションエラー",
+                    details: formatValidationErrors(queryValidation.error),
+                },
                 { status: 400 }
             );
         }

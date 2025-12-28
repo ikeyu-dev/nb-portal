@@ -5,12 +5,16 @@ import {
     checkRateLimit,
     getClientIp,
 } from "@/src/shared/lib/rate-limit";
+import {
+    absenceSubmitSchema,
+    formatValidationErrors,
+} from "@/src/shared/lib/validation";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 /**
  * 欠席連絡送信API
- * セッション認証とレート制限を適用
+ * セッション認証、レート制限、入力バリデーションを適用
  */
 export async function POST(request: NextRequest) {
     // レート制限チェック
@@ -38,7 +42,21 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
 
-        // GAS APIに転送
+        // 入力バリデーション
+        const validationResult = absenceSubmitSchema.safeParse(body);
+        if (!validationResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "バリデーションエラー",
+                    details: formatValidationErrors(validationResult.error),
+                },
+                { status: 400 }
+            );
+        }
+
+        // GAS APIに転送（バリデーション済みのデータを使用）
+        const validatedData = validationResult.data;
         const url = new URL(GAS_API_URL);
         url.searchParams.append("path", "absences");
 
@@ -47,7 +65,7 @@ export async function POST(request: NextRequest) {
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(validatedData),
         });
 
         const data = await response.json();
