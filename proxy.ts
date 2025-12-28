@@ -8,12 +8,28 @@ export async function proxy(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // 認証不要のパス
-    const publicPaths = ["/", "/login", "/api/auth", "/api/push-send"];
+    // /api/push-sendはAPIシークレットで保護されているため、セッション認証は不要だが
+    // 明示的に公開パスとして扱わず、API側でシークレット認証を行う
+    const publicPaths = ["/", "/login", "/api/auth"];
+
+    // APIシークレットで保護されたパス（セッション認証をスキップ）
+    const apiSecretProtectedPaths = ["/api/push-send"];
+
     const isPublicPath = publicPaths.some(
         (path) => pathname === path || pathname.startsWith(path + "/")
     );
 
+    const isApiSecretProtectedPath = apiSecretProtectedPaths.some(
+        (path) => pathname === path || pathname.startsWith(path + "/")
+    );
+
     if (isPublicPath) {
+        return NextResponse.next();
+    }
+
+    // APIシークレットで保護されたパスはセッション認証をスキップ
+    // API側でシークレット認証を行う
+    if (isApiSecretProtectedPath) {
         return NextResponse.next();
     }
 

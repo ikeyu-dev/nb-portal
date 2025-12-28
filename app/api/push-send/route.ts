@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
+import crypto from "crypto";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT!;
 const PUSH_API_SECRET = process.env.PUSH_API_SECRET!;
+
+/**
+ * タイミングセーフな文字列比較
+ * タイミング攻撃を防ぐため、常に一定時間で比較を行う
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) {
+        // 長さが異なる場合でもタイミング攻撃を防ぐため、ダミー比較を実行
+        crypto.timingSafeEqual(Buffer.from(a), Buffer.from(a));
+        return false;
+    }
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 // VAPIDの設定
 webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
@@ -21,9 +35,10 @@ export async function POST(request: NextRequest) {
     try {
         // APIシークレットの検証（GASからの呼び出し用）
         const authHeader = request.headers.get("authorization");
-        const providedSecret = authHeader?.replace("Bearer ", "");
+        const providedSecret = authHeader?.replace("Bearer ", "") || "";
 
-        if (providedSecret !== PUSH_API_SECRET) {
+        // タイミングセーフな比較でAPIシークレットを検証
+        if (!timingSafeEqual(providedSecret, PUSH_API_SECRET)) {
             return NextResponse.json(
                 { error: "Unauthorized" },
                 { status: 401 }
