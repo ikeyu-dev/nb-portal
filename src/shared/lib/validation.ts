@@ -52,6 +52,57 @@ export const queryParamSchema = z.object({
 });
 
 /**
+ * 機材登録データのバリデーションスキーマ
+ */
+export const itemCreateSchema = z.object({
+    category: z.enum(["MIC", "SPK", "CAB", "OTH"], {
+        error: "カテゴリはMIC, SPK, CAB, OTHのいずれかです",
+    }),
+    name: z
+        .string()
+        .min(1, "機材名は必須です")
+        .max(100, "機材名が長すぎます"),
+    count: z.coerce
+        .number()
+        .min(1, "数量は1以上で指定してください")
+        .max(100, "一度に登録できるのは100個までです")
+        .optional()
+        .default(1),
+});
+
+export type ItemCreateData = z.infer<typeof itemCreateSchema>;
+
+/**
+ * 機材更新データのバリデーションスキーマ
+ */
+export const itemUpdateSchema = z.object({
+    itemId: z
+        .string()
+        .min(1, "機材IDは必須です")
+        .max(10, "機材IDが長すぎます")
+        .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式が不正です"),
+    name: z
+        .string()
+        .min(1, "機材名は必須です")
+        .max(100, "機材名が長すぎます"),
+});
+
+export type ItemUpdateData = z.infer<typeof itemUpdateSchema>;
+
+/**
+ * 機材削除データのバリデーションスキーマ
+ */
+export const itemDeleteSchema = z.object({
+    itemId: z
+        .string()
+        .min(1, "機材IDは必須です")
+        .max(10, "機材IDが長すぎます")
+        .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式が不正です"),
+});
+
+export type ItemDeleteData = z.infer<typeof itemDeleteSchema>;
+
+/**
  * バリデーションエラーを整形して返す
  */
 export function formatValidationErrors(error: z.ZodError): string[] {

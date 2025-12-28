@@ -464,6 +464,12 @@ function doPost(e) {
                 return handleUpdateSchedule(postData);
             case "schedules/delete":
                 return handleDeleteSchedule(postData);
+            case "items":
+                return handlePostItems(postData);
+            case "items/update":
+                return handleUpdateItem(postData);
+            case "items/delete":
+                return handleDeleteItem(postData);
             case "push-subscribe":
                 return handlePushSubscribe(postData);
             case "push-unsubscribe":
@@ -525,6 +531,237 @@ const handleGetItems = (e) => {
             success: true,
             data: items,
             count: items.length,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: 機材登録（POST items）
+// シート名: items
+// 列構成: A:ITEM_ID, B:NAME, C:WHEN
+// リクエストボディ: { category, name, count }
+// ============================================
+
+/**
+ * 機材を登録（複数登録対応）
+ * @param {Object} postData - リクエストボディ { category, name, count }
+ * @returns {TextOutput} { success, message, data: { itemIds } }
+ */
+const handlePostItems = (postData) => {
+    try {
+        const { category, name, count = 1 } = postData;
+
+        if (!category || !name) {
+            return createErrorResponse(
+                "Missing required fields (category, name)",
+                400
+            );
+        }
+
+        const validCategories = ["MIC", "SPK", "CAB", "OTH"];
+        const upperCategory = category.toUpperCase();
+        if (!validCategories.includes(upperCategory)) {
+            return createErrorResponse(
+                "Invalid category. Must be MIC, SPK, CAB, or OTH",
+                400
+            );
+        }
+
+        const itemCount = parseInt(count, 10);
+        if (isNaN(itemCount) || itemCount < 1 || itemCount > 100) {
+            return createErrorResponse(
+                "Count must be a number between 1 and 100",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("items");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'items' not found", 404);
+        }
+
+        // 現在の同カテゴリの最大IDを取得
+        const lastRow = sheet.getLastRow();
+        let maxNumber = 0;
+
+        if (lastRow >= 2) {
+            const existingIds = sheet
+                .getRange(2, 1, lastRow - 1, 1)
+                .getValues()
+                .flat();
+            existingIds.forEach((id) => {
+                if (
+                    String(id).toUpperCase().startsWith(upperCategory)
+                ) {
+                    const numPart = parseInt(String(id).substring(3), 10);
+                    if (!isNaN(numPart) && numPart > maxNumber) {
+                        maxNumber = numPart;
+                    }
+                }
+            });
+        }
+
+        // 新しい機材を登録
+        const createdIds = [];
+        const now = new Date();
+        const whenStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")}`;
+
+        for (let i = 0; i < itemCount; i++) {
+            const newNumber = maxNumber + 1 + i;
+            const itemId = `${upperCategory}${String(newNumber).padStart(3, "0")}`;
+            sheet.appendRow([itemId, name, whenStr]);
+            createdIds.push(itemId);
+        }
+
+        return createResponse({
+            success: true,
+            message: `${itemCount} item(s) created successfully`,
+            data: {
+                itemIds: createdIds,
+                name,
+                category: upperCategory,
+            },
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: 機材更新（POST items/update）
+// シート名: items
+// 列構成: A:ITEM_ID, B:NAME, C:WHEN
+// リクエストボディ: { itemId, name }
+// ============================================
+
+/**
+ * 機材情報を更新
+ * @param {Object} postData - リクエストボディ { itemId, name }
+ * @returns {TextOutput} { success, message }
+ */
+const handleUpdateItem = (postData) => {
+    try {
+        const { itemId, name } = postData;
+
+        if (!itemId || !name) {
+            return createErrorResponse(
+                "Missing required fields (itemId, name)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("items");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'items' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createErrorResponse("Item not found", 404);
+        }
+
+        // ITEM_IDが一致する行を検索
+        const itemIdColumn = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        let targetRow = -1;
+
+        for (let i = 0; i < itemIdColumn.length; i++) {
+            if (
+                String(itemIdColumn[i][0]).toUpperCase() ===
+                String(itemId).toUpperCase()
+            ) {
+                targetRow = i + 2;
+                break;
+            }
+        }
+
+        if (targetRow === -1) {
+            return createErrorResponse(
+                "Item not found with itemId: " + itemId,
+                404
+            );
+        }
+
+        // NAMEを更新（B列）
+        sheet.getRange(targetRow, 2).setValue(name);
+
+        return createResponse({
+            success: true,
+            message: "Item updated successfully",
+            data: {
+                itemId,
+                name,
+            },
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
+// API: 機材削除（POST items/delete）
+// シート名: items
+// 列構成: A:ITEM_ID, B:NAME, C:WHEN
+// リクエストボディ: { itemId }
+// ============================================
+
+/**
+ * 機材を削除
+ * @param {Object} postData - リクエストボディ { itemId }
+ * @returns {TextOutput} { success, message }
+ */
+const handleDeleteItem = (postData) => {
+    try {
+        const { itemId } = postData;
+
+        if (!itemId) {
+            return createErrorResponse("Missing required field (itemId)", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("items");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'items' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        if (lastRow < 2) {
+            return createErrorResponse("Item not found", 404);
+        }
+
+        // ITEM_IDが一致する行を検索
+        const itemIdColumn = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+        let targetRow = -1;
+
+        for (let i = 0; i < itemIdColumn.length; i++) {
+            if (
+                String(itemIdColumn[i][0]).toUpperCase() ===
+                String(itemId).toUpperCase()
+            ) {
+                targetRow = i + 2;
+                break;
+            }
+        }
+
+        if (targetRow === -1) {
+            return createErrorResponse(
+                "Item not found with itemId: " + itemId,
+                404
+            );
+        }
+
+        // 行を削除
+        sheet.deleteRow(targetRow);
+
+        return createResponse({
+            success: true,
+            message: "Item deleted successfully",
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
