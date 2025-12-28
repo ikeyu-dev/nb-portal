@@ -880,8 +880,8 @@ const handlePostSchedule = (postData) => {
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
         sendPushNotification(
-            "新しい予定が追加されました",
-            `${dateStr} ${title}`,
+            `新規予定: ${title}`,
+            dateStr,
             "/calendar"
         );
 
