@@ -9,14 +9,27 @@ import {
     absenceSubmitSchema,
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
+import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 /**
  * 欠席連絡送信API
- * セッション認証、レート制限、入力バリデーションを適用
+ * CSRF保護、セッション認証、レート制限、入力バリデーションを適用
  */
 export async function POST(request: NextRequest) {
+    // CSRF保護: Originチェック
+    const originError = validateOrigin(request);
+    if (originError) {
+        return originError;
+    }
+
+    // CSRF保護: Content-Typeチェック
+    const contentTypeError = validateContentType(request);
+    if (contentTypeError) {
+        return contentTypeError;
+    }
+
     // レート制限チェック
     const clientIp = getClientIp(request);
     const rateLimitResponse = await checkRateLimit(apiRateLimiter, clientIp);
