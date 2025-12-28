@@ -1,17 +1,32 @@
 import type { ApiResponse, Item, Schedule, Absence } from "../types/api";
+import { auth } from "@/src/auth";
+import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 /**
  * サーバーサイドからGAS APIを直接呼び出す
  * Server Componentsで使用する
+ * セッション認証と入力バリデーションを行う
  */
 async function fetchFromGASServer<T>(
-    path: string,
+    path: GasApiPath,
     params?: Record<string, string>
 ): Promise<ApiResponse<T>> {
+    // セッション認証
+    const session = await auth();
+    if (!session) {
+        throw new Error("Unauthorized");
+    }
+
     if (!GAS_API_URL) {
         throw new Error("GAS API URL not configured");
+    }
+
+    // パスのバリデーション
+    const pathValidation = gasApiPathSchema.safeParse(path);
+    if (!pathValidation.success) {
+        throw new Error("Invalid path");
     }
 
     const gasUrl = new URL(GAS_API_URL);
