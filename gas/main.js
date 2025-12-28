@@ -1141,8 +1141,8 @@ const handleUpdateSchedule = (postData) => {
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
         sendPushNotification(
-            "予定が更新されました",
-            `${dateStr} ${title}`,
+            `予定更新: ${title}`,
+            dateStr,
             "/calendar"
         );
 
@@ -1223,8 +1223,23 @@ const handleDeleteSchedule = (postData) => {
             );
         }
 
+        // 削除前に予定の情報を取得（通知用）
+        const rowData = sheet.getRange(targetRow, 1, 1, 7).getValues()[0];
+        const year = rowData[1];
+        const month = rowData[2];
+        const date = rowData[3];
+        const title = rowData[6];
+
         // 行を削除
         sheet.deleteRow(targetRow);
+
+        // プッシュ通知を送信
+        const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
+        sendPushNotification(
+            `予定削除: ${title}`,
+            dateStr,
+            "/calendar"
+        );
 
         return createResponse({
             success: true,
