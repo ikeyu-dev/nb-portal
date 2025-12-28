@@ -8,17 +8,19 @@ async function fetchFromGAS<T>(
     path: string,
     params?: Record<string, string>
 ): Promise<ApiResponse<T>> {
-    const url = new URL("/api/gas", window.location.origin);
-    url.searchParams.append("path", path);
+    const searchParams = new URLSearchParams();
+    searchParams.append("path", path);
 
     if (params) {
         Object.entries(params).forEach(([key, value]) => {
-            url.searchParams.append(key, value);
+            searchParams.append(key, value);
         });
     }
 
+    const url = `/api/gas?${searchParams.toString()}`;
+
     try {
-        const response = await fetch(url.toString(), {
+        const response = await fetch(url, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
