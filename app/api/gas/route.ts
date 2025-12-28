@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/auth";
+import {
+    apiRateLimiter,
+    checkRateLimit,
+    getClientIp,
+} from "@/src/shared/lib/rate-limit";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 /**
  * GAS APIへのプロキシエンドポイント
- * クライアント側からの直接呼び出しを防ぎ、セッション認証を行う
+ * クライアント側からの直接呼び出しを防ぎ、セッション認証とレート制限を行う
  */
 export async function GET(request: NextRequest) {
+    // レート制限チェック
+    const clientIp = getClientIp(request);
+    const rateLimitResponse = await checkRateLimit(apiRateLimiter, clientIp);
+    if (rateLimitResponse) {
+        return rateLimitResponse;
+    }
+
     // セッション認証
     const session = await auth();
     if (!session) {
