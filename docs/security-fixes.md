@@ -142,38 +142,12 @@ if (!timingSafeEqual(providedSecret, PUSH_API_SECRET)) {
 **修正後のアーキテクチャ**:
 ```
 クライアント → /api/gas → GAS API
-             （認証・レート制限・バリデーション）
+             （認証・バリデーション）
 ```
 
 ---
 
-### 6. レート制限の実装
-
-**深刻度**: 中
-
-**対象ファイル**:
-- `src/shared/lib/rate-limit.ts`（新規作成）
-- `app/api/gas/route.ts`
-- `app/api/absence/route.ts`
-
-**問題点**:
-レート制限がなく、DoS攻撃に対して脆弱だった。
-
-**修正内容**:
-- `@upstash/ratelimit`と`@upstash/redis`パッケージを追加
-- APIエンドポイント用レート制限（1分間に20リクエスト）
-- 認証エンドポイント用レート制限（1分間に5リクエスト）
-- 環境変数未設定時は無効化されるフォールバック機能
-
-**環境変数**:
-```
-UPSTASH_REDIS_REST_URL=your-upstash-url
-UPSTASH_REDIS_REST_TOKEN=your-upstash-token
-```
-
----
-
-### 7. 入力バリデーションの実装
+### 6. 入力バリデーションの実装
 
 **深刻度**: 中
 
@@ -197,7 +171,7 @@ UPSTASH_REDIS_REST_TOKEN=your-upstash-token
 
 ---
 
-### 8. CSRF保護の実装
+### 7. CSRF保護の実装
 
 **深刻度**: 中
 
@@ -222,6 +196,7 @@ UPSTASH_REDIS_REST_TOKEN=your-upstash-token
 
 | 項目 | 説明 | 対応方針 |
 |------|------|---------|
+| レート制限の不足 | DoS攻撃のリスク | 外部サービス不要の方式を検討 |
 | セッション期限が長すぎる | 180日は長すぎる | 30日程度に短縮 |
 
 ### 低優先度
@@ -238,5 +213,4 @@ UPSTASH_REDIS_REST_TOKEN=your-upstash-token
 - [Next.js Security Advisories](https://github.com/vercel/next.js/security/advisories)
 - [OWASP Security Headers](https://owasp.org/www-project-secure-headers/)
 - [Node.js crypto.timingSafeEqual](https://nodejs.org/api/crypto.html#cryptotimingsafeequala-b)
-- [Upstash Rate Limiting](https://upstash.com/docs/redis/sdks/ratelimit-ts/overview)
 - [Zod Documentation](https://zod.dev/)
