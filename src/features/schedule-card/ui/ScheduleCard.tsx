@@ -55,12 +55,6 @@ export default function ScheduleCard({
                 >
                     <div className="flex flex-col lg:flex-row gap-4">
                         <div className="flex items-start gap-3 flex-1">
-                            <div className="shrink-0 mt-1.5">
-                                <div
-                                    className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: color }}
-                                ></div>
-                            </div>
                             <div className="flex-1">
                                 <div
                                     className="font-bold mb-2 flex items-center gap-2"
