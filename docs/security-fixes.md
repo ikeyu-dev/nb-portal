@@ -190,13 +190,39 @@ if (!timingSafeEqual(providedSecret, PUSH_API_SECRET)) {
 
 ---
 
+### 8. サーバーサイドAPI呼び出しの分離
+
+**深刻度**: 低
+
+**対象ファイル**:
+- `src/shared/api/server.ts`（新規作成）
+- `app/(authenticated)/home/page.tsx`
+
+**問題点**:
+Server Components（SSR）から相対URLでfetchを行うと、Node.jsでは相対URLが解析できずエラーになる。
+
+**修正内容**:
+- サーバーサイド用のAPI呼び出し関数（server.ts）を作成
+- 環境変数のGAS_API_URLを使用して直接GAS APIを呼び出す
+- Server Componentsからはserver.tsの関数を使用
+
+**修正後のアーキテクチャ**:
+```
+クライアント（ブラウザ） → /api/gas → GAS API
+                       （相対URL、認証・バリデーション）
+
+サーバー（SSR） → 直接GAS API
+              （環境変数URL）
+```
+
+---
+
 ## 今後の対応が必要な項目
 
 ### 中優先度
 
 | 項目 | 説明 | 対応方針 |
 |------|------|---------|
-| レート制限の不足 | DoS攻撃のリスク | 外部サービス不要の方式を検討 |
 | セッション期限が長すぎる | 180日は長すぎる | 30日程度に短縮 |
 
 ### 低優先度
