@@ -25,9 +25,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
     useEffect(() => {
         const fetchNotifications = async () => {
             try {
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_GAS_API_URL}?path=notifications&limit=50`
-                );
+                const res = await fetch("/api/gas?path=notifications&limit=50");
                 const data = await res.json();
                 if (data.success) {
                     setNotifications(data.data || []);

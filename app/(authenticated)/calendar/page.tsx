@@ -109,13 +109,10 @@ export default function CalendarPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                // API Routes経由でGAS APIにアクセス
                 const [schedulesRes, absencesRes] = await Promise.all([
-                    fetch(
-                        `${process.env.NEXT_PUBLIC_GAS_API_URL}?path=schedules`
-                    ),
-                    fetch(
-                        `${process.env.NEXT_PUBLIC_GAS_API_URL}?path=absences`
-                    ),
+                    fetch("/api/gas?path=schedules"),
+                    fetch("/api/gas?path=absences"),
                 ]);
                 const schedulesData = await schedulesRes.json();
                 const absencesData = await absencesRes.json();

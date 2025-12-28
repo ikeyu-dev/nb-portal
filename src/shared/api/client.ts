@@ -1,17 +1,14 @@
 import type { ApiResponse, Item, Schedule, Absence } from "../types/api";
 
-const API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
-
-if (!API_URL) {
-    throw new Error("NEXT_PUBLIC_GAS_API_URL is not defined");
-}
-
-// 共通のfetch関数
+/**
+ * GAS APIへのリクエストをNext.js API Routes経由で行う
+ * セキュリティのため、クライアント側から直接GAS APIを呼び出さない
+ */
 async function fetchFromGAS<T>(
     path: string,
     params?: Record<string, string>
 ): Promise<ApiResponse<T>> {
-    const url = new URL(API_URL as string);
+    const url = new URL("/api/gas", window.location.origin);
     url.searchParams.append("path", path);
 
     if (params) {
@@ -26,7 +23,7 @@ async function fetchFromGAS<T>(
             headers: {
                 "Content-Type": "application/json",
             },
-            cache: "no-store", // 常に最新のデータを取得
+            cache: "no-store",
         });
 
         if (!response.ok) {

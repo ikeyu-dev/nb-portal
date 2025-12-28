@@ -69,9 +69,8 @@ export default function ItemsPage() {
             }
 
             try {
-                const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_GAS_API_URL}?path=items`
-                );
+                // API Routes経由でGAS APIにアクセス
+                const res = await fetch("/api/gas?path=items");
                 const data = await res.json();
                 if (data.success) {
                     const fetchedItems = data.data || [];
