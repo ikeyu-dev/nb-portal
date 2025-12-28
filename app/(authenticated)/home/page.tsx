@@ -1,4 +1,4 @@
-import { getAbsences, getSchedules } from "@/src/shared/api";
+import { getAbsencesServer, getSchedulesServer } from "@/src/shared/api/server";
 import type { Absence, Schedule } from "@/src/shared/types/api";
 import { AnalogClock } from "@/features/analog-clock";
 import { WeatherWidget } from "@/features/weather";
@@ -15,8 +15,8 @@ export default async function HomePage() {
 
     try {
         const [absencesRes, schedulesRes] = await Promise.all([
-            getAbsences(),
-            getSchedules(),
+            getAbsencesServer(),
+            getSchedulesServer(),
         ]);
         absences = absencesRes.data || [];
         schedules = schedulesRes.data || [];
