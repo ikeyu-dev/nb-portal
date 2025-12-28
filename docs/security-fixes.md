@@ -119,17 +119,110 @@ if (!timingSafeEqual(providedSecret, PUSH_API_SECRET)) {
 
 ---
 
+### 5. GAS APIプロキシの実装
+
+**深刻度**: 中
+
+**対象ファイル**:
+- `app/api/gas/route.ts`（新規作成）
+- `src/shared/api/client.ts`
+- `app/(authenticated)/calendar/page.tsx`
+- `app/(authenticated)/items/page.tsx`
+- `app/(authenticated)/notifications/NotificationsContent.tsx`
+
+**問題点**:
+クライアント側から`NEXT_PUBLIC_GAS_API_URL`を直接呼び出しており、APIのURLが公開されていた。
+
+**修正内容**:
+- GAS APIへのプロキシエンドポイント（`/api/gas`）を作成
+- すべてのクライアント側GAS API呼び出しをプロキシ経由に変更
+- プロキシでセッション認証を実施
+- 許可されたパスのホワイトリストを実装
+
+**修正後のアーキテクチャ**:
+```
+クライアント → /api/gas → GAS API
+             （認証・レート制限・バリデーション）
+```
+
+---
+
+### 6. レート制限の実装
+
+**深刻度**: 中
+
+**対象ファイル**:
+- `src/shared/lib/rate-limit.ts`（新規作成）
+- `app/api/gas/route.ts`
+- `app/api/absence/route.ts`
+
+**問題点**:
+レート制限がなく、DoS攻撃に対して脆弱だった。
+
+**修正内容**:
+- `@upstash/ratelimit`と`@upstash/redis`パッケージを追加
+- APIエンドポイント用レート制限（1分間に20リクエスト）
+- 認証エンドポイント用レート制限（1分間に5リクエスト）
+- 環境変数未設定時は無効化されるフォールバック機能
+
+**環境変数**:
+```
+UPSTASH_REDIS_REST_URL=your-upstash-url
+UPSTASH_REDIS_REST_TOKEN=your-upstash-token
+```
+
+---
+
+### 7. 入力バリデーションの実装
+
+**深刻度**: 中
+
+**対象ファイル**:
+- `src/shared/lib/validation.ts`（新規作成）
+- `app/api/gas/route.ts`
+- `app/api/absence/route.ts`
+
+**問題点**:
+入力バリデーションがなく、不正なデータがGAS APIに送信される可能性があった。
+
+**修正内容**:
+- `zod`パッケージを追加
+- 欠席連絡送信データのバリデーションスキーマを作成
+- GAS APIパスとクエリパラメータのバリデーションを追加
+- 各APIエンドポイントにバリデーションを適用
+
+**バリデーション項目**:
+- 欠席連絡: eventId, studentNumber, name, type, reason
+- GAS API: path（ホワイトリスト）, eventId, date, limit
+
+---
+
+### 8. CSRF保護の実装
+
+**深刻度**: 中
+
+**対象ファイル**:
+- `src/shared/lib/csrf.ts`（新規作成）
+- `app/api/absence/route.ts`
+
+**問題点**:
+カスタムAPIルートにCSRF保護がなかった。
+
+**修正内容**:
+- Originヘッダーによる同一オリジン検証を追加
+- Refererヘッダーをフォールバックとして使用
+- Content-Typeヘッダーの検証（application/jsonのみ許可）
+- POSTエンドポイントにCSRF保護を適用
+
+---
+
 ## 今後の対応が必要な項目
 
 ### 中優先度
 
 | 項目 | 説明 | 対応方針 |
 |------|------|---------|
-| クライアント側からのGAS API直接呼び出し | `NEXT_PUBLIC_GAS_API_URL`が公開されている | API Routes経由に変更 |
-| レート制限の不足 | DoS攻撃のリスク | upstash/redisで実装 |
-| 入力バリデーションの不足 | 不正なデータがGAS APIに送信される可能性 | zodでスキーマ検証 |
 | セッション期限が長すぎる | 180日は長すぎる | 30日程度に短縮 |
-| CSRF対策の不足 | カスタムAPIルートでCSRF保護がない | middleware.tsで実装 |
 
 ### 低優先度
 
@@ -145,3 +238,5 @@ if (!timingSafeEqual(providedSecret, PUSH_API_SECRET)) {
 - [Next.js Security Advisories](https://github.com/vercel/next.js/security/advisories)
 - [OWASP Security Headers](https://owasp.org/www-project-secure-headers/)
 - [Node.js crypto.timingSafeEqual](https://nodejs.org/api/crypto.html#cryptotimingsafeequala-b)
+- [Upstash Rate Limiting](https://upstash.com/docs/redis/sdks/ratelimit-ts/overview)
+- [Zod Documentation](https://zod.dev/)
