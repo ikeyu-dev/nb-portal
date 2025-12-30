@@ -23,6 +23,8 @@ nb-portal/
 │   │   ├── push-send/            # プッシュ通知送信
 │   │   ├── absence/              # 欠席連絡API
 │   │   ├── schedule/             # スケジュール管理API
+│   │   ├── items/                # 機材管理API
+│   │   ├── gas/                  # GAS APIプロキシ
 │   │   └── bus-schedule/         # バス時刻表API
 │   ├── login/                    # ログインページ
 │   ├── unauthorized/             # 未認可ページ
@@ -149,7 +151,7 @@ src/shared/
 | バス時刻表     | `app/(authenticated)/bus/`        | NIT 公式ページのスクレイピング   |
 | カレンダー     | `app/(authenticated)/calendar/`   | イベント管理                     |
 | ドキュメント   | `app/(authenticated)/documents/`  | PDF ビューアー                   |
-| アイテム一覧   | `app/(authenticated)/items/`      | スプレッドシート連携             |
+| 機材管理       | `app/(authenticated)/items/`      | 機材のCRUD操作（登録・編集・削除）|
 | プッシュ通知   | `src/features/push-notification/` | Web Push API                     |
 | PWA            | `public/sw.js`, `manifest.json`   | オフライン対応                   |
 
