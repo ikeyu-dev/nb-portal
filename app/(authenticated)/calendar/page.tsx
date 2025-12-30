@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import type { Absence } from "@/src/shared/types/api";
+import { HelpButton } from "@/src/features/help";
 
 // イベントカラーの定義
 export const EVENT_COLORS = [
@@ -1000,6 +1001,7 @@ export default function CalendarPage() {
                         {currentDate.getFullYear()}年
                         {currentDate.getMonth() + 1}月
                     </h2>
+                    <HelpButton sectionId="calendar" />
                 </div>
             </div>
 
