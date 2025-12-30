@@ -166,8 +166,8 @@ export function DemoCalendar() {
                         </svg>
                     </button>
                     <span className="font-medium text-sm min-w-[100px] text-center">
-                        {currentDate.getFullYear()}年{currentDate.getMonth() + 1}
-                        月
+                        {currentDate.getFullYear()}年
+                        {currentDate.getMonth() + 1}月
                     </span>
                     <button
                         className="btn btn-ghost btn-xs btn-circle"
@@ -223,7 +223,8 @@ export function DemoCalendar() {
                         const dayEvents = getEventsForDate(day.date);
                         const dayOfWeek = day.date.getDay();
                         const isToday =
-                            day.date.toDateString() === new Date().toDateString();
+                            day.date.toDateString() ===
+                            new Date().toDateString();
 
                         return (
                             <div
@@ -257,7 +258,8 @@ export function DemoCalendar() {
                                                     EVENT_COLORS.find(
                                                         (c) =>
                                                             c.id === event.color
-                                                    )?.hex || EVENT_COLORS[0].hex,
+                                                    )?.hex ||
+                                                    EVENT_COLORS[0].hex,
                                             }}
                                         >
                                             {event.title}
@@ -305,7 +307,10 @@ export function DemoCalendar() {
                             className="input input-bordered w-full"
                             value={addForm.title}
                             onChange={(e) =>
-                                setAddForm({ ...addForm, title: e.target.value })
+                                setAddForm({
+                                    ...addForm,
+                                    title: e.target.value,
+                                })
                             }
                         />
                     </div>
@@ -320,7 +325,10 @@ export function DemoCalendar() {
                                     key={color.id}
                                     type="button"
                                     onClick={() =>
-                                        setAddForm({ ...addForm, color: color.id })
+                                        setAddForm({
+                                            ...addForm,
+                                            color: color.id,
+                                        })
                                     }
                                     className={`w-8 h-8 rounded-full border-2 transition-all ${
                                         addForm.color === color.id

@@ -28,7 +28,9 @@ export function ServiceWorkerRegistration() {
                         window.dispatchEvent(new Event("sw-ready"));
                     } else {
                         // activeでない場合は更新を待機
-                        console.log("Service Worker exists but not active, updating...");
+                        console.log(
+                            "Service Worker exists but not active, updating..."
+                        );
                         await existingRegistration.update();
                     }
                     return;

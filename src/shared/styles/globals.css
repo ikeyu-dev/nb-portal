@@ -1,7 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Zen+Maru+Gothic&display=swap");
 @import "tailwindcss";
 @plugin "daisyui" {
-    themes: light --default, dark --prefersDark;
+    themes:
+        light --default,
+        dark --prefersDark;
 }
 
 /* カスタムテーマカラー設定 */
@@ -20,4 +22,3 @@ div {
     font-style: normal;
     font-weight: 500;
 }
-

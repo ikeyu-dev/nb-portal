@@ -58,10 +58,7 @@ export const itemCreateSchema = z.object({
     category: z.enum(["MIC", "SPK", "CAB", "OTH"], {
         error: "カテゴリはMIC, SPK, CAB, OTHのいずれかです",
     }),
-    name: z
-        .string()
-        .min(1, "機材名は必須です")
-        .max(100, "機材名が長すぎます"),
+    name: z.string().min(1, "機材名は必須です").max(100, "機材名が長すぎます"),
     count: z.coerce
         .number()
         .min(1, "数量は1以上で指定してください")
@@ -81,10 +78,7 @@ export const itemUpdateSchema = z.object({
         .min(1, "機材IDは必須です")
         .max(10, "機材IDが長すぎます")
         .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式が不正です"),
-    name: z
-        .string()
-        .min(1, "機材名は必須です")
-        .max(100, "機材名が長すぎます"),
+    name: z.string().min(1, "機材名は必須です").max(100, "機材名が長すぎます"),
 });
 
 export type ItemUpdateData = z.infer<typeof itemUpdateSchema>;

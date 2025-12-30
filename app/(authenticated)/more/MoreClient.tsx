@@ -485,7 +485,10 @@ export default function MoreClient({ user }: MoreClientProps) {
                                 アカウント情報
                             </h2>
                             <div className="flex items-center gap-4 mt-2">
-                                <ProfileAvatar name={user.name} size="md" />
+                                <ProfileAvatar
+                                    name={user.name}
+                                    size="md"
+                                />
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-base truncate">
                                         {user.name}

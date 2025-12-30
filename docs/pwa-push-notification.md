@@ -56,11 +56,9 @@ self.addEventListener("push", function (event) {
         badge: "/icons/icon-192x192.png",
         tag: data.tag,
         data: { url: data.url },
-        vibrate: [100, 50, 100]
+        vibrate: [100, 50, 100],
     };
-    event.waitUntil(
-        self.registration.showNotification(data.title, options)
-    );
+    event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
 // Notification Click: ナビゲーション
@@ -101,15 +99,19 @@ export function ServiceWorkerRegistration() {
             }
 
             // 新規登録
-            const registration = await navigator.serviceWorker.register("/sw.js");
+            const registration =
+                await navigator.serviceWorker.register("/sw.js");
 
             // アクティブ化を待機
             if (registration.installing) {
-                registration.installing.addEventListener("statechange", function() {
-                    if (this.state === "activated") {
-                        window.dispatchEvent(new Event("sw-ready"));
+                registration.installing.addEventListener(
+                    "statechange",
+                    function () {
+                        if (this.state === "activated") {
+                            window.dispatchEvent(new Event("sw-ready"));
+                        }
                     }
-                });
+                );
             }
         };
 
@@ -160,7 +162,7 @@ const subscribe = async () => {
     // 3. プッシュ購読を作成
     const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     });
 
     // 4. サーバーに登録
@@ -169,8 +171,8 @@ const subscribe = async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
             subscription: subscription.toJSON(),
-            studentId
-        })
+            studentId,
+        }),
     });
 };
 ```
@@ -209,13 +211,13 @@ export async function POST(request: Request) {
 
 ### 通知の状態管理
 
-| 状態 | 説明 |
-|------|------|
-| loading | 初期化中 |
-| unsupported | ブラウザ非対応 |
-| denied | 通知がブロックされている |
-| subscribed | 購読中 |
-| unsubscribed | 未購読 |
+| 状態         | 説明                     |
+| ------------ | ------------------------ |
+| loading      | 初期化中                 |
+| unsupported  | ブラウザ非対応           |
+| denied       | 通知がブロックされている |
+| subscribed   | 購読中                   |
+| unsubscribed | 未購読                   |
 
 ## 環境変数
 
@@ -240,10 +242,12 @@ npx web-push generate-vapid-keys
 ### 「Service Workerが利用できません」
 
 原因:
+
 - sw.jsがデプロイされていない（.gitignoreに含まれていた）
 - Service Workerの登録に失敗している
 
 対処:
+
 1. `public/sw.js`がgitに追加されているか確認
 2. ブラウザのDevToolsでService Worker状態を確認
 3. ページを再読み込み
@@ -251,20 +255,24 @@ npx web-push generate-vapid-keys
 ### 「Script load failed」
 
 原因:
+
 - sw.jsファイルがサーバーから提供されていない（404）
 
 対処:
+
 1. Vercelにデプロイされているか確認
 2. `curl https://your-domain.vercel.app/sw.js` で確認
 
 ### 通知が届かない
 
 原因:
+
 - VAPID鍵の設定ミス
 - 購読情報がサーバーに保存されていない
 - 410エラーで購読が削除された
 
 対処:
+
 1. 環境変数を確認
 2. GASのスプレッドシートで購読情報を確認
 3. 再度購読をオンにする
@@ -272,6 +280,7 @@ npx web-push generate-vapid-keys
 ### iOS/Safariで動作しない
 
 iOS 16.4以降のSafariでWeb Push通知がサポートされている。要件:
+
 - PWAとしてホーム画面に追加
 - ユーザーによる明示的な許可
 
