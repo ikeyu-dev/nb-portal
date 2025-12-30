@@ -38,7 +38,11 @@ export default function AnchorLink({
     };
 
     return (
-        <a href={`#${targetId}`} onClick={handleClick} className={className}>
+        <a
+            href={`#${targetId}`}
+            onClick={handleClick}
+            className={className}
+        >
             {children}
         </a>
     );

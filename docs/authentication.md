@@ -4,10 +4,10 @@ NB-Portal の認証システムについて説明する。
 
 ## 概要
 
--   **認証プロバイダ**: Microsoft Entra ID（Azure AD）
--   **認証ライブラリ**: NextAuth.js v5（Auth.js）
--   **セッション管理**: JWT（署名付きトークン）
--   **セッション有効期限**: 180 日
+- **認証プロバイダ**: Microsoft Entra ID（Azure AD）
+- **認証ライブラリ**: NextAuth.js v5（Auth.js）
+- **セッション管理**: JWT（署名付きトークン）
+- **セッション有効期限**: 180 日
 
 ## 認証フロー
 
@@ -44,8 +44,8 @@ OAuth 2.0 + OpenID Connect フローで認証を実行。
 
 JWT トークンに以下の情報を追加:
 
--   `studentId`: 学籍番号
--   `profileImage`: Microsoft プロフィール画像（初回のみ取得）
+- `studentId`: 学籍番号
+- `profileImage`: Microsoft プロフィール画像（初回のみ取得）
 
 ### 5. Session Callback
 
@@ -118,22 +118,22 @@ async function getProfileImage(accessToken: string): Promise<string | null> {
 
 ### 認証不要ページ
 
--   `/login` - ログインページ
--   `/` - ルートページ（リダイレクト）
--   `/unauthorized` - 未認可ページ
+- `/login` - ログインページ
+- `/` - ルートページ（リダイレクト）
+- `/unauthorized` - 未認可ページ
 
 ### 認証必須ページ
 
 `(authenticated)` グループ配下のすべてのページ:
 
--   `/home`
--   `/absence`
--   `/bus`
--   `/calendar`
--   `/documents`
--   `/items`
--   `/notifications`
--   `/more`
+- `/home`
+- `/absence`
+- `/bus`
+- `/calendar`
+- `/documents`
+- `/items`
+- `/notifications`
+- `/more`
 
 ### ミドルウェア（proxy.ts）
 
@@ -179,15 +179,15 @@ NEXT_PUBLIC_GAS_API_URL                  # GAS Web Apps URL
 
 ### 「部員として登録されていません」エラー
 
--   GAS のスプレッドシートに学籍番号が登録されているか確認
--   `verify-member` API が正しく動作しているか確認
+- GAS のスプレッドシートに学籍番号が登録されているか確認
+- `verify-member` API が正しく動作しているか確認
 
 ### セッションが維持されない
 
--   `AUTH_SECRET` が正しく設定されているか確認
--   Cookie が正しく保存されているか確認
+- `AUTH_SECRET` が正しく設定されているか確認
+- Cookie が正しく保存されているか確認
 
 ### プロフィール画像が表示されない
 
--   Microsoft Graph API へのアクセス権限を確認
--   `User.Read` スコープが付与されているか確認
+- Microsoft Graph API へのアクセス権限を確認
+- `User.Read` スコープが付与されているか確認

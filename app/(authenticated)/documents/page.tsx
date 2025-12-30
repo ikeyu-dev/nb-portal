@@ -838,28 +838,50 @@ const documents: Document[] = [
                     <h3 className="text-lg font-bold mb-2">注意事項</h3>
                     <ul className="space-y-2">
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-error badge-sm mt-1">重要</span>
-                            <span>Danteは必ず本体の有線LANポートに接続する</span>
+                            <span className="badge badge-error badge-sm mt-1">
+                                重要
+                            </span>
+                            <span>
+                                Danteは必ず本体の有線LANポートに接続する
+                            </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-warning badge-sm mt-1">注意</span>
-                            <span>Danteポートに学内Internet回線を挿さないように注意</span>
+                            <span className="badge badge-warning badge-sm mt-1">
+                                注意
+                            </span>
+                            <span>
+                                Danteポートに学内Internet回線を挿さないように注意
+                            </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-warning badge-sm mt-1">注意</span>
+                            <span className="badge badge-warning badge-sm mt-1">
+                                注意
+                            </span>
                             <span>MacminiはQUAD CAPTURE使用不可</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-info badge-sm mt-1">情報</span>
-                            <span>TF Editor / Stage Mixの回線及びWiFi接続が必要</span>
+                            <span className="badge badge-info badge-sm mt-1">
+                                情報
+                            </span>
+                            <span>
+                                TF Editor / Stage Mixの回線及びWiFi接続が必要
+                            </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-info badge-sm mt-1">情報</span>
-                            <span>録画を部室NASに入れるための回線あり（学内Internet使用）</span>
+                            <span className="badge badge-info badge-sm mt-1">
+                                情報
+                            </span>
+                            <span>
+                                録画を部室NASに入れるための回線あり（学内Internet使用）
+                            </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-ghost badge-sm mt-1">任意</span>
-                            <span>NDI受信PCはなくても困らない（MIX部屋で別のPC使うなら必要）</span>
+                            <span className="badge badge-ghost badge-sm mt-1">
+                                任意
+                            </span>
+                            <span>
+                                NDI受信PCはなくても困らない（MIX部屋で別のPC使うなら必要）
+                            </span>
                         </li>
                     </ul>
                 </section>

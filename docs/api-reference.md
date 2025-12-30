@@ -26,6 +26,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "subscription": {
@@ -40,6 +41,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -54,6 +56,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "endpoint": "https://fcm.googleapis.com/..."
@@ -61,6 +64,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -75,6 +79,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: `Authorization: Bearer {PUSH_API_SECRET}`
 
 **リクエスト**:
+
 ```json
 {
     "title": "新しいお知らせ",
@@ -85,6 +90,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -102,6 +108,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "date": "2025-01-15",
@@ -112,6 +119,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -131,6 +139,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "id": "...",
@@ -147,6 +156,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "id": "..."
@@ -162,6 +172,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "category": "MIC",
@@ -179,6 +190,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 | OTH | その他 |
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -197,6 +209,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "itemId": "MIC001",
@@ -205,6 +218,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -221,6 +235,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "itemId": "MIC001"
@@ -228,6 +243,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -248,6 +264,7 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 必須
 
 **リクエスト**:
+
 ```json
 {
     "eventId": "...",
@@ -264,9 +281,11 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 **認証**: 不要
 
 **クエリパラメータ**:
+
 - `date`: 日付（YYYY-MM-DD形式）
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -315,6 +334,7 @@ interface ApiResponse<T> {
 機材一覧を取得する。
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -334,6 +354,7 @@ interface ApiResponse<T> {
 機材を新規登録する。
 
 **リクエスト**:
+
 ```json
 {
     "category": "MIC",
@@ -343,6 +364,7 @@ interface ApiResponse<T> {
 ```
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -357,6 +379,7 @@ interface ApiResponse<T> {
 機材情報を更新する。
 
 **リクエスト**:
+
 ```json
 {
     "itemId": "MIC001",
@@ -369,6 +392,7 @@ interface ApiResponse<T> {
 機材を削除する。
 
 **リクエスト**:
+
 ```json
 {
     "itemId": "MIC001"
@@ -380,6 +404,7 @@ interface ApiResponse<T> {
 スケジュール一覧を取得する。
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -400,6 +425,7 @@ interface ApiResponse<T> {
 指定日の欠席者一覧を取得する。
 
 **クエリパラメータ**:
+
 - `date`: 日付（YYYY-MM-DD形式）
 
 #### GET ?path=event-absences&eventId={eventId}
@@ -411,6 +437,7 @@ interface ApiResponse<T> {
 ヘルスチェック。
 
 **レスポンス**:
+
 ```json
 {
     "success": true,
@@ -423,9 +450,11 @@ interface ApiResponse<T> {
 部員確認。
 
 **クエリパラメータ**:
+
 - `identifier`: 学籍番号
 
 **レスポンス**:
+
 ```json
 {
     "isMember": true
@@ -448,14 +477,14 @@ interface ApiResponse<T> {
 
 ### HTTPステータスコード
 
-| コード | 説明 |
-|--------|------|
-| 200 | 成功 |
-| 400 | リクエスト不正 |
-| 401 | 認証エラー |
-| 403 | アクセス拒否 |
-| 404 | リソースが見つからない |
-| 500 | サーバーエラー |
+| コード | 説明                   |
+| ------ | ---------------------- |
+| 200    | 成功                   |
+| 400    | リクエスト不正         |
+| 401    | 認証エラー             |
+| 403    | アクセス拒否           |
+| 404    | リソースが見つからない |
+| 500    | サーバーエラー         |
 
 ### エラーレスポンス
 

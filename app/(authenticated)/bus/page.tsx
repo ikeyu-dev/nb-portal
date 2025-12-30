@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BusScheduleCard } from "@/src/features/bus-schedule/ui/BusScheduleCard";
+import { HelpButton } from "@/src/features/help";
 
 interface BusTime {
     hour: number;
@@ -110,6 +111,7 @@ export default function BusSchedulePage() {
                         >
                             バスダイヤ
                         </h1>
+                        <HelpButton sectionId="bus" />
                     </div>
 
                     <div className="flex items-center gap-2">

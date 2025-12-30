@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { HelpButton } from "@/src/features/help";
 
 interface Item {
     [key: string]: string | number | boolean | Date;
@@ -430,6 +431,7 @@ export default function ItemsPage() {
                         <span className="badge badge-primary badge-sm">
                             {filteredItems.length}件
                         </span>
+                        <HelpButton sectionId="items" />
                     </div>
                     <button
                         className="btn btn-primary btn-sm"
@@ -501,6 +503,7 @@ export default function ItemsPage() {
                     <span className="badge badge-primary">
                         {filteredItems.length}件
                     </span>
+                    <HelpButton sectionId="items" />
                 </div>
 
                 <div className="flex items-center gap-4">

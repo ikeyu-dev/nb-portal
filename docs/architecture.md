@@ -63,9 +63,9 @@ app/
 └── login/              # 認証不要なページ
 ```
 
--   Next.js App Router を使用
--   Route Groups `(authenticated)` で認証が必要なページをグループ化
--   `layout.tsx` で共通レイアウト（サイドバー、ドック）を提供
+- Next.js App Router を使用
+- Route Groups `(authenticated)` で認証が必要なページをグループ化
+- `layout.tsx` で共通レイアウト（サイドバー、ドック）を提供
 
 ### フィーチャー層
 
@@ -82,8 +82,8 @@ src/features/
 └── weather/              # 天気ウィジェット
 ```
 
--   各機能を独立したモジュールとして実装
--   UI コンポーネント、フック、ユーティリティを機能ごとにまとめる
+- 各機能を独立したモジュールとして実装
+- UI コンポーネント、フック、ユーティリティを機能ごとにまとめる
 
 ### ウィジェット層
 
@@ -94,8 +94,8 @@ src/widgets/
 └── dock/       # ボトムドック（モバイル用）
 ```
 
--   ページレイアウトを構成する大きなコンポーネント
--   レスポンシブ対応（PC: サイドバー、モバイル: ドック）
+- ページレイアウトを構成する大きなコンポーネント
+- レスポンシブ対応（PC: サイドバー、モバイル: ドック）
 
 ### 共有層
 
@@ -142,23 +142,23 @@ src/shared/
 
 ## 主要機能
 
-| 機能           | 実装場所                          | 説明                             |
-| -------------- | --------------------------------- | -------------------------------- |
-| 認証           | `src/auth.ts`                     | Microsoft Entra ID による SSO    |
-| ダッシュボード | `app/(authenticated)/home/`       | スケジュール、欠席者、時計、天気 |
-| 欠席管理       | `app/(authenticated)/absence/`    | 欠席連絡の送信                   |
-| スケジュール   | `app/api/schedule/`               | CRUD 操作                        |
-| バス時刻表     | `app/(authenticated)/bus/`        | NIT 公式ページのスクレイピング   |
-| カレンダー     | `app/(authenticated)/calendar/`   | イベント管理                     |
-| ドキュメント   | `app/(authenticated)/documents/`  | PDF ビューアー                   |
-| 機材管理       | `app/(authenticated)/items/`      | 機材のCRUD操作（登録・編集・削除）|
-| プッシュ通知   | `src/features/push-notification/` | Web Push API                     |
-| PWA            | `public/sw.js`, `manifest.json`   | オフライン対応                   |
+| 機能           | 実装場所                          | 説明                               |
+| -------------- | --------------------------------- | ---------------------------------- |
+| 認証           | `src/auth.ts`                     | Microsoft Entra ID による SSO      |
+| ダッシュボード | `app/(authenticated)/home/`       | スケジュール、欠席者、時計、天気   |
+| 欠席管理       | `app/(authenticated)/absence/`    | 欠席連絡の送信                     |
+| スケジュール   | `app/api/schedule/`               | CRUD 操作                          |
+| バス時刻表     | `app/(authenticated)/bus/`        | NIT 公式ページのスクレイピング     |
+| カレンダー     | `app/(authenticated)/calendar/`   | イベント管理                       |
+| ドキュメント   | `app/(authenticated)/documents/`  | PDF ビューアー                     |
+| 機材管理       | `app/(authenticated)/items/`      | 機材のCRUD操作（登録・編集・削除） |
+| プッシュ通知   | `src/features/push-notification/` | Web Push API                       |
+| PWA            | `public/sw.js`, `manifest.json`   | オフライン対応                     |
 
 ## レスポンシブ対応
 
--   **PC**: サイドバーナビゲーション + ヘッダー
--   **モバイル**: ボトムドック（X/Twitter 風 UI）+ ヘッダー
+- **PC**: サイドバーナビゲーション + ヘッダー
+- **モバイル**: ボトムドック（X/Twitter 風 UI）+ ヘッダー
 
 ```
 PC Layout:

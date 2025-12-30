@@ -59,9 +59,7 @@ async function getServiceWorkerRegistration(
 
             // リトライ前に待機
             if (attempt < maxRetries - 1) {
-                await new Promise((resolve) =>
-                    setTimeout(resolve, retryDelay)
-                );
+                await new Promise((resolve) => setTimeout(resolve, retryDelay));
             }
         } catch (error) {
             console.error(
@@ -69,9 +67,7 @@ async function getServiceWorkerRegistration(
                 error
             );
             if (attempt < maxRetries - 1) {
-                await new Promise((resolve) =>
-                    setTimeout(resolve, retryDelay)
-                );
+                await new Promise((resolve) => setTimeout(resolve, retryDelay));
             }
         }
     }
@@ -196,7 +192,10 @@ export default function PushNotificationToggle({
                         throw new Error("Service Worker activation failed");
                     }
                 } catch (regError) {
-                    console.error("Service Worker re-registration failed:", regError);
+                    console.error(
+                        "Service Worker re-registration failed:",
+                        regError
+                    );
                     const errorMessage =
                         regError instanceof Error
                             ? regError.message

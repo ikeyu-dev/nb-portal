@@ -594,9 +594,7 @@ const handlePostItems = (postData) => {
                 .getValues()
                 .flat();
             existingIds.forEach((id) => {
-                if (
-                    String(id).toUpperCase().startsWith(upperCategory)
-                ) {
+                if (String(id).toUpperCase().startsWith(upperCategory)) {
                     const numPart = parseInt(String(id).substring(3), 10);
                     if (!isNaN(numPart) && numPart > maxNumber) {
                         maxNumber = numPart;
@@ -1116,11 +1114,7 @@ const handlePostSchedule = (postData) => {
 
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
-        sendPushNotification(
-            `新規予定: ${title}`,
-            dateStr,
-            "/calendar"
-        );
+        sendPushNotification(`新規予定: ${title}`, dateStr, "/calendar");
 
         return createResponse({
             success: true,
@@ -1377,11 +1371,7 @@ const handleUpdateSchedule = (postData) => {
 
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
-        sendPushNotification(
-            `予定更新: ${title}`,
-            dateStr,
-            "/calendar"
-        );
+        sendPushNotification(`予定更新: ${title}`, dateStr, "/calendar");
 
         return createResponse({
             success: true,
@@ -1472,11 +1462,7 @@ const handleDeleteSchedule = (postData) => {
 
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
-        sendPushNotification(
-            `予定削除: ${title}`,
-            dateStr,
-            "/calendar"
-        );
+        sendPushNotification(`予定削除: ${title}`, dateStr, "/calendar");
 
         return createResponse({
             success: true,

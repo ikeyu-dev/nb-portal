@@ -6,20 +6,20 @@ NB-Portalの技術的なドキュメントをまとめたディレクトリ。
 
 ### ユーザー向け
 
-| ドキュメント | 説明 |
-|-------------|------|
-| [user-guide.md](./user-guide.md) | 使い方ガイド |
-| [calendar-feature-summary.md](./calendar-feature-summary.md) | 機能まとめ |
+| ドキュメント                                                 | 説明         |
+| ------------------------------------------------------------ | ------------ |
+| [user-guide.md](./user-guide.md)                             | 使い方ガイド |
+| [calendar-feature-summary.md](./calendar-feature-summary.md) | 機能まとめ   |
 
 ### 技術ドキュメント
 
-| ドキュメント | 説明 |
-|-------------|------|
-| [architecture.md](./architecture.md) | プロジェクト構成とアーキテクチャ |
-| [authentication.md](./authentication.md) | 認証の仕組み |
-| [api-reference.md](./api-reference.md) | APIリファレンス |
-| [pwa-push-notification.md](./pwa-push-notification.md) | PWAとプッシュ通知 |
-| [security-fixes.md](./security-fixes.md) | セキュリティ修正履歴 |
+| ドキュメント                                           | 説明                             |
+| ------------------------------------------------------ | -------------------------------- |
+| [architecture.md](./architecture.md)                   | プロジェクト構成とアーキテクチャ |
+| [authentication.md](./authentication.md)               | 認証の仕組み                     |
+| [api-reference.md](./api-reference.md)                 | APIリファレンス                  |
+| [pwa-push-notification.md](./pwa-push-notification.md) | PWAとプッシュ通知                |
+| [security-fixes.md](./security-fixes.md)               | セキュリティ修正履歴             |
 
 ## 技術スタック
 

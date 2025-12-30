@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PushNotificationToggle } from "@/src/features/push-notification";
+import { HelpButton } from "@/src/features/help";
 
 interface Notification {
     eventId: string;
@@ -138,6 +139,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                     >
                         お知らせ
                     </h1>
+                    <HelpButton sectionId="notification" />
                 </div>
 
                 {/* プッシュ通知設定 */}

@@ -112,7 +112,9 @@ export default async function Sidebar({ children }: SidebarProps) {
                     <div className="p-4 border-t border-base-300">
                         <p
                             className="text-base-content/40 text-center"
-                            style={{ fontSize: "clamp(0.625rem, 1vw, 0.75rem)" }}
+                            style={{
+                                fontSize: "clamp(0.625rem, 1vw, 0.75rem)",
+                            }}
                         >
                             NB Portal v{packageJson.version}
                         </p>
