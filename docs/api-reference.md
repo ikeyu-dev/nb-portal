@@ -153,6 +153,92 @@ NextAuth.jsのハンドラ。OAuth認証フローを処理する。
 }
 ```
 
+### 機材API
+
+#### POST /api/items
+
+機材を新規登録する。同一機材の複数登録に対応。
+
+**認証**: 必須
+
+**リクエスト**:
+```json
+{
+    "category": "MIC",
+    "name": "SM58",
+    "count": 3
+}
+```
+
+**カテゴリ一覧**:
+| カテゴリ | 説明 |
+|----------|------|
+| MIC | マイク |
+| SPK | スピーカー |
+| CAB | ケーブル |
+| OTH | その他 |
+
+**レスポンス**:
+```json
+{
+    "success": true,
+    "data": {
+        "created": ["MIC001", "MIC002", "MIC003"]
+    }
+}
+```
+
+**備考**: 機材IDはカテゴリプレフィックス + 3桁連番で自動生成される。
+
+#### PUT /api/items
+
+機材情報を更新する。
+
+**認証**: 必須
+
+**リクエスト**:
+```json
+{
+    "itemId": "MIC001",
+    "name": "SM58 (更新後)"
+}
+```
+
+**レスポンス**:
+```json
+{
+    "success": true,
+    "data": {
+        "updated": "MIC001"
+    }
+}
+```
+
+#### DELETE /api/items
+
+機材を削除する。
+
+**認証**: 必須
+
+**リクエスト**:
+```json
+{
+    "itemId": "MIC001"
+}
+```
+
+**レスポンス**:
+```json
+{
+    "success": true,
+    "data": {
+        "deleted": "MIC001"
+    }
+}
+```
+
+**備考**: 削除後のID欠番は許容される（新規登録時に再利用しない）。
+
 ### 欠席API
 
 #### POST /api/absence
@@ -226,7 +312,7 @@ interface ApiResponse<T> {
 
 #### GET ?path=items
 
-アイテム一覧を取得する。
+機材一覧を取得する。
 
 **レスポンス**:
 ```json
@@ -234,13 +320,58 @@ interface ApiResponse<T> {
     "success": true,
     "data": [
         {
-            "id": "...",
-            "name": "アイテム名",
-            "category": "カテゴリ",
-            "status": "available"
+            "id": "MIC001",
+            "name": "SM58",
+            "category": "MIC"
         }
     ],
     "count": 10
+}
+```
+
+#### POST ?path=items
+
+機材を新規登録する。
+
+**リクエスト**:
+```json
+{
+    "category": "MIC",
+    "name": "SM58",
+    "count": 3
+}
+```
+
+**レスポンス**:
+```json
+{
+    "success": true,
+    "data": {
+        "created": ["MIC001", "MIC002", "MIC003"]
+    }
+}
+```
+
+#### POST ?path=items/update
+
+機材情報を更新する。
+
+**リクエスト**:
+```json
+{
+    "itemId": "MIC001",
+    "name": "SM58 (更新後)"
+}
+```
+
+#### POST ?path=items/delete
+
+機材を削除する。
+
+**リクエスト**:
+```json
+{
+    "itemId": "MIC001"
 }
 ```
 
