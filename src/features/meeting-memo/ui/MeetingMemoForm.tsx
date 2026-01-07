@@ -7,7 +7,8 @@ const LOCATIONS = ["Discord", "クラブ棟前", "部室", "その他"] as const
 
 interface ScheduleItem {
     id: string;
-    content: string;
+    title: string;
+    details: string;
 }
 
 interface MemoFormData {
@@ -40,8 +41,8 @@ export function MeetingMemoForm() {
             time: "21:00",
             location: "Discord",
             customLocation: "",
-            scheduleItems: [{ id: generateId(), content: "" }],
-            accountingNote: "@部費滞納者\n部費の支払い/入部届の提出をお願いします",
+            scheduleItems: [{ id: generateId(), title: "", details: "" }],
+            accountingNote: "@部費滞納者\n計画的に部費の支払いをお願いします",
             bunkouNote: "特になし",
             otherNote: "",
             nextMeetingDate: nextWeek.toISOString().split("T")[0],
@@ -67,7 +68,7 @@ export function MeetingMemoForm() {
             ...prev,
             scheduleItems: [
                 ...prev.scheduleItems,
-                { id: generateId(), content: "" },
+                { id: generateId(), title: "", details: "" },
             ],
         }));
     };
@@ -79,11 +80,15 @@ export function MeetingMemoForm() {
         }));
     };
 
-    const updateScheduleItem = (id: string, content: string) => {
+    const updateScheduleItem = (
+        id: string,
+        field: "title" | "details",
+        value: string
+    ) => {
         setFormData((prev) => ({
             ...prev,
             scheduleItems: prev.scheduleItems.map((item) =>
-                item.id === id ? { ...item, content } : item
+                item.id === id ? { ...item, [field]: value } : item
             ),
         }));
     };
@@ -93,20 +98,25 @@ export function MeetingMemoForm() {
             formData.location === "その他"
                 ? formData.customLocation
                 : formData.location;
-        const header = `## ${formatDate(formData.date)} ${formData.time}- 部会@${location}`;
+        const header = `## ${formatDate(formData.date)} ${
+            formData.time
+        }- 部会@${location}`;
 
         const scheduleSection =
-            formData.scheduleItems.filter((item) => item.content.trim())
-                .length > 0
+            formData.scheduleItems.filter((item) => item.title.trim()).length >
+            0
                 ? `### ◯ 今後の予定\n\n${formData.scheduleItems
-                      .filter((item) => item.content.trim())
+                      .filter((item) => item.title.trim())
                       .map((item) => {
-                          const lines = item.content.split("\n");
-                          return lines
-                              .map((line, index) =>
-                                  index === 0 ? `-   ${line}` : `    ${line}`
-                              )
+                          const titleLine = `-   ${item.title}`;
+                          if (!item.details.trim()) {
+                              return titleLine;
+                          }
+                          const detailLines = item.details
+                              .split("\n")
+                              .map((line) => `    ${line}`)
                               .join("\n");
+                          return `${titleLine}\n${detailLines}`;
                       })
                       .join("\n")}`
                 : "";
@@ -115,7 +125,9 @@ export function MeetingMemoForm() {
             ? `### ◯ 会計\n\n${formData.accountingNote}`
             : "";
 
-        const bunkouSection = `### ◯ 文団\n\n${formData.bunkouNote || "特になし"}`;
+        const bunkouSection = `### ◯ 文団\n\n${
+            formData.bunkouNote || "特になし"
+        }`;
 
         const otherSection = formData.otherNote.trim()
             ? `### ◯ その他\n\n${formData.otherNote}`
@@ -125,7 +137,9 @@ export function MeetingMemoForm() {
             formData.nextMeetingLocation === "その他"
                 ? formData.customLocation
                 : formData.nextMeetingLocation;
-        const nextMeetingSection = `### 次回部会\n\n**${formatDate(formData.nextMeetingDate)} ${formData.nextMeetingTime}- 部会@${nextMeetingLocation}**`;
+        const nextMeetingSection = `### 次回部会\n\n**${formatDate(
+            formData.nextMeetingDate
+        )} ${formData.nextMeetingTime}- 部会@${nextMeetingLocation}**`;
 
         const sections = [
             header,
@@ -247,50 +261,66 @@ export function MeetingMemoForm() {
                             追加
                         </button>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         {formData.scheduleItems.map((item, index) => (
                             <div
                                 key={item.id}
-                                className="flex gap-2"
+                                className="card bg-base-200 p-3"
                             >
-                                <div className="flex-1">
-                                    <textarea
-                                        className="textarea textarea-bordered w-full"
-                                        placeholder={`予定 ${index + 1}（複数行入力可）`}
-                                        rows={3}
-                                        value={item.content}
-                                        onChange={(e) =>
-                                            updateScheduleItem(
-                                                item.id,
-                                                e.target.value
-                                            )
-                                        }
-                                    />
-                                </div>
-                                {formData.scheduleItems.length > 1 && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm text-error"
-                                        onClick={() =>
-                                            removeScheduleItem(item.id)
-                                        }
-                                    >
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-5 w-5"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
+                                <div className="flex items-start gap-2">
+                                    <div className="flex-1 space-y-2">
+                                        <input
+                                            type="text"
+                                            className="input input-bordered w-full"
+                                            placeholder={`予定 ${index + 1}（例: 10/25(土) 若杉祭）`}
+                                            value={item.title}
+                                            onChange={(e) =>
+                                                updateScheduleItem(
+                                                    item.id,
+                                                    "title",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+                                        <textarea
+                                            className="textarea textarea-bordered w-full text-sm"
+                                            placeholder="詳細（任意、複数行可）"
+                                            rows={2}
+                                            value={item.details}
+                                            onChange={(e) =>
+                                                updateScheduleItem(
+                                                    item.id,
+                                                    "details",
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                    {formData.scheduleItems.length > 1 && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm text-error"
+                                            onClick={() =>
+                                                removeScheduleItem(item.id)
+                                            }
                                         >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                            />
-                                        </svg>
-                                    </button>
-                                )}
+                                            <svg
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                className="h-5 w-5"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                />
+                                            </svg>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -436,8 +466,8 @@ export function MeetingMemoForm() {
                         copyStatus === "success"
                             ? "btn-success"
                             : copyStatus === "error"
-                              ? "btn-error"
-                              : "btn-primary"
+                            ? "btn-error"
+                            : "btn-primary"
                     }`}
                     onClick={handleCopy}
                 >
