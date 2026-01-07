@@ -2,14 +2,34 @@ import { MeetingMemoForm } from "@/features/meeting-memo";
 
 export default function MemoPage() {
     return (
-        <div className="container mx-auto px-4 py-6 max-w-2xl">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold">部会メモ作成</h1>
-                <p className="text-base-content/70 mt-1">
-                    部会メモを作成してマークダウン形式でコピーできます
-                </p>
+        <div className="p-4 lg:p-6 w-full">
+            <div className="max-w-2xl mx-auto">
+                {/* ヘッダー */}
+                <div className="flex items-center gap-3 mb-6">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        className="h-6 w-6 text-primary"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                    </svg>
+                    <h1
+                        className="font-bold"
+                        style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
+                    >
+                        部会メモ作成
+                    </h1>
+                </div>
+
+                <MeetingMemoForm />
             </div>
-            <MeetingMemoForm />
         </div>
     );
 }
