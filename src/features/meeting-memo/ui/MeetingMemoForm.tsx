@@ -114,7 +114,7 @@ export function MeetingMemoForm() {
                           }
                           const detailLines = item.details
                               .split("\n")
-                              .map((line) => `    ${line}`)
+                              .map((line) => `    　${line}`)
                               .join("\n");
                           return `${titleLine}\n${detailLines}`;
                       })
