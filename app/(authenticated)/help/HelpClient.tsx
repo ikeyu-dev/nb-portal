@@ -7,6 +7,7 @@ import {
     DemoAbsence,
     DemoBus,
     DemoPushNotification,
+    DemoMemo,
 } from "@/src/features/help/demo";
 
 const HELP_SECTIONS = [
@@ -14,6 +15,7 @@ const HELP_SECTIONS = [
     { id: "items", title: "機材管理", icon: "items" },
     { id: "absence", title: "欠席連絡", icon: "absence" },
     { id: "bus", title: "バス時刻表", icon: "bus" },
+    { id: "memo", title: "部会メモ", icon: "memo" },
     { id: "notification", title: "プッシュ通知", icon: "notification" },
 ] as const;
 
@@ -120,6 +122,22 @@ export function HelpClient() {
                     ]}
                 >
                     <DemoBus />
+                </HelpSection>
+
+                {/* 部会メモ */}
+                <HelpSection
+                    id="memo"
+                    title="部会メモ"
+                    description="部会メモを統一フォーマットで作成し、マークダウン形式でコピーできます。Discordなどに貼り付けて共有できます。"
+                    tips={[
+                        "予定のタイトルと詳細を分けて入力できます",
+                        "詳細は複数行入力可能で、入れ子リスト形式で出力されます",
+                        "「追加」ボタンで複数の予定を追加できます",
+                        "プレビューで出力結果を確認できます",
+                        "コピーボタンでクリップボードにコピーされます",
+                    ]}
+                >
+                    <DemoMemo />
                 </HelpSection>
 
                 {/* プッシュ通知 */}
