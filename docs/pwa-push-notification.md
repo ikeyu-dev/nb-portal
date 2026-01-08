@@ -128,14 +128,14 @@ export function ServiceWorkerRegistration() {
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   ユーザー    │     │  ブラウザ    │     │   Service    │
-│   操作       │────▶│  Push API   │────▶│   Worker     │
+│     User     │     │   Browser    │     │   Service    │
+│    Action    │────▶│   Push API   │────▶│    Worker    │
 └──────────────┘     └──────────────┘     └──────┬───────┘
                                                   │
                                                   ▼
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  GAS         │────▶│  Next.js     │────▶│  Web Push    │
-│  (トリガー)   │     │  /api/push   │     │  サービス    │
+│     GAS      │────▶│   Next.js    │────▶│   Web Push   │
+│  (trigger)   │     │  /api/push   │     │   Service    │
 └──────────────┘     └──────────────┘     └──────────────┘
 ```
 
