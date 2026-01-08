@@ -7,7 +7,9 @@ import { useState } from "react";
  */
 export function DemoMemo() {
     const [title, setTitle] = useState("1/15(水) 新年会の打ち合わせ");
-    const [details, setDetails] = useState("場所は学友会館を予定\n参加人数を確認中");
+    const [details, setDetails] = useState(
+        "場所は学友会館を予定\n参加人数を確認中"
+    );
     const [copyStatus, setCopyStatus] = useState<"idle" | "success">("idle");
 
     const generatePreview = () => {
@@ -65,9 +67,7 @@ export function DemoMemo() {
                 }`}
                 onClick={handleCopy}
             >
-                {copyStatus === "success"
-                    ? "コピーしました（デモ）"
-                    : "マークダウンをコピー"}
+                {copyStatus === "success" ? "コピーしました（デモ）" : "コピー"}
             </button>
 
             <p className="text-xs text-base-content/50 text-center">

@@ -3,7 +3,7 @@ import { MeetingMemoForm } from "@/features/meeting-memo";
 export default function MemoPage() {
     return (
         <div className="p-4 lg:p-6 w-full">
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-4xl mx-auto">
                 {/* ヘッダー */}
                 <div className="flex items-center gap-3 mb-6">
                     <svg
