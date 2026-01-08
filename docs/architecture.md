@@ -15,6 +15,8 @@ nb-portal/
 │   │   ├── documents/            # ドキュメント表示
 │   │   ├── items/                # アイテム一覧
 │   │   ├── notifications/        # 通知ログ
+│   │   ├── memo/                 # 部会メモ
+│   │   ├── help/                 # ヘルプ
 │   │   ├── more/                 # その他メニュー
 │   │   └── layout.tsx            # 認証レイアウト
 │   ├── api/                      # APIルート
@@ -74,6 +76,8 @@ src/features/
 ├── analog-clock/         # アナログ時計
 ├── bus-schedule/         # バス時刻表ウィジェット
 ├── date-display/         # 日付表示
+├── help/                 # ヘルプページ
+├── meeting-memo/         # 部会メモ
 ├── profile-image/        # プロフィール画像
 ├── push-notification/    # プッシュ通知トグル
 ├── pwa-install/          # PWAインストール
@@ -151,6 +155,8 @@ src/shared/
 | カレンダー     | `app/(authenticated)/calendar/`   | イベント管理                       |
 | ドキュメント   | `app/(authenticated)/documents/`  | PDF ビューアー                     |
 | 機材管理       | `app/(authenticated)/items/`      | 機材のCRUD操作（登録・編集・削除） |
+| 部会メモ       | `app/(authenticated)/memo/`       | マークダウン形式の議事録作成       |
+| ヘルプ         | `app/(authenticated)/help/`       | 各機能の使い方ガイド               |
 | プッシュ通知   | `src/features/push-notification/` | Web Push API                       |
 | PWA            | `public/sw.js`, `manifest.json`   | オフライン対応                     |
 
