@@ -132,6 +132,8 @@ async function getProfileImage(accessToken: string): Promise<string | null> {
 - `/calendar`
 - `/documents`
 - `/items`
+- `/memo`
+- `/help`
 - `/notifications`
 - `/more`
 
