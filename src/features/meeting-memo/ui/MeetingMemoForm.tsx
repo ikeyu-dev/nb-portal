@@ -174,7 +174,9 @@ export function MeetingMemoForm() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">日付</span>
+                                <span className="label-text mr-3 mb-2">
+                                    日付
+                                </span>
                             </label>
                             <input
                                 type="date"
@@ -190,7 +192,9 @@ export function MeetingMemoForm() {
                         </div>
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">開始時刻</span>
+                                <span className="label-text mr-3 mb-2">
+                                    開始時刻
+                                </span>
                             </label>
                             <input
                                 type="time"
@@ -206,7 +210,7 @@ export function MeetingMemoForm() {
                         </div>
                         <div className="form-control sm:col-span-2">
                             <label className="label">
-                                <span className="label-text">場所</span>
+                                <span className="label-text mb-2">場所</span>
                             </label>
                             <div className="flex flex-wrap gap-2">
                                 {LOCATIONS.map((loc) => (
@@ -392,7 +396,7 @@ export function MeetingMemoForm() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">日付</span>
+                                <span className="label-text mb-2">日付</span>
                             </label>
                             <input
                                 type="date"
@@ -408,7 +412,7 @@ export function MeetingMemoForm() {
                         </div>
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">時刻</span>
+                                <span className="label-text mb-2">時刻</span>
                             </label>
                             <input
                                 type="time"
@@ -424,7 +428,7 @@ export function MeetingMemoForm() {
                         </div>
                         <div className="form-control">
                             <label className="label">
-                                <span className="label-text">場所</span>
+                                <span className="label-text mb-2">場所</span>
                             </label>
                             <select
                                 className="select select-bordered"
