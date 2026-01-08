@@ -18,7 +18,7 @@ interface MemoFormData {
     customLocation: string;
     scheduleItems: ScheduleItem[];
     accountingNote: string;
-    bunkouNote: string;
+    bundanNote: string;
     otherNote: string;
     nextMeetingDate: string;
     nextMeetingTime: string;
@@ -43,7 +43,7 @@ export function MeetingMemoForm() {
             customLocation: "",
             scheduleItems: [{ id: generateId(), title: "", details: "" }],
             accountingNote: "@部費滞納者\n計画的に部費の支払いをお願いします",
-            bunkouNote: "特になし",
+            bundanNote: "特になし",
             otherNote: "",
             nextMeetingDate: nextWeek.toISOString().split("T")[0],
             nextMeetingTime: "21:00",
@@ -126,7 +126,7 @@ export function MeetingMemoForm() {
             : "";
 
         const bunkouSection = `### ◯ 文団\n\n${
-            formData.bunkouNote || "特になし"
+            formData.bundanNote || "特になし"
         }`;
 
         const otherSection = formData.otherNote.trim()
@@ -359,11 +359,11 @@ export function MeetingMemoForm() {
                         className="textarea textarea-bordered w-full"
                         rows={2}
                         placeholder="特になし"
-                        value={formData.bunkouNote}
+                        value={formData.bundanNote}
                         onChange={(e) =>
                             setFormData({
                                 ...formData,
-                                bunkouNote: e.target.value,
+                                bundanNote: e.target.value,
                             })
                         }
                     />
