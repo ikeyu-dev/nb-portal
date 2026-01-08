@@ -1,55 +1,57 @@
 # NB-Portal 技術ドキュメント
-
-NB-Portalの技術的なドキュメントをまとめたディレクトリ。
+<span style="display:block;height:3px;background:#2a83a2;margin-top:-8px;margin-bottom:16px;"></span>
 
 ## ドキュメント一覧
+<span style="display:block;height:2px;background:#2a83a2;margin-top:-8px;margin-bottom:12px;"></span>
 
 ### ユーザー向け
 
-| ドキュメント                                                 | 説明         |
-| ------------------------------------------------------------ | ------------ |
-| [user-guide.md](./user-guide.md)                             | 使い方ガイド |
-| [calendar-feature-summary.md](./calendar-feature-summary.md) | 機能まとめ   |
+| ドキュメント | 説明 |
+|-------------|------|
+| [user-guide.md](./user-guide.md) | 使い方ガイド |
+| [calendar-feature-summary.md](./calendar-feature-summary.md) | 機能まとめ |
 
 ### 技術ドキュメント
 
-| ドキュメント                                           | 説明                             |
-| ------------------------------------------------------ | -------------------------------- |
-| [architecture.md](./architecture.md)                   | プロジェクト構成とアーキテクチャ |
-| [authentication.md](./authentication.md)               | 認証の仕組み                     |
-| [api-reference.md](./api-reference.md)                 | APIリファレンス                  |
-| [pwa-push-notification.md](./pwa-push-notification.md) | PWAとプッシュ通知                |
-| [security-fixes.md](./security-fixes.md)               | セキュリティ修正履歴             |
+| ドキュメント | 説明 |
+|-------------|------|
+| [architecture.md](./architecture.md) | アーキテクチャ |
+| [authentication.md](./authentication.md) | 認証 |
+| [api-reference.md](./api-reference.md) | APIリファレンス |
+| [pwa-push-notification.md](./pwa-push-notification.md) | PWA・プッシュ通知 |
+| [security-fixes.md](./security-fixes.md) | セキュリティ修正履歴 |
 
 ## 技術スタック
+<span style="display:block;height:2px;background:#2a83a2;margin-top:-8px;margin-bottom:12px;"></span>
 
 ### フレームワーク
 
-- **Next.js 16**: App Routerを使用したReactフレームワーク
-- **React 19**: UIライブラリ
-- **TypeScript**: 静的型付け
+- **Next.js 16** - App Router
+- **React 19** - UI
+- **TypeScript** - 静的型付け
 
 ### 認証
 
-- **NextAuth.js v5 (Auth.js)**: 認証ライブラリ
-- **Microsoft Entra ID**: Azure ADによるSSO
+- **NextAuth.js v5** - 認証ライブラリ
+- **Microsoft Entra ID** - SSO
 
 ### スタイリング
 
-- **Tailwind CSS 4**: ユーティリティファーストCSS
-- **DaisyUI 5**: Tailwindコンポーネントライブラリ
+- **Tailwind CSS 4** - ユーティリティCSS
+- **DaisyUI 5** - コンポーネント
 
-### PWA/通知
+### PWA・通知
 
-- **next-pwa**: PWA統合
-- **web-push**: Web Push Protocol実装
+- **next-pwa** - PWA統合
+- **web-push** - Web Push
 
 ### バックエンド
 
-- **Google Apps Script**: スプレッドシートベースのAPI
-- **Clasp**: GASのCLI管理ツール
+- **Google Apps Script** - スプレッドシートベースAPI
+- **Clasp** - GAS CLI
 
 ## 環境変数
+<span style="display:block;height:2px;background:#2a83a2;margin-top:-8px;margin-bottom:12px;"></span>
 
 ```bash
 # 認証
