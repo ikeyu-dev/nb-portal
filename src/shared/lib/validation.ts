@@ -14,7 +14,7 @@ export const absenceSubmitSchema = z.object({
         .max(20, "学籍番号が長すぎます")
         .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です"),
     name: z.string().min(1, "名前は必須です").max(50, "名前が長すぎます"),
-    type: z.enum(["absence", "late", "stepOut", "earlyLeave"], {
+    type: z.enum(["欠席", "遅刻", "中抜け", "早退"], {
         error: "無効な欠席種別です",
     }),
     reason: z.string().min(1, "理由は必須です").max(500, "理由が長すぎます"),
