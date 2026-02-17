@@ -17,7 +17,10 @@ export const absenceSubmitSchema = z.object({
     type: z.enum(["欠席", "遅刻", "中抜け", "早退"], {
         error: "無効な欠席種別です",
     }),
-    reason: z.string().min(1, "理由は必須です").max(500, "理由が長すぎます"),
+    reason: z.enum(["体調不良", "授業", "家庭の都合", "その他"], {
+        error: "無効な理由カテゴリです",
+    }),
+    reasonDetail: z.string().max(500, "詳細が長すぎます").optional(),
     timeStepOut: z.string().max(10).optional(),
     timeReturn: z.string().max(10).optional(),
     timeLeavingEarly: z.string().max(10).optional(),

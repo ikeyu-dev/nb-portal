@@ -1163,6 +1163,7 @@ const handlePostAbsence = (postData) => {
             name,
             type,
             reason,
+            reasonDetail,
             timeStepOut,
             timeReturn,
             timeLeavingEarly,
@@ -1188,7 +1189,7 @@ const handlePostAbsence = (postData) => {
             "yyyy/MM/dd HH:mm:ss"
         );
 
-        // 列順: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
+        // 列順: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:詳細, H:早退時間, I:抜ける時間, J:戻る時間
         const rowData = [
             timestamp,
             eventId,
@@ -1196,6 +1197,7 @@ const handlePostAbsence = (postData) => {
             name,
             type,
             reason,
+            reasonDetail || "",
             timeLeavingEarly || "",
             timeStepOut || "",
             timeReturn || "",
@@ -1208,7 +1210,7 @@ const handlePostAbsence = (postData) => {
             PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
 
         if (webhookURL) {
-            let body = `**新しい欠席連絡**\n`;
+            let body = `**欠席連絡**\n`;
             body += `**氏名**: ${name}\n`;
             body += `**種別**: ${type}`;
 
@@ -1243,6 +1245,9 @@ const handlePostAbsence = (postData) => {
             }
 
             bodyText += `\n理由: ${reason}\n`;
+            if (reasonDetail) {
+                bodyText += `詳細: ${reasonDetail}\n`;
+            }
             bodyText += `\n送信日時: ${timestamp}\n`;
 
             MailApp.sendEmail(email, subject, bodyText, {
