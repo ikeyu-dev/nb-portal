@@ -13,7 +13,8 @@ function AbsenceFormContent() {
         studentNumber: "",
         name: "",
         type: "",
-        reason: "",
+        reasonCategory: "",
+        reasonDetail: "",
         isStepOut: false,
         timeStepOut: "",
         timeReturn: "",
@@ -39,7 +40,8 @@ function AbsenceFormContent() {
                 studentNumber: formData.studentNumber,
                 name: formData.name,
                 type: formData.type,
-                reason: formData.reason,
+                reason: formData.reasonCategory,
+                reasonDetail: formData.reasonDetail || undefined,
                 timeStepOut: formData.timeStepOut || undefined,
                 timeReturn: formData.timeReturn || undefined,
                 timeLeavingEarly: formData.timeLeavingEarly || undefined,
@@ -56,7 +58,8 @@ function AbsenceFormContent() {
                     studentNumber: "",
                     name: "",
                     type: "",
-                    reason: "",
+                    reasonCategory: "",
+                    reasonDetail: "",
                     isStepOut: false,
                     timeStepOut: "",
                     timeReturn: "",
@@ -196,7 +199,7 @@ function AbsenceFormContent() {
                             </select>
                         </div>
 
-                        {/* 理由 */}
+                        {/* 理由カテゴリ */}
                         <div className="form-control">
                             <label className="label">
                                 <span
@@ -208,18 +211,56 @@ function AbsenceFormContent() {
                                     理由 <span className="text-error">*</span>
                                 </span>
                             </label>
-                            <textarea
-                                placeholder="欠席・遅刻の理由を入力してください"
-                                className="textarea textarea-bordered w-full h-24"
-                                value={formData.reason}
+                            <select
+                                className="select select-bordered w-full"
+                                value={formData.reasonCategory}
                                 onChange={(e) =>
                                     setFormData({
                                         ...formData,
-                                        reason: e.target.value,
+                                        reasonCategory: e.target.value,
                                     })
                                 }
                                 required
+                            >
+                                <option value="">選択してください</option>
+                                <option value="体調不良">体調不良</option>
+                                <option value="授業">授業</option>
+                                <option value="家庭の都合">家庭の都合</option>
+                                <option value="その他">その他</option>
+                            </select>
+                        </div>
+
+                        {/* 詳細（任意） */}
+                        <div className="form-control">
+                            <label className="label">
+                                <span
+                                    className="label-text font-semibold"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
+                                    詳細
+                                    <span className="text-base-content/50 font-normal ml-2">
+                                        任意
+                                    </span>
+                                </span>
+                            </label>
+                            <textarea
+                                placeholder="補足があれば入力してください"
+                                className="textarea textarea-bordered w-full h-24"
+                                value={formData.reasonDetail}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        reasonDetail: e.target.value,
+                                    })
+                                }
                             />
+                            <label className="label">
+                                <span className="label-text-alt text-base-content/50">
+                                    詳細はスプレッドシートにのみ記録されます
+                                </span>
+                            </label>
                         </div>
 
                         {/* 中抜けの場合 */}

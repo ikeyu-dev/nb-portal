@@ -79,6 +79,7 @@ export interface AbsenceSubmitData {
     name: string;
     type: string;
     reason: string;
+    reasonDetail?: string;
     timeStepOut?: string;
     timeReturn?: string;
     timeLeavingEarly?: string;
