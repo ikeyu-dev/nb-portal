@@ -175,7 +175,7 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
                 setPosition({ x: fit.x, y: fit.y });
             }
         },
-        [scale, position, minScale]
+        [scale, position, minScale, calcSvgFit]
     );
 
     // PC用: マウスドラッグで移動

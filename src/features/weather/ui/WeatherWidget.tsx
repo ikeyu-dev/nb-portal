@@ -311,34 +311,27 @@ export default function WeatherWidget() {
     }
 
     return (
-        <div className="flex flex-col items-center justify-center h-full p-2">
-            {/* 天気アイコン */}
-            <div className="w-16 h-16 lg:w-20 lg:h-20 mb-2">
-                <WeatherIcon code={weather.weatherCode} />
-            </div>
-
-            {/* 気温 */}
-            <div className="text-3xl lg:text-4xl font-bold text-base-content mb-1">
-                {weather.temperature}
-                <span className="text-xl lg:text-2xl text-base-content/60">
-                    °C
+        <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-2">
+                <div className="w-8 h-8">
+                    <WeatherIcon code={weather.weatherCode} />
+                </div>
+                <span className="text-xl font-bold tabular-nums">
+                    {weather.temperature}
+                    <span className="text-sm text-base-content/60">°C</span>
+                </span>
+                <span className="text-sm font-medium text-base-content/70">
+                    {getWeatherDescription(weather.weatherCode)}
                 </span>
             </div>
-
-            {/* 天気の説明 */}
-            <div className="text-base lg:text-lg font-medium text-base-content/80 mb-2">
-                {getWeatherDescription(weather.weatherCode)}
-            </div>
-
-            {/* 詳細情報 */}
-            <div className="flex gap-4 text-xs lg:text-sm text-base-content/60">
+            <div className="flex gap-3 text-xs text-base-content/50">
                 <div className="flex items-center gap-1">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        className="w-4 h-4"
+                        className="w-3.5 h-3.5"
                         strokeWidth="2"
                     >
                         <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2" />
@@ -351,7 +344,7 @@ export default function WeatherWidget() {
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
-                        className="w-4 h-4"
+                        className="w-3.5 h-3.5"
                         strokeWidth="2"
                     >
                         <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />

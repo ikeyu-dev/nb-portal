@@ -1,6 +1,6 @@
 import { getAbsencesServer, getSchedulesServer } from "@/src/shared/api/server";
 import type { Absence, Schedule } from "@/src/shared/types/api";
-import { AnalogClock } from "@/features/analog-clock";
+import { DigitalClock } from "@/features/digital-clock";
 import { WeatherWidget } from "@/features/weather";
 import { ScheduleCard } from "@/features/schedule-card";
 import { DateDisplay } from "@/features/date-display";
@@ -290,13 +290,9 @@ export default async function HomePage() {
                                     <DateDisplay />
                                 </h2>
                             </div>
-                            <div className="flex-1 grid grid-cols-2 gap-0 w-full min-h-0">
-                                <div className="flex items-center justify-center">
-                                    <AnalogClock />
-                                </div>
-                                <div className="flex items-center justify-center">
-                                    <WeatherWidget />
-                                </div>
+                            <div className="flex-1 flex flex-col items-center justify-center gap-3 w-full min-h-0">
+                                <DigitalClock />
+                                <WeatherWidget />
                             </div>
                         </div>
                     </div>
