@@ -37,7 +37,7 @@ export default async function Sidebar({ children }: SidebarProps) {
                             width={200}
                             height={80}
                             priority
-                            className="w-auto h-auto max-w-full"
+                            className="h-auto max-w-full"
                         />
                     </div>
                     {/* Menu */}
