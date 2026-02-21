@@ -30,10 +30,14 @@ export default function DigitalClock({ memberName }: DigitalClockProps) {
     }, []);
 
     const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    const seconds = String(now.getSeconds()).padStart(2, "0");
-    const greeting = getGreeting(now.getHours());
+    const jstOptions = { timeZone: "Asia/Tokyo" } as const;
+    const hour = now.toLocaleString("ja-JP", { ...jstOptions, hour: "2-digit", hour12: false });
+    const minute = now.toLocaleString("ja-JP", { ...jstOptions, minute: "2-digit" });
+    const second = now.toLocaleString("ja-JP", { ...jstOptions, second: "2-digit" });
+    const hours = hour.padStart(2, "0");
+    const minutes = minute.padStart(2, "0");
+    const seconds = second.padStart(2, "0");
+    const greeting = getGreeting(Number(hours));
 
     return (
         <div className="flex flex-col items-center gap-1">
