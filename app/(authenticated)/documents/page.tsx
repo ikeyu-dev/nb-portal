@@ -838,7 +838,7 @@ const documents: Document[] = [
                     <h3 className="text-lg font-bold mb-2">注意事項</h3>
                     <ul className="space-y-2">
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-error badge-sm mt-1">
+                            <span className="badge badge-error badge-sm mt-1 shrink-0">
                                 重要
                             </span>
                             <span>
@@ -846,7 +846,7 @@ const documents: Document[] = [
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-warning badge-sm mt-1">
+                            <span className="badge badge-warning badge-sm mt-1 shrink-0">
                                 注意
                             </span>
                             <span>
@@ -854,13 +854,13 @@ const documents: Document[] = [
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-warning badge-sm mt-1">
+                            <span className="badge badge-warning badge-sm mt-1 shrink-0">
                                 注意
                             </span>
                             <span>MacminiはQUAD CAPTURE使用不可</span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-info badge-sm mt-1">
+                            <span className="badge badge-info badge-sm mt-1 shrink-0">
                                 情報
                             </span>
                             <span>
@@ -868,7 +868,7 @@ const documents: Document[] = [
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-info badge-sm mt-1">
+                            <span className="badge badge-info badge-sm mt-1 shrink-0">
                                 情報
                             </span>
                             <span>
@@ -876,7 +876,7 @@ const documents: Document[] = [
                             </span>
                         </li>
                         <li className="flex items-start gap-2">
-                            <span className="badge badge-ghost badge-sm mt-1">
+                            <span className="badge badge-ghost badge-sm mt-1 shrink-0">
                                 任意
                             </span>
                             <span>
