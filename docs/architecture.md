@@ -73,7 +73,7 @@ app/
 
 ```
 src/features/
-├── analog-clock/         # アナログ時計
+├── digital-clock/        # デジタル時計
 ├── bus-schedule/         # バス時刻表ウィジェット
 ├── date-display/         # 日付表示
 ├── help/                 # ヘルプページ
