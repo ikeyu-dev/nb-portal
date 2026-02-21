@@ -116,10 +116,10 @@ export default async function HomePage() {
                     </div>
                 )}
 
-                {/* Cards Grid - モバイル: スケジュール→欠席者→時計天気, デスクトップ: 2列グリッド */}
+                {/* Cards Grid - モバイル: 時計天気→スケジュール→欠席者, デスクトップ: 2列グリッド */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Schedule Card - モバイル: 1番目, デスクトップ: 左上 */}
-                    <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-1">
+                    {/* Schedule Card - モバイル: 2番目, デスクトップ: 左下 */}
+                    <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-2 lg:order-2">
                         <div className="card-body pt-5 flex flex-col overflow-hidden">
                             <div className="flex items-center gap-2 mb-4 h-8 shrink-0">
                                 <svg
@@ -263,9 +263,9 @@ export default async function HomePage() {
                         </div>
                     </div>
 
-                    {/* Weather & Clock Combined Card - モバイル: 3番目, デスクトップ: 右上 */}
-                    <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-3 lg:order-2">
-                        <div className="card-body pt-5 flex flex-col overflow-hidden">
+                    {/* Weather & Clock Combined Card - 常に最上段全幅 */}
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:col-span-2">
+                        <div className="card-body pt-5">
                             <div className="flex items-center gap-2 mb-2 h-8 shrink-0">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -284,21 +284,24 @@ export default async function HomePage() {
                                 <h2
                                     className="card-title"
                                     style={{
-                                        fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+                                        fontSize:
+                                            "clamp(1rem, 2.5vw, 1.25rem)",
                                     }}
                                 >
                                     <DateDisplay />
                                 </h2>
                             </div>
-                            <div className="flex-1 flex flex-col items-center justify-center gap-3 w-full min-h-0">
-                                <DigitalClock />
+                            <div className="flex flex-col items-center text-center py-4 gap-3">
+                                <DigitalClock
+                                    memberName={session?.memberName}
+                                />
                                 <WeatherWidget />
                             </div>
                         </div>
                     </div>
 
-                    {/* Absences Section - モバイル: 2番目, デスクトップ: 下段全幅 */}
-                    <div className="card bg-base-100 shadow-xl border border-base-300 order-2 lg:order-3 lg:col-span-2">
+                    {/* Absences Section - モバイル: 3番目, デスクトップ: 右下 */}
+                    <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-3 overflow-hidden">
                         <div className="card-body pt-5">
                             <div className="flex items-center gap-2 mb-4 h-8">
                                 <svg

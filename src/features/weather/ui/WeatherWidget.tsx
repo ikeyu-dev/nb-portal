@@ -280,78 +280,38 @@ export default function WeatherWidget() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
+            <span className="loading loading-spinner loading-sm text-primary"></span>
         );
     }
 
     if (error || !weather) {
         return (
-            <div className="flex items-center justify-center h-full p-4">
-                <div className="text-center text-base-content/60">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-12 w-12 mx-auto mb-2 opacity-50"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                    </svg>
-                    <p className="text-sm">{error || "取得エラー"}</p>
-                </div>
-            </div>
+            <p className="text-sm text-base-content/50">
+                天気情報を取得できませんでした
+            </p>
         );
     }
 
     return (
-        <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center gap-2">
-                <div className="w-8 h-8">
+        <div className="flex flex-wrap items-center justify-center gap-3 text-base-content/70">
+            <div className="flex items-center gap-1.5">
+                <div className="w-6 h-6">
                     <WeatherIcon code={weather.weatherCode} />
                 </div>
-                <span className="text-xl font-bold tabular-nums">
-                    {weather.temperature}
-                    <span className="text-sm text-base-content/60">°C</span>
-                </span>
-                <span className="text-sm font-medium text-base-content/70">
+                <span className="font-semibold text-base-content">
                     {getWeatherDescription(weather.weatherCode)}
                 </span>
             </div>
-            <div className="flex gap-3 text-xs text-base-content/50">
-                <div className="flex items-center gap-1">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        className="w-3.5 h-3.5"
-                        strokeWidth="2"
-                    >
-                        <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2" />
-                    </svg>
-                    <span>{weather.windSpeed}m/s</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        className="w-3.5 h-3.5"
-                        strokeWidth="2"
-                    >
-                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-                    </svg>
-                    <span>{weather.humidity}%</span>
-                </div>
-            </div>
+            <span className="font-bold text-lg tabular-nums text-base-content">
+                {weather.temperature}
+                <span className="text-sm text-base-content/60">°C</span>
+            </span>
+            <span className="text-sm tabular-nums">
+                湿度 {weather.humidity}%
+            </span>
+            <span className="text-sm tabular-nums">
+                風速 {weather.windSpeed}m/s
+            </span>
         </div>
     );
 }
