@@ -33,32 +33,34 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    /** SVGを画面にフィットさせるスケールと位置を計算 */
+    const calcSvgFit = useCallback(() => {
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const scaleX = vw / SVG_WIDTH;
+        const scaleY = vh / SVG_HEIGHT;
+        // PC: 全体が収まるようにfit、モバイル: 大きく表示して可読性を優先
+        const isPC = vw >= 1024;
+        const newScale = isPC
+            ? Math.min(scaleX, scaleY)
+            : Math.max(scaleX, scaleY);
+        const scaledWidth = SVG_WIDTH * newScale;
+        const scaledHeight = SVG_HEIGHT * newScale;
+        const cx = (vw - scaledWidth) / 2;
+        const cy = (vh - scaledHeight) / 2;
+        return { scale: newScale, x: cx, y: cy, minScale: Math.min(scaleX, scaleY) * 0.5 };
+    }, []);
+
     const resetZoom = useCallback(() => {
         if (src.endsWith(".svg")) {
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            const isPC = viewportWidth >= 1024;
-            const scaleX = viewportWidth / SVG_WIDTH;
-            const scaleY = viewportHeight / SVG_HEIGHT;
-            // PCは画面全体にフィット、モバイルは横幅フィット
-            const fitScale = Math.min(scaleX, scaleY);
-            const newScale = isPC ? fitScale : scaleX;
-            setScale(newScale);
-            // PCは中央配置、モバイルは左上
-            if (isPC) {
-                const scaledWidth = SVG_WIDTH * newScale;
-                const scaledHeight = SVG_HEIGHT * newScale;
-                const centerX = (viewportWidth - scaledWidth) / 2;
-                const centerY = (viewportHeight - scaledHeight) / 2;
-                setPosition({ x: centerX, y: centerY });
-            } else {
-                setPosition({ x: 0, y: 0 });
-            }
+            const fit = calcSvgFit();
+            setScale(fit.scale);
+            setPosition({ x: fit.x, y: fit.y });
         } else {
             setScale(1);
             setPosition({ x: 0, y: 0 });
         }
-    }, [src]);
+    }, [src, calcSvgFit]);
 
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         if (e.touches.length === 2) {
@@ -168,20 +170,9 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
 
             setScale(newScale);
 
-            // 最小スケール付近ではPCは中央配置、モバイルは左上
             if (newScale <= minScale * 1.1) {
-                const viewportWidth = window.innerWidth;
-                const viewportHeight = window.innerHeight;
-                const isPC = viewportWidth >= 1024;
-                if (isPC) {
-                    const scaledWidth = SVG_WIDTH * newScale;
-                    const scaledHeight = SVG_HEIGHT * newScale;
-                    const centerX = (viewportWidth - scaledWidth) / 2;
-                    const centerY = (viewportHeight - scaledHeight) / 2;
-                    setPosition({ x: centerX, y: centerY });
-                } else {
-                    setPosition({ x: 0, y: 0 });
-                }
+                const fit = calcSvgFit();
+                setPosition({ x: fit.x, y: fit.y });
             }
         },
         [scale, position, minScale]
@@ -239,25 +230,10 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     const openFullscreen = () => {
         setIsFullscreen(true);
         if (src.endsWith(".svg")) {
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-            const isPC = viewportWidth >= 1024;
-            const scaleX = viewportWidth / SVG_WIDTH;
-            const scaleY = viewportHeight / SVG_HEIGHT;
-            const fitScale = Math.min(scaleX, scaleY);
-            const newScale = isPC ? fitScale : scaleX;
-            setMinScale(fitScale * 0.5);
-            setScale(newScale);
-            // PCは中央配置、モバイルは左上
-            if (isPC) {
-                const scaledWidth = SVG_WIDTH * newScale;
-                const scaledHeight = SVG_HEIGHT * newScale;
-                const centerX = (viewportWidth - scaledWidth) / 2;
-                const centerY = (viewportHeight - scaledHeight) / 2;
-                setPosition({ x: centerX, y: centerY });
-            } else {
-                setPosition({ x: 0, y: 0 });
-            }
+            const fit = calcSvgFit();
+            setMinScale(fit.minScale);
+            setScale(fit.scale);
+            setPosition({ x: fit.x, y: fit.y });
         } else {
             setScale(1);
             setPosition({ x: 0, y: 0 });

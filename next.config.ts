@@ -45,6 +45,16 @@ const nextConfig: NextConfig = {
                     },
                 ],
             },
+            {
+                // SVGファイルはiframeでの表示を同一オリジンから許可
+                source: "/documents/:path*.svg",
+                headers: [
+                    {
+                        key: "X-Frame-Options",
+                        value: "SAMEORIGIN",
+                    },
+                ],
+            },
         ];
     },
 };
