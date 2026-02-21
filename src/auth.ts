@@ -37,19 +37,24 @@ const extractStudentId = (email: string | null | undefined): string | null => {
     return localPart.substring(0, 7).toLowerCase();
 };
 
-// 部員確認API呼び出し
-const verifyMember = async (identifier: string): Promise<boolean> => {
+/** 部員確認API呼び出し（あだ名も同時に取得） */
+const verifyMember = async (
+    identifier: string
+): Promise<{ isMember: boolean; name: string | null }> => {
     try {
         const apiUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
-        if (!apiUrl) return false;
+        if (!apiUrl) return { isMember: false, name: null };
 
         const res = await fetch(
             `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`
         );
         const data = await res.json();
-        return data.success && data.isMember === true;
+        return {
+            isMember: data.success && data.isMember === true,
+            name: data.name || null,
+        };
     } catch {
-        return false;
+        return { isMember: false, name: null };
     }
 };
 
@@ -76,18 +81,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 return false;
             }
 
-            // 部員確認
-            const isMember = await verifyMember(studentId);
-            if (!isMember) {
+            // 部員確認（あだ名も同時に取得）
+            const result = await verifyMember(studentId);
+            if (!result.isMember) {
                 return "/unauthorized";
             }
 
+            // jwtコールバックに引き渡すため一時的に格納
+            (user as Record<string, unknown>).memberName = result.name;
             return true;
         },
         async jwt({ token, user, account }) {
-            // 初回ログイン時にstudentIdをトークンに追加
+            // 初回ログイン時にstudentIdとあだ名をトークンに追加
             if (user?.email) {
                 token.studentId = extractStudentId(user.email);
+                token.memberName =
+                    ((user as Record<string, unknown>).memberName as string) ||
+                    null;
             }
             // 初回ログイン時にプロファイル画像を取得（一度だけ）
             if (account?.access_token && !token.profileImageFetched) {
@@ -100,11 +110,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             return token;
         },
         async session({ session, token }) {
-            // セッションにstudentIdを追加
             if (token.studentId) {
                 session.studentId = token.studentId as string;
             }
-            // プロファイル画像を一度だけセッションに追加（クライアントで保存後は不要）
+            if (token.memberName) {
+                session.memberName = token.memberName as string;
+            }
             if (token.profileImage) {
                 session.profileImage = token.profileImage as string;
             }
