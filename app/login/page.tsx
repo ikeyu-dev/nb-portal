@@ -15,7 +15,7 @@ export default function LoginPage() {
                             width={180}
                             height={72}
                             priority
-                            className="w-auto h-auto"
+                            className="h-auto"
                         />
                     </div>
 
