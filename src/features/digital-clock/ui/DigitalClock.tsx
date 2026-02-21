@@ -14,6 +14,15 @@ interface DigitalClockProps {
     memberName?: string | null;
 }
 
+/** JSTの時・分・秒を数値部分のみで取得するフォーマッタ */
+const jstFormatter = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+});
+
 /**
  * デジタル時計コンポーネント
  * 24時間表記（hh:mm:ss）で現在時刻を表示する。
@@ -29,14 +38,10 @@ export default function DigitalClock({ memberName }: DigitalClockProps) {
         return () => clearInterval(timer);
     }, []);
 
-    const now = new Date();
-    const jstOptions = { timeZone: "Asia/Tokyo" } as const;
-    const hour = now.toLocaleString("ja-JP", { ...jstOptions, hour: "2-digit", hour12: false });
-    const minute = now.toLocaleString("ja-JP", { ...jstOptions, minute: "2-digit" });
-    const second = now.toLocaleString("ja-JP", { ...jstOptions, second: "2-digit" });
-    const hours = hour.padStart(2, "0");
-    const minutes = minute.padStart(2, "0");
-    const seconds = second.padStart(2, "0");
+    const parts = jstFormatter.formatToParts(new Date());
+    const hours = parts.find((p) => p.type === "hour")?.value ?? "00";
+    const minutes = parts.find((p) => p.type === "minute")?.value ?? "00";
+    const seconds = parts.find((p) => p.type === "second")?.value ?? "00";
     const greeting = getGreeting(Number(hours));
 
     return (
