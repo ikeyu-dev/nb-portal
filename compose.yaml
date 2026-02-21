@@ -1,0 +1,14 @@
+services:
+    app:
+        build: .
+        ports:
+            - "3009:3009"
+        volumes:
+            - .:/app
+            - /app/node_modules
+            - /app/.next
+        environment:
+            - WATCHPACK_POLLING=true
+            - CHOKIDAR_USEPOLLING=true
+        env_file:
+            - .env.local
