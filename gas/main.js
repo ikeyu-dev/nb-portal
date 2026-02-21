@@ -176,48 +176,76 @@ const getFormData = (e) => {
     return formData;
 };
 
-/**
- * Discord通知用のメッセージ本文を構築
- * @param {Object} formData - フォームデータ
- * @param {boolean} includeTimestamp - タイムスタンプを含めるか
- * @returns {string} Markdown形式のメッセージ本文
- */
-const buildMessageBody = (formData, includeTimestamp = true) => {
-    let body = "";
-
-    if (includeTimestamp) {
-        body += `**送信日時**: ${formData.timestamp}\n`;
-    }
-
-    body += `**氏名**: ${formData.name}\n`;
-
-    // 種別に応じて時間情報を付加（早退→早退時間、中抜け→開始〜終了時間）
-    let typeText = `**種別**: ${formData.type}`;
-
-    if (formData.type === "早退" && formData.leaveTime) {
-        typeText += `(${formData.leaveTime})`;
-    } else if (
-        formData.type?.includes("中抜け") &&
-        (formData.breakStartTime || formData.breakEndTime)
-    ) {
-        typeText += `(${formData.breakStartTime} ~ ${formData.breakEndTime})`;
-    }
-
-    body += typeText + "\n\n";
-
-    return body;
+/** 種別に応じたEmbed色を返す */
+const getAbsenceColor = (type) => {
+    if (type === "欠席") return 0xed4245;
+    if (type === "遅刻") return 0xfee75c;
+    if (type === "早退") return 0xf0b232;
+    if (type === "中抜け") return 0x5865f2;
+    return 0x95a5a6;
 };
 
 /**
- * Discord Webhookにメッセージを送信
- * @param {string} webhookURL - Discord Webhook URL（スクリプトプロパティから取得）
- * @param {string} body - 送信するメッセージ本文
+ * 種別と時間情報を結合した表示文字列を返す
+ * @param {string} type - 種別
+ * @param {Object} opts - 時間情報 { leaveTime, breakStartTime, breakEndTime, timeLeavingEarly, timeStepOut, timeReturn }
+ * @returns {string}
  */
-const sendToDiscord = (webhookURL, body) => {
-    const message = {
-        content: body,
-        tts: false,
+const formatTypeWithTime = (type, opts = {}) => {
+    const leaveTime = opts.leaveTime || opts.timeLeavingEarly;
+    const stepOut = opts.breakStartTime || opts.timeStepOut;
+    const stepReturn = opts.breakEndTime || opts.timeReturn;
+
+    if (type === "早退" && leaveTime) return `${type}（${leaveTime}）`;
+    if (type === "中抜け" && (stepOut || stepReturn))
+        return `${type}（${stepOut || ""} ~ ${stepReturn || ""}）`;
+    return type;
+};
+
+/**
+ * 欠席連絡用のDiscord Embedオブジェクトを構築
+ * @param {Object} params - { name, type, reason, reasonDetail, timestamp, ...時間情報 }
+ * @returns {Object} Discord Embedオブジェクト
+ */
+const buildAbsenceEmbed = (params) => {
+    const typeDisplay = formatTypeWithTime(params.type, params);
+    const fields = [
+        { name: "氏名", value: params.name || "不明", inline: true },
+        { name: "種別", value: typeDisplay, inline: true },
+    ];
+
+    if (params.reason) {
+        fields.push({ name: "理由", value: params.reason, inline: false });
+    }
+    if (params.reasonDetail) {
+        fields.push({
+            name: "詳細",
+            value: params.reasonDetail,
+            inline: false,
+        });
+    }
+
+    const embed = {
+        title: "欠席連絡",
+        color: getAbsenceColor(params.type),
+        fields,
     };
+
+    if (params.timestamp) {
+        embed.footer = { text: params.timestamp };
+    }
+
+    return embed;
+};
+
+/**
+ * Discord WebhookにEmbedメッセージを送信
+ * @param {string} webhookURL - Discord Webhook URL
+ * @param {Object|Object[]} embeds - Embedオブジェクトまたは配列
+ */
+const sendToDiscord = (webhookURL, embeds) => {
+    const embedArray = Array.isArray(embeds) ? embeds : [embeds];
+    const message = { embeds: embedArray };
 
     const param = {
         method: "POST",
@@ -274,8 +302,8 @@ function onSubmit(e) {
         PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
 
     const formData = getFormData(e);
-    const body = buildMessageBody(formData);
-    sendToDiscord(webhookURL, body);
+    const embed = buildAbsenceEmbed(formData);
+    sendToDiscord(webhookURL, embed);
     sendEmail(formData);
 }
 
@@ -325,25 +353,38 @@ function sendAllAbsece() {
         .getRange(1, 1, 1, sheet.getLastColumn())
         .getValues()[0];
 
-    // 現在の日付でタイトルを生成
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     const dateString = `${year}/${month}/${day}`;
 
-    let allMessages = [];
-    const title = `# ${dateString} 欠席者一覧\n`;
-
+    const fields = [];
     for (let row = 2; row <= lastRow; row++) {
         const formData = getFormDataFromRow(sheet, row, headers);
-        const body = buildMessageBody(formData, false);
-        allMessages.push(body);
+        const typeDisplay = formatTypeWithTime(formData.type, formData);
+        fields.push({
+            name: formData.name || "不明",
+            value: typeDisplay,
+            inline: true,
+        });
     }
 
-    // タイトルと全メッセージを区切り線で結合して送信
-    const combinedBody = title + allMessages.join("-------------\n\n");
-    sendToDiscord(webhookURL, combinedBody);
+    if (fields.length === 0) {
+        fields.push({
+            name: "情報",
+            value: "本日の欠席者はいません",
+            inline: false,
+        });
+    }
+
+    const embed = {
+        title: `${dateString} 欠席者一覧`,
+        color: 0x5865f2,
+        fields,
+    };
+
+    sendToDiscord(webhookURL, embed);
 }
 
 // ============================================
@@ -1216,19 +1257,17 @@ const handlePostAbsence = (postData) => {
             PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
 
         if (webhookURL) {
-            let body = `**欠席連絡**\n`;
-            body += `**氏名**: ${name}\n`;
-            body += `**種別**: ${type}`;
-
-            if (type === "早退" && timeLeavingEarly) {
-                body += `(${timeLeavingEarly})`;
-            } else if (type === "中抜け" && (timeStepOut || timeReturn)) {
-                body += `(${timeStepOut || ""} ~ ${timeReturn || ""})`;
-            }
-
-            body += `\n**理由**: ${reason}\n`;
-
-            sendToDiscord(webhookURL, body);
+            const embed = buildAbsenceEmbed({
+                name,
+                type,
+                reason,
+                reasonDetail,
+                timestamp,
+                timeLeavingEarly,
+                timeStepOut,
+                timeReturn,
+            });
+            sendToDiscord(webhookURL, embed);
         }
 
         // 送信者にメールで完了通知を送信
