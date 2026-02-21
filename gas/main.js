@@ -983,7 +983,7 @@ const handleGetEventAbsences = (e) => {
 /**
  * 学籍番号がmembersシートに存在するか確認
  * @param {Object} e - リクエストイベントオブジェクト（e.parameter.identifierが必須）
- * @returns {TextOutput} { success, isMember: boolean, identifier }
+ * @returns {TextOutput} { success, isMember: boolean, identifier, name: string|null }
  */
 const handleVerifyMember = (e) => {
     try {
@@ -1009,22 +1009,28 @@ const handleVerifyMember = (e) => {
             });
         }
 
-        // A列（学籍番号）の2行目以降を取得
-        const range = sheet.getRange(2, 1, lastRow - 1, 1);
+        // A列（学籍番号）とC列（名前）の2行目以降を取得
+        const range = sheet.getRange(2, 1, lastRow - 1, 3);
         const values = range.getValues();
 
         // 大文字小文字を区別せず、前後の空白を除去して比較
         const normalizedIdentifier = String(identifier).toLowerCase().trim();
 
+        let memberName = null;
         const isMember = values.some((row) => {
             const studentId = String(row[0]).toLowerCase().trim();
-            return studentId === normalizedIdentifier;
+            if (studentId === normalizedIdentifier) {
+                memberName = String(row[2] || "").trim() || null;
+                return true;
+            }
+            return false;
         });
 
         return createResponse({
             success: true,
             isMember: isMember,
             identifier: identifier,
+            name: memberName,
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
