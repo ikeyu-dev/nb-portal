@@ -302,7 +302,7 @@ export default async function HomePage() {
 
                     {/* Absences Section - モバイル: 3番目, デスクトップ: 右下 */}
                     <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] order-3 overflow-hidden">
-                        <div className="card-body pt-5">
+                        <div className="card-body pt-5 flex flex-col">
                             <div className="flex items-center gap-2 mb-4 h-8">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -447,49 +447,31 @@ export default async function HomePage() {
                                     </table>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table
-                                        className="table table-zebra w-full"
-                                        style={{
-                                            fontSize:
-                                                "clamp(0.875rem, 2vw, 1.125rem)",
-                                        }}
-                                    >
-                                        <thead>
-                                            <tr>
-                                                <th>学籍番号</th>
-                                                <th>氏名</th>
-                                                <th>種別</th>
-                                                <th>時間</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td
-                                                    colSpan={4}
-                                                    className="text-center text-base-content/60"
-                                                >
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-success"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                            />
-                                                        </svg>
-                                                        本日の欠席者はいません
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center text-base-content/60">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-16 w-16 mx-auto mb-3 opacity-50"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            />
+                                        </svg>
+                                        <p
+                                            style={{
+                                                fontSize:
+                                                    "clamp(0.875rem, 2vw, 1.125rem)",
+                                            }}
+                                        >
+                                            本日の欠席者はいません
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
