@@ -47,11 +47,20 @@ npm audit
 | ヘッダー                  | 値                                       | 目的                         |
 | ------------------------- | ---------------------------------------- | ---------------------------- |
 | X-DNS-Prefetch-Control    | on                                       | DNSプリフェッチを有効化      |
-| X-Frame-Options           | DENY                                     | クリックジャッキング対策     |
+| X-Frame-Options           | DENY（※例外あり）                        | クリックジャッキング対策     |
 | X-Content-Type-Options    | nosniff                                  | MIMEタイプスニッフィング対策 |
 | Referrer-Policy           | strict-origin-when-cross-origin          | リファラー情報の漏洩防止     |
 | Permissions-Policy        | camera=(), microphone=(), geolocation=() | 不要なAPIを無効化            |
 | Strict-Transport-Security | max-age=31536000; includeSubDomains      | HTTPS強制（1年間）           |
+
+**X-Frame-Options の例外設定**:
+
+ドキュメント表示機能で `<iframe>` による同一オリジン埋め込みが必要なため、以下のパスでは `SAMEORIGIN` を設定:
+
+| パス                       | 値          | 理由                             |
+| -------------------------- | ----------- | -------------------------------- |
+| `/documents/:path*.pdf`    | SAMEORIGIN  | PDF ビューアーの iframe 表示     |
+| `/documents/:path*.svg`    | SAMEORIGIN  | SVG フルスクリーン表示（PWA 対応） |
 
 **検証方法**:
 ブラウザの開発者ツールでレスポンスヘッダーを確認。
