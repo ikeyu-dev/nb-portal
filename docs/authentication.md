@@ -45,6 +45,7 @@ OAuth 2.0 + OpenID Connect フローで認証を実行。
 JWT トークンに以下の情報を追加:
 
 - `studentId`: 学籍番号
+- `memberName`: あだ名（GAS の members シート C 列から取得）
 - `profileImage`: Microsoft プロフィール画像（初回のみ取得）
 
 ### 5. Session Callback
@@ -91,12 +92,14 @@ function extractStudentId(email: string): string {
 GAS API の `verify-member` エンドポイントで確認:
 
 ```typescript
-async function verifyMember(studentId: string): Promise<boolean> {
+async function verifyMember(
+    studentId: string
+): Promise<{ isMember: boolean; name: string | null }> {
     const response = await fetch(
         `${GAS_API_URL}?path=verify-member&identifier=${studentId}`
     );
     const data = await response.json();
-    return data.isMember === true;
+    return { isMember: data.isMember === true, name: data.name || null };
 }
 ```
 
@@ -158,7 +161,8 @@ interface Session {
         name: string;
         email: string;
     };
-    studentId: string; // 学籍番号
+    studentId?: string; // 学籍番号
+    memberName?: string; // あだ名（membersシートC列）
     profileImage?: string; // Base64画像データ
     expires: string; // 有効期限
 }
