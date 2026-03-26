@@ -3,9 +3,9 @@
     "version": "1.6.2",
     "private": true,
     "scripts": {
-        "dev": "next dev",
+        "dev": "next dev --port 3005",
         "build": "next build",
-        "analyze": "next experimental-analyze",
+        "analyze": "next experimental-analyze --port 3006",
         "start": "next start",
         "lint": "eslint"
     },
