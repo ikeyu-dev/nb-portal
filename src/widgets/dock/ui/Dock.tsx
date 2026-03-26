@@ -133,10 +133,10 @@ export default function Dock() {
                     xmlns="http://www.w3.org/2000/svg"
                     viewBox="0 0 384 512"
                     style={{
-                        width: "28px",
-                        height: "28px",
-                        minWidth: "28px",
-                        minHeight: "28px",
+                        width: "22px",
+                        height: "22px",
+                        minWidth: "22px",
+                        minHeight: "22px",
                     }}
                     fill="currentColor"
                 >
