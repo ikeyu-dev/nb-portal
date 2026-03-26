@@ -11,7 +11,8 @@ export default function Header() {
                 width={150}
                 height={60}
                 priority
-                className="h-auto max-w-full"
+                className="max-w-full"
+                style={{ width: "auto", height: "auto" }}
             />
             <ThemeToggle />
         </div>
