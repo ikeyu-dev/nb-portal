@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, Suspense } from "react";
+import { useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import mermaid from "mermaid";
 import dynamic from "next/dynamic";
 import AnchorLink from "./AnchorLink";
 
-// react-pdfはサーバーサイドで実行できないため、動的インポートを使用
+// mermaid/react-pdfはサーバーサイドで実行できないため、動的インポートを使用
+const MermaidChart = dynamic(() => import("./MermaidChart"), {
+    ssr: false,
+    loading: () => (
+        <div className="flex justify-center py-8">
+            <span className="loading loading-spinner loading-lg"></span>
+        </div>
+    ),
+});
+
 const PdfViewer = dynamic(() => import("./PdfViewer"), {
     ssr: false,
     loading: () => (
@@ -355,41 +363,6 @@ function ZoomableImage({ src, alt }: { src: string; alt: string }) {
     );
 }
 
-// Mermaidフローチャートコンポーネント
-function MermaidChart({ chart }: { chart: string }) {
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        mermaid.initialize({
-            startOnLoad: false,
-            theme: "neutral",
-            flowchart: {
-                curve: "linear",
-                padding: 20,
-            },
-        });
-
-        const renderChart = async () => {
-            if (containerRef.current) {
-                containerRef.current.innerHTML = "";
-                const { svg } = await mermaid.render(
-                    `mermaid-${Date.now()}`,
-                    chart
-                );
-                containerRef.current.innerHTML = svg;
-            }
-        };
-
-        renderChart();
-    }, [chart]);
-
-    return (
-        <div
-            ref={containerRef}
-            className="overflow-x-auto"
-        />
-    );
-}
 
 interface Document {
     id: string;
