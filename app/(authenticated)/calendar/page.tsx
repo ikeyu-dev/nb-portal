@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import type { Absence } from "@/src/shared/types/api";
 import { HelpButton } from "@/src/features/help";
+import {
+    getClientCache,
+    setClientCache,
+} from "@/src/shared/lib/client-cache";
 
 // イベントカラーの定義
 export const EVENT_COLORS = [
@@ -61,6 +65,9 @@ interface EventForm {
     color: EventColorId;
 }
 
+const CALENDAR_CACHE_KEY = "nb-portal-calendar-cache";
+const CALENDAR_CACHE_TTL = 5 * 60 * 1000;
+
 export default function CalendarPage() {
     const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [absences, setAbsences] = useState<Absence[]>([]);
@@ -108,36 +115,89 @@ export default function CalendarPage() {
     });
 
     useEffect(() => {
-        const fetchData = async () => {
+        let isCancelled = false;
+
+        const cached = getClientCache<{
+            schedules: Schedule[];
+            absences: Absence[];
+        }>(CALENDAR_CACHE_KEY, CALENDAR_CACHE_TTL);
+
+        if (cached) {
+            setSchedules(cached.schedules);
+            setAbsences(cached.absences);
+            setIsLoading(false);
+        }
+
+        const fetchData = async (showLoading: boolean) => {
+            if (showLoading) {
+                setIsLoading(true);
+            }
+
             try {
-                // API Routes経由でGAS APIにアクセス
+                // キャッシュを表示していても、裏で必ず最新データを取得する
                 const [schedulesRes, absencesRes] = await Promise.all([
-                    fetch("/api/gas?path=schedules"),
-                    fetch("/api/gas?path=absences"),
+                    fetch("/api/gas?path=schedules", { cache: "no-store" }),
+                    fetch("/api/gas?path=absences", { cache: "no-store" }),
                 ]);
                 const schedulesData = await schedulesRes.json();
                 const absencesData = await absencesRes.json();
+
+                if (isCancelled) return;
+
                 if (schedulesData.success) {
-                    setSchedules(schedulesData.data || []);
+                    const nextSchedules = schedulesData.data || [];
+                    const nextAbsences = absencesData.success
+                        ? absencesData.data || []
+                        : [];
+                    setSchedules(nextSchedules);
+                    setAbsences(nextAbsences);
+                    setError(null);
+                    setClientCache(CALENDAR_CACHE_KEY, {
+                        schedules: nextSchedules,
+                        absences: nextAbsences,
+                    });
                 } else {
                     setError(
                         schedulesData.error || "データの取得に失敗しました"
                     );
                 }
-                if (absencesData.success) {
-                    setAbsences(absencesData.data || []);
-                }
             } catch (err) {
+                if (isCancelled) return;
+
                 setError(
                     err instanceof Error
                         ? err.message
                         : "データの取得に失敗しました"
                 );
             } finally {
-                setIsLoading(false);
+                if (!isCancelled) {
+                    setIsLoading(false);
+                }
             }
         };
-        fetchData();
+
+        void fetchData(!cached);
+
+        const interval = setInterval(() => {
+            void fetchData(false);
+        }, 60 * 1000);
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                void fetchData(false);
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+
+        return () => {
+            isCancelled = true;
+            clearInterval(interval);
+            document.removeEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
+        };
     }, []);
 
     // 活動日のマップを作成（YYYY-MM-DD形式 -> イベント数）
@@ -331,7 +391,14 @@ export default function CalendarPage() {
                     END_DD: data.data.endDate || "",
                     COLOR: data.data.color || "primary",
                 };
-                setSchedules((prev) => [...prev, newSchedule]);
+                setSchedules((prev) => {
+                    const next = [...prev, newSchedule];
+                    setClientCache(CALENDAR_CACHE_KEY, {
+                        schedules: next,
+                        absences,
+                    });
+                    return next;
+                });
 
                 // モーダルを閉じる
                 closeModal();
@@ -464,12 +531,17 @@ export default function CalendarPage() {
 
             if (data.success) {
                 // ローカル状態から削除
-                setSchedules((prev) =>
-                    prev.filter((schedule) => {
+                setSchedules((prev) => {
+                    const next = prev.filter((schedule) => {
                         const scheduleValues = Object.values(schedule);
                         return String(scheduleValues[0]) !== eventId;
-                    })
-                );
+                    });
+                    setClientCache(CALENDAR_CACHE_KEY, {
+                        schedules: next,
+                        absences,
+                    });
+                    return next;
+                });
 
                 // モーダルを閉じる
                 closeEditModal();
@@ -524,8 +596,8 @@ export default function CalendarPage() {
 
             if (data.success) {
                 // ローカル状態を更新
-                setSchedules((prev) =>
-                    prev.map((schedule) => {
+                setSchedules((prev) => {
+                    const next = prev.map((schedule) => {
                         const scheduleValues = Object.values(schedule);
                         if (String(scheduleValues[0]) === eventId) {
                             return {
@@ -545,8 +617,13 @@ export default function CalendarPage() {
                             };
                         }
                         return schedule;
-                    })
-                );
+                    });
+                    setClientCache(CALENDAR_CACHE_KEY, {
+                        schedules: next,
+                        absences,
+                    });
+                    return next;
+                });
 
                 // 編集モーダルと詳細モーダルを閉じる（日付が変わった可能性があるため）
                 closeEditModal();
