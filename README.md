@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NB-Portal
 
-## Getting Started
+NB-Portal は、部内向けの情報共有と日々の運用をまとめたポータルです。
 
-First, run the development server:
+## できること
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- ホームで日付、時計、天気、今後の予定、当日の欠席者を確認
+- カレンダーで予定の確認、追加、編集、削除
+- 欠席、遅刻、中抜け、早退の連絡
+- 機材一覧の確認、登録、編集、削除
+- 部会メモの作成とマークダウンコピー
+- 更新履歴の確認とプッシュ通知の受信
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ログイン
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. NB-Portal にアクセス
+2. 「Microsoft でログイン」を選択
+3. 大学の Microsoft アカウントでログイン
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+部員として登録されていないアカウントでは利用できません。
 
-## Learn More
+## 使い方
 
-To learn more about Next.js, take a look at the following resources:
+### ホーム
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- 今日の情報と直近の予定をまとめて確認できます
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### カレンダー
 
-## Deploy on Vercel
+- 月表示で予定を確認できます
+- 予定の追加、編集、削除ができます
+- 終日予定や複数日予定にも対応しています
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 欠席連絡
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 欠席、遅刻、中抜け、早退を送信できます
+- 種別に応じて時間や理由を入力します
+
+### 機材管理
+
+- 機材をカテゴリごとに確認できます
+- 新規登録、編集、削除に対応しています
+
+### 部会メモ
+
+- 定型フォーマットで部会メモを作成できます
+- 作成した内容はマークダウンでコピーできます
+
+### お知らせ
+
+- 予定の追加、更新、削除の履歴を確認できます
+- プッシュ通知を有効にすると変更を受け取れます
+
+## プッシュ通知
+
+1. 「お知らせ」ページを開く
+2. プッシュ通知をオンにする
+3. ブラウザの通知許可を許可する
+
+不要になったら同じ画面でオフにできます。
+
+## アプリとして使う
+
+### iPhone / iPad
+
+1. Safari で NB-Portal を開く
+2. 共有ボタンを選ぶ
+3. 「ホーム画面に追加」を選ぶ
+
+### Android
+
+1. Chrome で NB-Portal を開く
+2. ブラウザメニューを開く
+3. 「ホーム画面に追加」または「アプリをインストール」を選ぶ
