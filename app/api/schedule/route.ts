@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
@@ -50,6 +51,11 @@ export async function POST(request: NextRequest) {
 
         const data = await response.json();
 
+        if (data?.success === true) {
+            revalidateTag("schedules", "max");
+            revalidateTag("notifications", "max");
+        }
+
         return NextResponse.json(data);
     } catch (error) {
         console.error("API route error:", error);
@@ -96,6 +102,11 @@ export async function DELETE(request: NextRequest) {
         });
 
         const data = await response.json();
+
+        if (data?.success === true) {
+            revalidateTag("schedules", "max");
+            revalidateTag("notifications", "max");
+        }
 
         return NextResponse.json(data);
     } catch (error) {
@@ -149,6 +160,11 @@ export async function PUT(request: NextRequest) {
         });
 
         const data = await response.json();
+
+        if (data?.success === true) {
+            revalidateTag("schedules", "max");
+            revalidateTag("notifications", "max");
+        }
 
         return NextResponse.json(data);
     } catch (error) {
