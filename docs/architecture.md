@@ -10,7 +10,6 @@ nb-portal/
 │   ├── (authenticated)/          # 認証保護レイアウトグループ
 │   │   ├── home/                 # ダッシュボード
 │   │   ├── absence/              # 欠席管理
-│   │   ├── bus/                  # バス時刻表
 │   │   ├── calendar/             # カレンダー
 │   │   ├── documents/            # ドキュメント表示
 │   │   ├── items/                # アイテム一覧
@@ -26,8 +25,7 @@ nb-portal/
 │   │   ├── absence/              # 欠席連絡API
 │   │   ├── schedule/             # スケジュール管理API
 │   │   ├── items/                # 機材管理API
-│   │   ├── gas/                  # GAS APIプロキシ
-│   │   └── bus-schedule/         # バス時刻表API
+│   │   └── gas/                  # GAS APIプロキシ
 │   ├── login/                    # ログインページ
 │   ├── unauthorized/             # 未認可ページ
 │   ├── layout.tsx                # ルートレイアウト
@@ -74,7 +72,6 @@ app/
 ```
 src/features/
 ├── digital-clock/        # デジタル時計
-├── bus-schedule/         # バス時刻表ウィジェット
 ├── date-display/         # 日付表示
 ├── help/                 # ヘルプページ
 ├── meeting-memo/         # 部会メモ
@@ -151,7 +148,6 @@ src/shared/
 | ダッシュボード | `app/(authenticated)/home/`       | スケジュール、欠席者、時計、天気   |
 | 欠席管理       | `app/(authenticated)/absence/`    | 欠席連絡の送信                     |
 | スケジュール   | `app/api/schedule/`               | CRUD 操作                          |
-| バス時刻表     | `app/(authenticated)/bus/`        | NIT 公式ページのスクレイピング     |
 | カレンダー     | `app/(authenticated)/calendar/`   | イベント管理                       |
 | ドキュメント   | `app/(authenticated)/documents/`  | PDF ビューアー                     |
 | 機材管理       | `app/(authenticated)/items/`      | 機材のCRUD操作（登録・編集・削除） |

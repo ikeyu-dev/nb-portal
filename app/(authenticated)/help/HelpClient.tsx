@@ -5,7 +5,6 @@ import {
     DemoCalendar,
     DemoItems,
     DemoAbsence,
-    DemoBus,
     DemoPushNotification,
     DemoMemo,
 } from "@/src/features/help/demo";
@@ -14,7 +13,6 @@ const HELP_SECTIONS = [
     { id: "calendar", title: "カレンダー", icon: "calendar" },
     { id: "items", title: "機材管理", icon: "items" },
     { id: "absence", title: "欠席連絡", icon: "absence" },
-    { id: "bus", title: "バス時刻表", icon: "bus" },
     { id: "memo", title: "部会メモ", icon: "memo" },
     { id: "notification", title: "プッシュ通知", icon: "notification" },
 ] as const;
@@ -108,20 +106,6 @@ export function HelpClient() {
                     ]}
                 >
                     <DemoAbsence />
-                </HelpSection>
-
-                {/* バス時刻表 */}
-                <HelpSection
-                    id="bus"
-                    title="バス時刻表"
-                    description="大学への通学に使用するバスの時刻表を確認できます。東武動物公園駅と新白岡駅の両方の時刻表を表示します。"
-                    tips={[
-                        "日付を選択すると、その日の時刻表が表示されます",
-                        "「駅発」は駅から大学へ向かうバスです",
-                        "「大学発」は大学から駅へ向かうバスです",
-                    ]}
-                >
-                    <DemoBus />
                 </HelpSection>
 
                 {/* 部会メモ */}
