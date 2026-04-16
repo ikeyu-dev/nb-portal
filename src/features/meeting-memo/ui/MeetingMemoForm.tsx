@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 const LOCATIONS = ["Discord", "クラブ棟前", "部室", "その他"] as const;
@@ -25,35 +25,135 @@ interface MemoFormData {
     nextMeetingLocation: string;
 }
 
+const MEMO_DRAFT_CACHE_KEY = "nb-portal-meeting-memo-draft";
+
 const generateId = () => Math.random().toString(36).substring(2, 9);
+
+const createDefaultFormData = (): MemoFormData => {
+    const today = new Date();
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    return {
+        date: today.toISOString().split("T")[0],
+        time: "21:00",
+        location: "Discord",
+        customLocation: "",
+        scheduleItems: [{ id: generateId(), title: "", details: "" }],
+        accountingNote: "@部費滞納者\n計画的に部費の支払いをお願いします",
+        bundanNote: "特になし",
+        otherNote: "",
+        nextMeetingDate: nextWeek.toISOString().split("T")[0],
+        nextMeetingTime: "21:00",
+        nextMeetingLocation: "Discord",
+    };
+};
+
+const normalizeDraft = (draft: Partial<MemoFormData>): MemoFormData => {
+    const defaults = createDefaultFormData();
+    const scheduleItems =
+        Array.isArray(draft.scheduleItems) &&
+        draft.scheduleItems.some(
+            (item) =>
+                item &&
+                typeof item.id === "string" &&
+                typeof item.title === "string" &&
+                typeof item.details === "string"
+        )
+            ? draft.scheduleItems
+                  .filter(
+                      (item): item is ScheduleItem =>
+                          !!item &&
+                          typeof item.id === "string" &&
+                          typeof item.title === "string" &&
+                          typeof item.details === "string"
+                  )
+                  .map((item) => ({
+                      id: item.id || generateId(),
+                      title: item.title,
+                      details: item.details,
+                  }))
+            : defaults.scheduleItems;
+
+    return {
+        date: typeof draft.date === "string" ? draft.date : defaults.date,
+        time: typeof draft.time === "string" ? draft.time : defaults.time,
+        location:
+            typeof draft.location === "string"
+                ? draft.location
+                : defaults.location,
+        customLocation:
+            typeof draft.customLocation === "string"
+                ? draft.customLocation
+                : defaults.customLocation,
+        scheduleItems,
+        accountingNote:
+            typeof draft.accountingNote === "string"
+                ? draft.accountingNote
+                : defaults.accountingNote,
+        bundanNote:
+            typeof draft.bundanNote === "string"
+                ? draft.bundanNote
+                : defaults.bundanNote,
+        otherNote:
+            typeof draft.otherNote === "string"
+                ? draft.otherNote
+                : defaults.otherNote,
+        nextMeetingDate:
+            typeof draft.nextMeetingDate === "string"
+                ? draft.nextMeetingDate
+                : defaults.nextMeetingDate,
+        nextMeetingTime:
+            typeof draft.nextMeetingTime === "string"
+                ? draft.nextMeetingTime
+                : defaults.nextMeetingTime,
+        nextMeetingLocation:
+            typeof draft.nextMeetingLocation === "string"
+                ? draft.nextMeetingLocation
+                : defaults.nextMeetingLocation,
+    };
+};
 
 /**
  * 部会メモ作成フォームコンポーネント
  */
 export function MeetingMemoForm() {
-    const [formData, setFormData] = useState<MemoFormData>(() => {
-        const today = new Date();
-        const nextWeek = new Date(today);
-        nextWeek.setDate(nextWeek.getDate() + 7);
-
-        return {
-            date: today.toISOString().split("T")[0],
-            time: "21:00",
-            location: "Discord",
-            customLocation: "",
-            scheduleItems: [{ id: generateId(), title: "", details: "" }],
-            accountingNote: "@部費滞納者\n計画的に部費の支払いをお願いします",
-            bundanNote: "特になし",
-            otherNote: "",
-            nextMeetingDate: nextWeek.toISOString().split("T")[0],
-            nextMeetingTime: "21:00",
-            nextMeetingLocation: "Discord",
-        };
-    });
+    const [formData, setFormData] = useState<MemoFormData>(createDefaultFormData);
+    const hasRestoredDraftRef = useRef(false);
 
     const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">(
         "idle"
     );
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        try {
+            const draft = sessionStorage.getItem(MEMO_DRAFT_CACHE_KEY);
+            if (!draft) return;
+
+            setFormData(normalizeDraft(JSON.parse(draft) as Partial<MemoFormData>));
+        } catch {
+            sessionStorage.removeItem(MEMO_DRAFT_CACHE_KEY);
+        } finally {
+            hasRestoredDraftRef.current = true;
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined" || !hasRestoredDraftRef.current) {
+            return;
+        }
+
+        try {
+            sessionStorage.setItem(
+                MEMO_DRAFT_CACHE_KEY,
+                JSON.stringify(formData)
+            );
+        } catch {
+            // 保存できない場合は無視
+        }
+    }, [formData]);
 
     const formatDate = (dateStr: string): string => {
         const date = new Date(dateStr);
