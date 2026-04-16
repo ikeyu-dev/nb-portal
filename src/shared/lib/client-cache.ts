@@ -1,11 +1,14 @@
 "use client";
 
-interface CachedData<T> {
+export interface CachedData<T> {
     data: T;
     timestamp: number;
 }
 
-export function getClientCache<T>(key: string, ttlMs: number): T | null {
+export function getClientCacheEntry<T>(
+    key: string,
+    ttlMs: number
+): CachedData<T> | null {
     if (typeof window === "undefined") return null;
 
     try {
@@ -18,10 +21,15 @@ export function getClientCache<T>(key: string, ttlMs: number): T | null {
             return null;
         }
 
-        return parsed.data;
+        return parsed;
     } catch {
         return null;
     }
+}
+
+export function getClientCache<T>(key: string, ttlMs: number): T | null {
+    const cached = getClientCacheEntry<T>(key, ttlMs);
+    return cached ? cached.data : null;
 }
 
 export function setClientCache<T>(key: string, data: T): void {

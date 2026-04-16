@@ -1,24 +1,30 @@
 import type { ApiResponse, Item, Schedule, Absence } from "../types/api";
 import { auth } from "@/src/auth";
 import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
+import { unstable_cache } from "next/cache";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 /**
- * サーバーサイドからGAS APIを直接呼び出す
- * Server Componentsで使用する
- * セッション認証と入力バリデーションを行う
+ * 認証済みセッションを要求する
  */
-async function fetchFromGASServer<T>(
-    path: GasApiPath,
-    params?: Record<string, string>
-): Promise<ApiResponse<T>> {
-    // セッション認証
+async function requireAuthenticatedSession() {
     const session = await auth();
     if (!session) {
         throw new Error("Unauthorized");
     }
 
+    return session;
+}
+
+/**
+ * サーバーサイドからGAS APIを直接呼び出す
+ * Server Componentsで使用する
+ */
+async function fetchFromGASServer<T>(
+    path: GasApiPath,
+    params?: Record<string, string>
+): Promise<ApiResponse<T>> {
     if (!GAS_API_URL) {
         throw new Error("GAS API URL not configured");
     }
@@ -44,7 +50,6 @@ async function fetchFromGASServer<T>(
             headers: {
                 "Content-Type": "application/json",
             },
-            cache: "no-store",
         });
 
         if (!response.ok) {
@@ -59,18 +64,49 @@ async function fetchFromGASServer<T>(
     }
 }
 
+const getItemsCached = unstable_cache(
+    async () => fetchFromGASServer<Item[]>("items"),
+    ["gas-items"],
+    { tags: ["items"] }
+);
+
+const getSchedulesCached = unstable_cache(
+    async () => fetchFromGASServer<Schedule[]>("schedules"),
+    ["gas-schedules"],
+    { tags: ["schedules"] }
+);
+
+const getAbsencesCached = unstable_cache(
+    async (date?: string) =>
+        fetchFromGASServer<Absence[]>(
+            "absences",
+            date ? { date } : undefined
+        ),
+    ["gas-absences"],
+    { tags: ["absences"] }
+);
+
+const getEventAbsencesCached = unstable_cache(
+    async (eventId: string) =>
+        fetchFromGASServer<Absence[]>("event-absences", { eventId }),
+    ["gas-event-absences"],
+    { tags: ["absences"] }
+);
+
 /**
  * Items取得API（サーバーサイド用）
  */
 export async function getItemsServer(): Promise<ApiResponse<Item[]>> {
-    return fetchFromGASServer<Item[]>("items");
+    await requireAuthenticatedSession();
+    return getItemsCached();
 }
 
 /**
  * Schedules取得API（サーバーサイド用）
  */
 export async function getSchedulesServer(): Promise<ApiResponse<Schedule[]>> {
-    return fetchFromGASServer<Schedule[]>("schedules");
+    await requireAuthenticatedSession();
+    return getSchedulesCached();
 }
 
 /**
@@ -79,8 +115,8 @@ export async function getSchedulesServer(): Promise<ApiResponse<Schedule[]>> {
 export async function getAbsencesServer(
     date?: string
 ): Promise<ApiResponse<Absence[]>> {
-    const params = date ? { date } : undefined;
-    return fetchFromGASServer<Absence[]>("absences", params);
+    await requireAuthenticatedSession();
+    return getAbsencesCached(date);
 }
 
 /**
@@ -89,5 +125,6 @@ export async function getAbsencesServer(
 export async function getEventAbsencesServer(
     eventId: string
 ): Promise<ApiResponse<Absence[]>> {
-    return fetchFromGASServer<Absence[]>("event-absences", { eventId });
+    await requireAuthenticatedSession();
+    return getEventAbsencesCached(eventId);
 }

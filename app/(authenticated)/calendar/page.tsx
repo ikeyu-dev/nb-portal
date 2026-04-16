@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import type { Absence } from "@/src/shared/types/api";
 import { HelpButton } from "@/src/features/help";
 import {
-    getClientCache,
+    getClientCacheEntry,
     setClientCache,
 } from "@/src/shared/lib/client-cache";
 
@@ -67,6 +67,8 @@ interface EventForm {
 
 const CALENDAR_CACHE_KEY = "nb-portal-calendar-cache";
 const CALENDAR_CACHE_TTL = 5 * 60 * 1000;
+const CALENDAR_REFRESH_INTERVAL = 5 * 60 * 1000;
+const CALENDAR_REFETCH_COOLDOWN = 60 * 1000;
 
 export default function CalendarPage() {
     const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -83,6 +85,7 @@ export default function CalendarPage() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const lastFetchAtRef = useRef(0);
     const [addForm, setAddForm] = useState<EventForm>({
         title: "",
         where: "",
@@ -117,18 +120,30 @@ export default function CalendarPage() {
     useEffect(() => {
         let isCancelled = false;
 
-        const cached = getClientCache<{
+        const cached = getClientCacheEntry<{
             schedules: Schedule[];
             absences: Absence[];
         }>(CALENDAR_CACHE_KEY, CALENDAR_CACHE_TTL);
 
         if (cached) {
-            setSchedules(cached.schedules);
-            setAbsences(cached.absences);
+            setSchedules(cached.data.schedules);
+            setAbsences(cached.data.absences);
             setIsLoading(false);
+            lastFetchAtRef.current = cached.timestamp;
         }
 
-        const fetchData = async (showLoading: boolean) => {
+        const fetchData = async (
+            showLoading: boolean,
+            force = false
+        ) => {
+            const now = Date.now();
+            if (
+                !force &&
+                now - lastFetchAtRef.current < CALENDAR_REFETCH_COOLDOWN
+            ) {
+                return;
+            }
+
             if (showLoading) {
                 setIsLoading(true);
             }
@@ -156,6 +171,7 @@ export default function CalendarPage() {
                         schedules: nextSchedules,
                         absences: nextAbsences,
                     });
+                    lastFetchAtRef.current = Date.now();
                 } else {
                     setError(
                         schedulesData.error || "データの取得に失敗しました"
@@ -176,11 +192,13 @@ export default function CalendarPage() {
             }
         };
 
-        void fetchData(!cached);
+        if (!cached) {
+            void fetchData(true, true);
+        }
 
         const interval = setInterval(() => {
             void fetchData(false);
-        }, 60 * 1000);
+        }, CALENDAR_REFRESH_INTERVAL);
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === "visible") {
@@ -397,6 +415,7 @@ export default function CalendarPage() {
                         schedules: next,
                         absences,
                     });
+                    lastFetchAtRef.current = Date.now();
                     return next;
                 });
 
@@ -540,6 +559,7 @@ export default function CalendarPage() {
                         schedules: next,
                         absences,
                     });
+                    lastFetchAtRef.current = Date.now();
                     return next;
                 });
 
@@ -622,6 +642,7 @@ export default function CalendarPage() {
                         schedules: next,
                         absences,
                     });
+                    lastFetchAtRef.current = Date.now();
                     return next;
                 });
 
