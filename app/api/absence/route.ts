@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
 import {
     absenceSubmitSchema,
@@ -70,6 +71,10 @@ export async function POST(request: NextRequest) {
         });
 
         const data = await response.json();
+
+        if (data?.success === true) {
+            revalidateTag("absences", "max");
+        }
 
         return NextResponse.json(data);
     } catch (error) {

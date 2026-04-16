@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { PushNotificationToggle } from "@/src/features/push-notification";
 import { HelpButton } from "@/src/features/help";
+import {
+    getClientCache,
+    setClientCache,
+} from "@/src/shared/lib/client-cache";
 
 interface Notification {
     eventId: string;
@@ -18,6 +22,9 @@ interface NotificationsContentProps {
     userEmail: string | null;
 }
 
+const NOTIFICATIONS_CACHE_KEY = "nb-portal-notifications-cache";
+const NOTIFICATIONS_CACHE_TTL = 5 * 60 * 1000;
+
 export function NotificationsContent({ userEmail }: NotificationsContentProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -25,11 +32,26 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
 
     useEffect(() => {
         const fetchNotifications = async () => {
+            const cached = getClientCache<Notification[]>(
+                NOTIFICATIONS_CACHE_KEY,
+                NOTIFICATIONS_CACHE_TTL
+            );
+            if (cached) {
+                setNotifications(cached);
+                setIsLoading(false);
+                return;
+            }
+
             try {
                 const res = await fetch("/api/gas?path=notifications&limit=50");
                 const data = await res.json();
                 if (data.success) {
-                    setNotifications(data.data || []);
+                    const nextNotifications = data.data || [];
+                    setNotifications(nextNotifications);
+                    setClientCache(
+                        NOTIFICATIONS_CACHE_KEY,
+                        nextNotifications
+                    );
                 } else {
                     setError(data.error || "データの取得に失敗しました");
                 }
