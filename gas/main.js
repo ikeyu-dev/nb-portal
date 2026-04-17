@@ -433,6 +433,8 @@ function doGet(e) {
         switch (path) {
             case "items":
                 return handleGetItems(e);
+            case "members":
+                return handleGetMembers(e);
             case "schedules":
                 return handleGetSchedules(e);
             case "absences":
@@ -459,6 +461,7 @@ function doGet(e) {
                     version: "1.0.0",
                     endpoints: {
                         items: "?path=items",
+                        members: "?path=members",
                         schedules: "?path=schedules",
                         absences: "?path=absences&date=YYYY-MM-DD",
                         eventAbsences: "?path=event-absences&eventId=EVENT_ID",
@@ -507,10 +510,16 @@ function doPost(e) {
                 return handleDeleteSchedule(postData);
             case "items":
                 return handlePostItems(postData);
+            case "members":
+                return handlePostMember(postData);
             case "items/update":
                 return handleUpdateItem(postData);
             case "items/delete":
                 return handleDeleteItem(postData);
+            case "members/update":
+                return handleUpdateMember(postData);
+            case "members/delete":
+                return handleDeleteMember(postData);
             case "push-subscribe":
                 return handlePushSubscribe(postData);
             case "push-unsubscribe":
@@ -1013,6 +1022,196 @@ const handleGetEventAbsences = (e) => {
 };
 
 // ============================================
+// API: 名簿一覧取得
+// シート名: members
+// 列構成: 1行目をヘッダーとして全列を取得
+// ============================================
+
+/**
+ * membersシートの全項目を取得
+ * @returns {TextOutput} { success, data: { headers, members }, count }
+ */
+const handleGetMembers = (e) => {
+    try {
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("members");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'members' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        const lastColumn = sheet.getLastColumn();
+
+        if (lastRow < 1 || lastColumn < 1) {
+            return createResponse({
+                success: true,
+                data: {
+                    headers: [],
+                    members: [],
+                },
+                count: 0,
+            });
+        }
+
+        const headers = sheet.getRange(1, 1, 1, lastColumn).getValues()[0].map(
+            (header, index) => String(header || `列${index + 1}`).trim()
+        );
+
+        if (lastRow < 2) {
+            return createResponse({
+                success: true,
+                data: {
+                    headers,
+                    members: [],
+                },
+                count: 0,
+            });
+        }
+
+        const values = sheet
+            .getRange(2, 1, lastRow - 1, lastColumn)
+            .getValues();
+        const members = values.map((row, index) => ({
+            rowNumber: index + 2,
+            values: row,
+        }));
+
+        return createResponse({
+            success: true,
+            data: {
+                headers,
+                members,
+            },
+            count: members.length,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+/**
+ * membersシートに新規行を追加
+ * @param {Object} data - { values }
+ * @returns {TextOutput} { success, rowNumber, values }
+ */
+const handlePostMember = (data) => {
+    try {
+        const values = data.values;
+
+        if (!Array.isArray(values)) {
+            return createErrorResponse("Missing required field (values)", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("members");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'members' not found", 404);
+        }
+
+        const lastColumn = sheet.getLastColumn();
+        const rowValues = Array.from({ length: lastColumn }, (_, index) =>
+            values[index] === undefined ? "" : values[index]
+        );
+
+        sheet.appendRow(rowValues);
+
+        return createResponse({
+            success: true,
+            rowNumber: sheet.getLastRow(),
+            values: rowValues,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+/**
+ * membersシートの指定行を更新
+ * @param {Object} data - { rowNumber, values }
+ * @returns {TextOutput} { success, rowNumber }
+ */
+const handleUpdateMember = (data) => {
+    try {
+        const rowNumber = Number(data.rowNumber);
+        const values = data.values;
+
+        if (!rowNumber || rowNumber < 2 || !Array.isArray(values)) {
+            return createErrorResponse(
+                "Missing required fields (rowNumber, values)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("members");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'members' not found", 404);
+        }
+
+        const lastRow = sheet.getLastRow();
+        const lastColumn = sheet.getLastColumn();
+
+        if (rowNumber > lastRow) {
+            return createErrorResponse("Member row not found", 404);
+        }
+
+        const updateValues = Array.from({ length: lastColumn }, (_, index) =>
+            values[index] === undefined ? "" : values[index]
+        );
+
+        sheet.getRange(rowNumber, 1, 1, lastColumn).setValues([updateValues]);
+
+        return createResponse({
+            success: true,
+            rowNumber,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+/**
+ * membersシートの指定行を削除
+ * @param {Object} data - { rowNumber }
+ * @returns {TextOutput} { success, rowNumber }
+ */
+const handleDeleteMember = (data) => {
+    try {
+        const rowNumber = Number(data.rowNumber);
+
+        if (!rowNumber || rowNumber < 2) {
+            return createErrorResponse(
+                "Missing required field (rowNumber)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("members");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'members' not found", 404);
+        }
+
+        if (rowNumber > sheet.getLastRow()) {
+            return createErrorResponse("Member row not found", 404);
+        }
+
+        sheet.deleteRow(rowNumber);
+
+        return createResponse({
+            success: true,
+            rowNumber,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+// ============================================
 // API: 部員認証
 // シート名: members
 // 列構成: A:学籍番号
@@ -1050,8 +1249,8 @@ const handleVerifyMember = (e) => {
             });
         }
 
-        // A列（学籍番号）とC列（名前）の2行目以降を取得
-        const range = sheet.getRange(2, 1, lastRow - 1, 3);
+        // 2行目以降の全列を取得
+        const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
         const values = range.getValues();
 
         // 大文字小文字を区別せず、前後の空白を除去して比較
@@ -1563,12 +1762,12 @@ const handleGetNotifications = (e) => {
         if (membersSheet) {
             const membersLastRow = membersSheet.getLastRow();
             if (membersLastRow >= 2) {
-                // A列（学籍番号）とC列（名前）を取得
+                // membersシートの全列を取得
                 const membersRange = membersSheet.getRange(
                     2,
                     1,
                     membersLastRow - 1,
-                    3
+                    membersSheet.getLastColumn()
                 );
                 const membersValues = membersRange.getValues();
                 membersValues.forEach((row) => {
