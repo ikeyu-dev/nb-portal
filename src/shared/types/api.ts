@@ -22,3 +22,16 @@ export interface Schedule {
 export interface Absence {
     [key: string]: string | number | boolean | Date;
 }
+
+export type SheetCellValue = string | number | boolean | Date | null;
+
+// membersシートの1行分
+export interface MemberRow {
+    rowNumber: number;
+    values: SheetCellValue[];
+}
+
+export interface MembersData {
+    headers: string[];
+    members: MemberRow[];
+}

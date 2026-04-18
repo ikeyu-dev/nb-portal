@@ -34,6 +34,7 @@ export type AbsenceSubmitData = z.infer<typeof absenceSubmitSchema>;
 export const gasApiPathSchema = z.enum([
     "schedules",
     "items",
+    "members",
     "absences",
     "event-absences",
     "health",
@@ -98,6 +99,43 @@ export const itemDeleteSchema = z.object({
 });
 
 export type ItemDeleteData = z.infer<typeof itemDeleteSchema>;
+
+/**
+ * 名簿更新データのバリデーションスキーマ
+ */
+const memberValuesSchema = z.array(
+    z.union([
+        z.string().max(1000, "入力値が長すぎます"),
+        z.number(),
+        z.boolean(),
+        z.null(),
+    ])
+);
+
+export const memberCreateSchema = z.object({
+    values: memberValuesSchema,
+});
+
+export type MemberCreateData = z.infer<typeof memberCreateSchema>;
+
+export const memberUpdateSchema = z.object({
+    rowNumber: z.coerce
+        .number()
+        .int("行番号は整数で指定してください")
+        .min(2, "ヘッダー行は更新できません"),
+    values: memberValuesSchema,
+});
+
+export type MemberUpdateData = z.infer<typeof memberUpdateSchema>;
+
+export const memberDeleteSchema = z.object({
+    rowNumber: z.coerce
+        .number()
+        .int("行番号は整数で指定してください")
+        .min(2, "ヘッダー行は削除できません"),
+});
+
+export type MemberDeleteData = z.infer<typeof memberDeleteSchema>;
 
 /**
  * バリデーションエラーを整形して返す

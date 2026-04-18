@@ -1,4 +1,10 @@
-import type { ApiResponse, Item, Schedule, Absence } from "../types/api";
+import type {
+    ApiResponse,
+    Item,
+    Schedule,
+    Absence,
+    MembersData,
+} from "../types/api";
 import { auth } from "@/src/auth";
 import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
 import { unstable_cache } from "next/cache";
@@ -76,6 +82,12 @@ const getSchedulesCached = unstable_cache(
     { tags: ["schedules"] }
 );
 
+const getMembersCached = unstable_cache(
+    async () => fetchFromGASServer<MembersData>("members"),
+    ["gas-members"],
+    { tags: ["members"] }
+);
+
 const getAbsencesCached = unstable_cache(
     async (date?: string) =>
         fetchFromGASServer<Absence[]>(
@@ -107,6 +119,14 @@ export async function getItemsServer(): Promise<ApiResponse<Item[]>> {
 export async function getSchedulesServer(): Promise<ApiResponse<Schedule[]>> {
     await requireAuthenticatedSession();
     return getSchedulesCached();
+}
+
+/**
+ * Members取得API（サーバーサイド用）
+ */
+export async function getMembersServer(): Promise<ApiResponse<MembersData>> {
+    await requireAuthenticatedSession();
+    return getMembersCached();
 }
 
 /**

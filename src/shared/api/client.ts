@@ -1,4 +1,10 @@
-import type { ApiResponse, Item, Schedule, Absence } from "../types/api";
+import type {
+    ApiResponse,
+    Item,
+    Schedule,
+    Absence,
+    MembersData,
+} from "../types/api";
 
 /**
  * GAS APIへのリクエストをNext.js API Routes経由で行う
@@ -48,6 +54,11 @@ export async function getItems(): Promise<ApiResponse<Item[]>> {
 // Schedules取得API
 export async function getSchedules(): Promise<ApiResponse<Schedule[]>> {
     return fetchFromGAS<Schedule[]>("schedules");
+}
+
+// Members取得API
+export async function getMembers(): Promise<ApiResponse<MembersData>> {
+    return fetchFromGAS<MembersData>("members");
 }
 
 // Absences取得API
