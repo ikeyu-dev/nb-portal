@@ -23,6 +23,8 @@ const HEADER_LABELS: Record<string, string> = {
 const getHeaderLabel = (header: string): string =>
     HEADER_LABELS[header.trim().toLowerCase()] || header;
 
+type BooleanFilterValue = "all" | "done" | "pending";
+
 const stringifyCell = (value: SheetCellValue): string => {
     if (value === null || value === undefined) return "";
     return String(value);
@@ -40,6 +42,9 @@ const getBooleanCellValue = (value: SheetCellValue | string): boolean => {
     if (typeof value === "boolean") return value;
     return String(value).trim().toLowerCase() === "true";
 };
+
+const getBooleanStatusLabel = (checked: boolean): string =>
+    checked ? "済" : "未";
 
 const normalizeEditableValues = (
     values: string[],
@@ -102,7 +107,7 @@ function MemberField({
             {isBoolean ? (
                 <div className="flex items-center justify-between rounded-lg bg-base-200 px-4 py-3">
                     <span className="text-sm text-base-content/70">
-                        {getBooleanCellValue(value) ? "完了" : "未完了"}
+                        {getBooleanStatusLabel(getBooleanCellValue(value))}
                     </span>
                     <BooleanToggle
                         checked={getBooleanCellValue(value)}
@@ -149,6 +154,9 @@ const isNameHeader = (header: string): boolean =>
 const isNicknameHeader = (header: string): boolean =>
     header.trim().toLowerCase() === "nickname";
 
+const isBooleanHeader = (header: string): boolean =>
+    header.trim().toLowerCase().startsWith("is");
+
 const getMembersCache = (): MembersData | null => {
     if (typeof window === "undefined") return null;
 
@@ -176,6 +184,9 @@ export default function MembersPage() {
     const [headers, setHeaders] = useState<string[]>([]);
     const [members, setMembers] = useState<MemberRow[]>([]);
     const [query, setQuery] = useState("");
+    const [booleanFilters, setBooleanFilters] = useState<
+        Record<number, BooleanFilterValue>
+    >({});
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -236,15 +247,6 @@ export default function MembersPage() {
         void fetchMembers();
     }, [fetchMembers]);
 
-    const filteredMembers = useMemo(() => {
-        const normalizedQuery = query.trim().toLowerCase();
-        if (!normalizedQuery) return members;
-
-        return members.filter((member) =>
-            normalizeSearchTarget(member).includes(normalizedQuery)
-        );
-    }, [members, query]);
-
     const visibleColumnIndices = useMemo(
         () =>
             headers
@@ -253,6 +255,39 @@ export default function MembersPage() {
                 .map(({ index }) => index),
         [headers]
     );
+
+    const booleanColumnIndices = useMemo(
+        () =>
+            visibleColumnIndices.filter(
+                (index) =>
+                    isBooleanHeader(headers[index]) ||
+                    members.some((member) => isBooleanCell(member.values[index]))
+            ),
+        [headers, members, visibleColumnIndices]
+    );
+
+    const filteredMembers = useMemo(() => {
+        const normalizedQuery = query.trim().toLowerCase();
+        const activeBooleanFilters = Object.entries(booleanFilters).filter(
+            ([, value]) => value !== "all"
+        );
+
+        return members.filter((member) => {
+            const matchesQuery =
+                !normalizedQuery ||
+                normalizeSearchTarget(member).includes(normalizedQuery);
+
+            if (!matchesQuery) return false;
+
+            return activeBooleanFilters.every(([indexKey, filterValue]) => {
+                const value = member.values[Number(indexKey)];
+                if (!isBooleanCell(value)) return false;
+
+                const checked = getBooleanCellValue(value);
+                return filterValue === "done" ? checked : !checked;
+            });
+        });
+    }, [booleanFilters, members, query]);
 
     const nameColumnIndex = useMemo(
         () => headers.findIndex(isNameHeader),
@@ -508,10 +543,45 @@ export default function MembersPage() {
                         <div className="stat py-2 px-4">
                             <div className="stat-title text-sm">
                                 表示:{filteredMembers.length}
-                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                {booleanColumnIndices.length > 0 && (
+                    <div className="flex flex-wrap gap-3">
+                        {booleanColumnIndices.map((index) => {
+                            const currentFilter =
+                                booleanFilters[index] || "all";
+
+                            return (
+                                <div
+                                    key={index}
+                                    className="flex w-full flex-col gap-1 sm:w-44"
+                                >
+                                    <span className="text-xs text-base-content/70">
+                                        {getHeaderLabel(headers[index])}
+                                    </span>
+                                    <select
+                                        className="select select-bordered select-sm"
+                                        value={currentFilter}
+                                        onChange={(event) =>
+                                            setBooleanFilters((prev) => ({
+                                                ...prev,
+                                                [index]: event.target
+                                                    .value as BooleanFilterValue,
+                                            }))
+                                        }
+                                    >
+                                        <option value="all">すべて</option>
+                                        <option value="done">済</option>
+                                        <option value="pending">未</option>
+                                    </select>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {error && (
                     <div className="alert alert-error">
