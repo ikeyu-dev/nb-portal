@@ -7,6 +7,9 @@ import {
 } from "@/src/shared/lib/validation";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const NO_STORE_HEADERS = {
+    "Cache-Control": "no-store, max-age=0",
+};
 
 /**
  * GAS APIへのプロキシエンドポイント
@@ -84,7 +87,7 @@ export async function GET(request: NextRequest) {
         });
 
         const data = await response.json();
-        return NextResponse.json(data);
+        return NextResponse.json(data, { headers: NO_STORE_HEADERS });
     } catch (error) {
         console.error("GAS API proxy error:", error);
         return NextResponse.json(

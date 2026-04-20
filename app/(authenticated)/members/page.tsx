@@ -6,8 +6,15 @@ import type {
     MembersData,
     SheetCellValue,
 } from "@/src/shared/types/api";
-
-const MEMBERS_CACHE_KEY = "nb-portal-members-cache";
+import {
+    getClientCacheEntry,
+    getStaleClientCacheEntry,
+    setClientCache,
+} from "@/src/shared/lib/client-cache";
+import {
+    CACHE_TTL_MS,
+    CLIENT_CACHE_KEYS,
+} from "@/src/shared/lib/cache-policy";
 
 const HEADER_LABELS: Record<string, string> = {
     studentnumber: "学籍番号",
@@ -157,29 +164,6 @@ const isNicknameHeader = (header: string): boolean =>
 const isBooleanHeader = (header: string): boolean =>
     header.trim().toLowerCase().startsWith("is");
 
-const getMembersCache = (): MembersData | null => {
-    if (typeof window === "undefined") return null;
-
-    try {
-        const cached = sessionStorage.getItem(MEMBERS_CACHE_KEY);
-        if (!cached) return null;
-        return JSON.parse(cached) as MembersData;
-    } catch {
-        sessionStorage.removeItem(MEMBERS_CACHE_KEY);
-        return null;
-    }
-};
-
-const setMembersCache = (data: MembersData): void => {
-    if (typeof window === "undefined") return;
-
-    try {
-        sessionStorage.setItem(MEMBERS_CACHE_KEY, JSON.stringify(data));
-    } catch {
-        // キャッシュできない場合は画面表示だけ更新する
-    }
-};
-
 export default function MembersPage() {
     const [headers, setHeaders] = useState<string[]>([]);
     const [members, setMembers] = useState<MemberRow[]>([]);
@@ -202,11 +186,20 @@ export default function MembersPage() {
     const applyMembersData = useCallback((data: MembersData) => {
         setHeaders(data.headers);
         setMembers(data.members);
-        setMembersCache(data);
     }, []);
 
     const fetchMembers = useCallback(async () => {
-        setIsLoading(true);
+        const cached = getClientCacheEntry<MembersData>(
+            CLIENT_CACHE_KEYS.members,
+            CACHE_TTL_MS.pageData
+        );
+        if (cached) {
+            applyMembersData(cached.data);
+            setIsLoading(false);
+        } else {
+            setIsLoading(true);
+        }
+
         try {
             const response = await fetch("/api/gas?path=members", {
                 cache: "no-store",
@@ -223,27 +216,27 @@ export default function MembersPage() {
             }
 
             applyMembersData(data.data);
+            setClientCache(CLIENT_CACHE_KEYS.members, data.data);
             setError(null);
         } catch (fetchError) {
-            setError(
-                fetchError instanceof Error
-                    ? fetchError.message
-                    : "名簿の取得に失敗しました"
+            const stale = getStaleClientCacheEntry<MembersData>(
+                CLIENT_CACHE_KEYS.members
             );
+            if (stale) {
+                applyMembersData(stale.data);
+            } else {
+                setError(
+                    fetchError instanceof Error
+                        ? fetchError.message
+                        : "名簿の取得に失敗しました"
+                );
+            }
         } finally {
             setIsLoading(false);
         }
     }, [applyMembersData]);
 
     useEffect(() => {
-        const cached = getMembersCache();
-        if (cached) {
-            setHeaders(cached.headers);
-            setMembers(cached.members);
-            setIsLoading(false);
-            return;
-        }
-
         void fetchMembers();
     }, [fetchMembers]);
 
@@ -318,6 +311,7 @@ export default function MembersPage() {
             members: nextMembers,
         };
         applyMembersData(nextData);
+        setClientCache(CLIENT_CACHE_KEYS.members, nextData);
     };
 
     const openCreateModal = () => {

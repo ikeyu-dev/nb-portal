@@ -9,6 +9,17 @@ export function getClientCacheEntry<T>(
     key: string,
     ttlMs: number
 ): CachedData<T> | null {
+    const cached = getStaleClientCacheEntry<T>(key);
+    if (!cached) return null;
+
+    if (Date.now() - cached.timestamp > ttlMs) {
+        return null;
+    }
+
+    return cached;
+}
+
+export function getStaleClientCacheEntry<T>(key: string): CachedData<T> | null {
     if (typeof window === "undefined") return null;
 
     try {
@@ -16,11 +27,6 @@ export function getClientCacheEntry<T>(
         if (!cached) return null;
 
         const parsed = JSON.parse(cached) as CachedData<T>;
-        if (Date.now() - parsed.timestamp > ttlMs) {
-            sessionStorage.removeItem(key);
-            return null;
-        }
-
         return parsed;
     } catch {
         return null;

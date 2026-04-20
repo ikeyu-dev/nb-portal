@@ -8,6 +8,7 @@ import type {
 import { auth } from "@/src/auth";
 import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
 import { unstable_cache } from "next/cache";
+import { CACHE_SECONDS, CACHE_TAGS } from "../lib/cache-policy";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
@@ -73,19 +74,19 @@ async function fetchFromGASServer<T>(
 const getItemsCached = unstable_cache(
     async () => fetchFromGASServer<Item[]>("items"),
     ["gas-items"],
-    { tags: ["items"] }
+    { tags: [CACHE_TAGS.items], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getSchedulesCached = unstable_cache(
     async () => fetchFromGASServer<Schedule[]>("schedules"),
     ["gas-schedules"],
-    { tags: ["schedules"] }
+    { tags: [CACHE_TAGS.schedules], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getMembersCached = unstable_cache(
     async () => fetchFromGASServer<MembersData>("members"),
     ["gas-members"],
-    { tags: ["members"] }
+    { tags: [CACHE_TAGS.members], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getAbsencesCached = unstable_cache(
@@ -95,14 +96,14 @@ const getAbsencesCached = unstable_cache(
             date ? { date } : undefined
         ),
     ["gas-absences"],
-    { tags: ["absences"] }
+    { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getEventAbsencesCached = unstable_cache(
     async (eventId: string) =>
         fetchFromGASServer<Absence[]>("event-absences", { eventId }),
     ["gas-event-absences"],
-    { tags: ["absences"] }
+    { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.gasData }
 );
 
 /**

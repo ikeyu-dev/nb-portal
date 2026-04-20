@@ -4,9 +4,14 @@ import { useEffect, useState } from "react";
 import { PushNotificationToggle } from "@/src/features/push-notification";
 import { HelpButton } from "@/src/features/help";
 import {
-    getClientCache,
+    getClientCacheEntry,
+    getStaleClientCacheEntry,
     setClientCache,
 } from "@/src/shared/lib/client-cache";
+import {
+    CACHE_TTL_MS,
+    CLIENT_CACHE_KEYS,
+} from "@/src/shared/lib/cache-policy";
 
 interface Notification {
     eventId: string;
@@ -22,9 +27,6 @@ interface NotificationsContentProps {
     userEmail: string | null;
 }
 
-const NOTIFICATIONS_CACHE_KEY = "nb-portal-notifications-cache";
-const NOTIFICATIONS_CACHE_TTL = 5 * 60 * 1000;
-
 export function NotificationsContent({ userEmail }: NotificationsContentProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -32,35 +34,43 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
 
     useEffect(() => {
         const fetchNotifications = async () => {
-            const cached = getClientCache<Notification[]>(
-                NOTIFICATIONS_CACHE_KEY,
-                NOTIFICATIONS_CACHE_TTL
+            const cached = getClientCacheEntry<Notification[]>(
+                CLIENT_CACHE_KEYS.notifications,
+                CACHE_TTL_MS.pageData
             );
             if (cached) {
-                setNotifications(cached);
+                setNotifications(cached.data);
                 setIsLoading(false);
-                return;
             }
 
             try {
-                const res = await fetch("/api/gas?path=notifications&limit=50");
+                const res = await fetch("/api/gas?path=notifications&limit=50", {
+                    cache: "no-store",
+                });
                 const data = await res.json();
                 if (data.success) {
                     const nextNotifications = data.data || [];
                     setNotifications(nextNotifications);
                     setClientCache(
-                        NOTIFICATIONS_CACHE_KEY,
+                        CLIENT_CACHE_KEYS.notifications,
                         nextNotifications
                     );
                 } else {
                     setError(data.error || "データの取得に失敗しました");
                 }
             } catch (err) {
-                setError(
-                    err instanceof Error
-                        ? err.message
-                        : "データの取得に失敗しました"
+                const stale = getStaleClientCacheEntry<Notification[]>(
+                    CLIENT_CACHE_KEYS.notifications
                 );
+                if (stale) {
+                    setNotifications(stale.data);
+                } else {
+                    setError(
+                        err instanceof Error
+                            ? err.message
+                            : "データの取得に失敗しました"
+                    );
+                }
             } finally {
                 setIsLoading(false);
             }

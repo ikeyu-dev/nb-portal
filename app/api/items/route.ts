@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
+import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
 import {
     itemCreateSchema,
     itemUpdateSchema,
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 
         const data = await response.json();
         if (data?.success === true) {
-            revalidateTag("items", "max");
+            revalidateTag(CACHE_TAGS.items, "max");
         }
         return NextResponse.json(data);
     } catch (error) {
@@ -117,7 +118,7 @@ export async function PUT(request: NextRequest) {
 
         const data = await response.json();
         if (data?.success === true) {
-            revalidateTag("items", "max");
+            revalidateTag(CACHE_TAGS.items, "max");
         }
         return NextResponse.json(data);
     } catch (error) {
@@ -178,7 +179,7 @@ export async function DELETE(request: NextRequest) {
 
         const data = await response.json();
         if (data?.success === true) {
-            revalidateTag("items", "max");
+            revalidateTag(CACHE_TAGS.items, "max");
         }
         return NextResponse.json(data);
     } catch (error) {
