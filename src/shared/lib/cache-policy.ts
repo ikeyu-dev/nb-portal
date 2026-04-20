@@ -17,7 +17,7 @@ export const CACHE_TTL_MS = {
 export const CLIENT_CACHE_KEYS = {
     calendar: "nb-portal-calendar-cache",
     items: "nb-portal-items-cache",
-    members: "nb-portal-members-cache",
+    members: "nb-portal-members-cache-v2",
     notifications: "nb-portal-notifications-cache",
     meetingMemoDraft: "nb-portal-meeting-memo-draft",
 } as const;

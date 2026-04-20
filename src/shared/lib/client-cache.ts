@@ -5,6 +5,16 @@ export interface CachedData<T> {
     timestamp: number;
 }
 
+function isCachedData<T>(value: unknown): value is CachedData<T> {
+    if (!value || typeof value !== "object") return false;
+
+    return (
+        "data" in value &&
+        "timestamp" in value &&
+        typeof value.timestamp === "number"
+    );
+}
+
 export function getClientCacheEntry<T>(
     key: string,
     ttlMs: number
@@ -26,9 +36,15 @@ export function getStaleClientCacheEntry<T>(key: string): CachedData<T> | null {
         const cached = sessionStorage.getItem(key);
         if (!cached) return null;
 
-        const parsed = JSON.parse(cached) as CachedData<T>;
+        const parsed = JSON.parse(cached) as unknown;
+        if (!isCachedData<T>(parsed)) {
+            sessionStorage.removeItem(key);
+            return null;
+        }
+
         return parsed;
     } catch {
+        sessionStorage.removeItem(key);
         return null;
     }
 }
