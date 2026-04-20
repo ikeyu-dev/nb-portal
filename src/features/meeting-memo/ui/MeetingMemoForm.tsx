@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CLIENT_CACHE_KEYS } from "@/src/shared/lib/cache-policy";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 const LOCATIONS = ["Discord", "クラブ棟前", "部室", "その他"] as const;
@@ -24,8 +25,6 @@ interface MemoFormData {
     nextMeetingTime: string;
     nextMeetingLocation: string;
 }
-
-const MEMO_DRAFT_CACHE_KEY = "nb-portal-meeting-memo-draft";
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
@@ -129,12 +128,14 @@ export function MeetingMemoForm() {
         if (typeof window === "undefined") return;
 
         try {
-            const draft = sessionStorage.getItem(MEMO_DRAFT_CACHE_KEY);
+            const draft = sessionStorage.getItem(
+                CLIENT_CACHE_KEYS.meetingMemoDraft
+            );
             if (!draft) return;
 
             setFormData(normalizeDraft(JSON.parse(draft) as Partial<MemoFormData>));
         } catch {
-            sessionStorage.removeItem(MEMO_DRAFT_CACHE_KEY);
+            sessionStorage.removeItem(CLIENT_CACHE_KEYS.meetingMemoDraft);
         } finally {
             hasRestoredDraftRef.current = true;
         }
@@ -147,7 +148,7 @@ export function MeetingMemoForm() {
 
         try {
             sessionStorage.setItem(
-                MEMO_DRAFT_CACHE_KEY,
+                CLIENT_CACHE_KEYS.meetingMemoDraft,
                 JSON.stringify(formData)
             );
         } catch {

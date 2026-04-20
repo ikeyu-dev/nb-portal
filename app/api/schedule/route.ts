@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
+import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest) {
         const data = await response.json();
 
         if (data?.success === true) {
-            revalidateTag("schedules", "max");
-            revalidateTag("notifications", "max");
+            revalidateTag(CACHE_TAGS.schedules, "max");
+            revalidateTag(CACHE_TAGS.notifications, "max");
         }
 
         return NextResponse.json(data);
@@ -104,8 +105,8 @@ export async function DELETE(request: NextRequest) {
         const data = await response.json();
 
         if (data?.success === true) {
-            revalidateTag("schedules", "max");
-            revalidateTag("notifications", "max");
+            revalidateTag(CACHE_TAGS.schedules, "max");
+            revalidateTag(CACHE_TAGS.notifications, "max");
         }
 
         return NextResponse.json(data);
@@ -162,8 +163,8 @@ export async function PUT(request: NextRequest) {
         const data = await response.json();
 
         if (data?.success === true) {
-            revalidateTag("schedules", "max");
-            revalidateTag("notifications", "max");
+            revalidateTag(CACHE_TAGS.schedules, "max");
+            revalidateTag(CACHE_TAGS.notifications, "max");
         }
 
         return NextResponse.json(data);

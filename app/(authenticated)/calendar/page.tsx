@@ -8,6 +8,10 @@ import {
     getClientCacheEntry,
     setClientCache,
 } from "@/src/shared/lib/client-cache";
+import {
+    CACHE_TTL_MS,
+    CLIENT_CACHE_KEYS,
+} from "@/src/shared/lib/cache-policy";
 
 // イベントカラーの定義
 export const EVENT_COLORS = [
@@ -65,9 +69,7 @@ interface EventForm {
     color: EventColorId;
 }
 
-const CALENDAR_CACHE_KEY = "nb-portal-calendar-cache";
-const CALENDAR_CACHE_TTL = 5 * 60 * 1000;
-const CALENDAR_REFRESH_INTERVAL = 5 * 60 * 1000;
+const CALENDAR_REFRESH_INTERVAL = CACHE_TTL_MS.pageData;
 const CALENDAR_REFETCH_COOLDOWN = 60 * 1000;
 
 export default function CalendarPage() {
@@ -123,7 +125,7 @@ export default function CalendarPage() {
         const cached = getClientCacheEntry<{
             schedules: Schedule[];
             absences: Absence[];
-        }>(CALENDAR_CACHE_KEY, CALENDAR_CACHE_TTL);
+        }>(CLIENT_CACHE_KEYS.calendar, CACHE_TTL_MS.pageData);
 
         if (cached) {
             setSchedules(cached.data.schedules);
@@ -167,7 +169,7 @@ export default function CalendarPage() {
                     setSchedules(nextSchedules);
                     setAbsences(nextAbsences);
                     setError(null);
-                    setClientCache(CALENDAR_CACHE_KEY, {
+                    setClientCache(CLIENT_CACHE_KEYS.calendar, {
                         schedules: nextSchedules,
                         absences: nextAbsences,
                     });
@@ -192,7 +194,9 @@ export default function CalendarPage() {
             }
         };
 
-        if (!cached) {
+        if (cached) {
+            void fetchData(false);
+        } else {
             void fetchData(true, true);
         }
 
@@ -411,7 +415,7 @@ export default function CalendarPage() {
                 };
                 setSchedules((prev) => {
                     const next = [...prev, newSchedule];
-                    setClientCache(CALENDAR_CACHE_KEY, {
+                    setClientCache(CLIENT_CACHE_KEYS.calendar, {
                         schedules: next,
                         absences,
                     });
@@ -555,7 +559,7 @@ export default function CalendarPage() {
                         const scheduleValues = Object.values(schedule);
                         return String(scheduleValues[0]) !== eventId;
                     });
-                    setClientCache(CALENDAR_CACHE_KEY, {
+                    setClientCache(CLIENT_CACHE_KEYS.calendar, {
                         schedules: next,
                         absences,
                     });
@@ -638,7 +642,7 @@ export default function CalendarPage() {
                         }
                         return schedule;
                     });
-                    setClientCache(CALENDAR_CACHE_KEY, {
+                    setClientCache(CLIENT_CACHE_KEYS.calendar, {
                         schedules: next,
                         absences,
                     });

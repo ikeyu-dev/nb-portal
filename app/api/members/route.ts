@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
+import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
 import {
     formatValidationErrors,
     memberCreateSchema,
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
 
         const data = await response.json();
         if (data?.success === true) {
-            revalidateTag("members", "max");
+            revalidateTag(CACHE_TAGS.members, "max");
         }
 
         return NextResponse.json(data);
@@ -120,7 +121,7 @@ export async function PUT(request: NextRequest) {
 
         const data = await response.json();
         if (data?.success === true) {
-            revalidateTag("members", "max");
+            revalidateTag(CACHE_TAGS.members, "max");
         }
 
         return NextResponse.json(data);
@@ -183,7 +184,7 @@ export async function DELETE(request: NextRequest) {
 
         const data = await response.json();
         if (data?.success === true) {
-            revalidateTag("members", "max");
+            revalidateTag(CACHE_TAGS.members, "max");
         }
 
         return NextResponse.json(data);

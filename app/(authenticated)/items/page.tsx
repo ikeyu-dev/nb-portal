@@ -2,10 +2,17 @@
 
 import { useEffect, useState, useRef } from "react";
 import { HelpButton } from "@/src/features/help";
-
-interface Item {
-    [key: string]: string | number | boolean | Date;
-}
+import type { Item } from "@/src/shared/types/api";
+import {
+    clearClientCache,
+    getClientCacheEntry,
+    getStaleClientCacheEntry,
+    setClientCache,
+} from "@/src/shared/lib/client-cache";
+import {
+    CACHE_TTL_MS,
+    CLIENT_CACHE_KEYS,
+} from "@/src/shared/lib/cache-policy";
 
 type CategoryFilter = "all" | "MIC" | "SPK" | "CAB" | "OTHER";
 type ItemCategory = "MIC" | "SPK" | "CAB" | "OTH";
@@ -17,47 +24,9 @@ const CATEGORY_MAP: Record<string, string> = {
     OTH: "その他",
 };
 
-const CACHE_KEY = "nb-portal-items-cache";
-const CACHE_DURATION = 2 * 60 * 60 * 1000;
-
-interface CachedData {
-    items: Item[];
-    timestamp: number;
-}
-
 const getCategoryFromItemId = (itemId: string): string => {
     const prefix = String(itemId).substring(0, 3).toUpperCase();
     return CATEGORY_MAP[prefix] || "その他";
-};
-
-const getCache = (): CachedData | null => {
-    if (typeof window === "undefined") return null;
-    try {
-        const cached = localStorage.getItem(CACHE_KEY);
-        if (!cached) return null;
-        return JSON.parse(cached) as CachedData;
-    } catch {
-        return null;
-    }
-};
-
-const setCache = (items: Item[]): void => {
-    if (typeof window === "undefined") return;
-    try {
-        const data: CachedData = { items, timestamp: Date.now() };
-        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    } catch {
-        // localStorage容量超過時は無視
-    }
-};
-
-const clearCache = (): void => {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem(CACHE_KEY);
-};
-
-const isCacheValid = (cache: CachedData): boolean => {
-    return Date.now() - cache.timestamp < CACHE_DURATION;
 };
 
 export default function ItemsPage() {
@@ -93,28 +62,34 @@ export default function ItemsPage() {
 
     const fetchItems = async (useCache = true) => {
         if (useCache) {
-            const cache = getCache();
-            if (cache && isCacheValid(cache)) {
-                setItems(cache.items);
+            const cache = getClientCacheEntry<Item[]>(
+                CLIENT_CACHE_KEYS.items,
+                CACHE_TTL_MS.pageData
+            );
+            if (cache) {
+                setItems(cache.data);
                 setIsLoading(false);
-                return;
             }
         }
 
         try {
-            const res = await fetch("/api/gas?path=items");
+            const res = await fetch("/api/gas?path=items", {
+                cache: "no-store",
+            });
             const data = await res.json();
             if (data.success) {
                 const fetchedItems = data.data || [];
                 setItems(fetchedItems);
-                setCache(fetchedItems);
+                setClientCache(CLIENT_CACHE_KEYS.items, fetchedItems);
             } else {
                 setError(data.error || "データの取得に失敗しました");
             }
         } catch (err) {
-            const cache = getCache();
+            const cache = getStaleClientCacheEntry<Item[]>(
+                CLIENT_CACHE_KEYS.items
+            );
             if (cache) {
-                setItems(cache.items);
+                setItems(cache.data);
             } else {
                 setError(
                     err instanceof Error
@@ -175,7 +150,7 @@ export default function ItemsPage() {
             if (data.success) {
                 setIsCreateModalOpen(false);
                 setCreateForm({ category: "MIC", name: "", count: 1 });
-                clearCache();
+                clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
                 setModalError(data.error || "登録に失敗しました");
@@ -211,7 +186,7 @@ export default function ItemsPage() {
                 setIsEditModalOpen(false);
                 setSelectedItem(null);
                 setEditForm({ name: "" });
-                clearCache();
+                clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
                 setModalError(data.error || "更新に失敗しました");
@@ -240,7 +215,7 @@ export default function ItemsPage() {
             if (data.success) {
                 setIsDeleteModalOpen(false);
                 setSelectedItem(null);
-                clearCache();
+                clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
                 setModalError(data.error || "削除に失敗しました");

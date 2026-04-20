@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
+import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
 import {
     absenceSubmitSchema,
     formatValidationErrors,
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
         const data = await response.json();
 
         if (data?.success === true) {
-            revalidateTag("absences", "max");
+            revalidateTag(CACHE_TAGS.absences, "max");
         }
 
         return NextResponse.json(data);
