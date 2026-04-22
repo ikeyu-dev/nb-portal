@@ -6,6 +6,7 @@ import type { Absence } from "@/src/shared/types/api";
 import { HelpButton } from "@/src/features/help";
 import {
     getClientCacheEntry,
+    getStaleClientCacheEntry,
     setClientCache,
 } from "@/src/shared/lib/client-cache";
 import {
@@ -182,11 +183,22 @@ export default function CalendarPage() {
             } catch (err) {
                 if (isCancelled) return;
 
-                setError(
-                    err instanceof Error
-                        ? err.message
-                        : "データの取得に失敗しました"
-                );
+                const stale = getStaleClientCacheEntry<{
+                    schedules: Schedule[];
+                    absences: Absence[];
+                }>(CLIENT_CACHE_KEYS.calendar, {
+                    maxAgeMs: CACHE_TTL_MS.stalePageData,
+                });
+                if (stale) {
+                    setSchedules(stale.data.schedules);
+                    setAbsences(stale.data.absences);
+                } else {
+                    setError(
+                        err instanceof Error
+                            ? err.message
+                            : "データの取得に失敗しました"
+                    );
+                }
             } finally {
                 if (!isCancelled) {
                     setIsLoading(false);

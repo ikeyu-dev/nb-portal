@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CLIENT_CACHE_KEYS } from "@/src/shared/lib/cache-policy";
+import {
+    CACHE_TTL_MS,
+    CLIENT_CACHE_KEYS,
+} from "@/src/shared/lib/cache-policy";
+import {
+    getClientCache,
+    setClientCache,
+} from "@/src/shared/lib/client-cache";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 const LOCATIONS = ["Discord", "クラブ棟前", "部室", "その他"] as const;
@@ -128,14 +135,15 @@ export function MeetingMemoForm() {
         if (typeof window === "undefined") return;
 
         try {
-            const draft = sessionStorage.getItem(
-                CLIENT_CACHE_KEYS.meetingMemoDraft
+            const draft = getClientCache<Partial<MemoFormData>>(
+                CLIENT_CACHE_KEYS.meetingMemoDraft,
+                CACHE_TTL_MS.meetingMemoDraft
             );
             if (!draft) return;
 
-            setFormData(normalizeDraft(JSON.parse(draft) as Partial<MemoFormData>));
+            setFormData(normalizeDraft(draft));
         } catch {
-            sessionStorage.removeItem(CLIENT_CACHE_KEYS.meetingMemoDraft);
+            // 壊れた下書きは client-cache.ts のキャッシュヘルパー側で破棄される
         } finally {
             hasRestoredDraftRef.current = true;
         }
@@ -147,9 +155,9 @@ export function MeetingMemoForm() {
         }
 
         try {
-            sessionStorage.setItem(
+            setClientCache(
                 CLIENT_CACHE_KEYS.meetingMemoDraft,
-                JSON.stringify(formData)
+                formData
             );
         } catch {
             // 保存できない場合は無視

@@ -86,7 +86,8 @@ export default function ItemsPage() {
             }
         } catch (err) {
             const cache = getStaleClientCacheEntry<Item[]>(
-                CLIENT_CACHE_KEYS.items
+                CLIENT_CACHE_KEYS.items,
+                { maxAgeMs: CACHE_TTL_MS.stalePageData }
             );
             if (cache) {
                 setItems(cache.data);
