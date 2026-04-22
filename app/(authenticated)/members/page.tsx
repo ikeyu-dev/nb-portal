@@ -220,7 +220,8 @@ export default function MembersPage() {
             setError(null);
         } catch (fetchError) {
             const stale = getStaleClientCacheEntry<MembersData>(
-                CLIENT_CACHE_KEYS.members
+                CLIENT_CACHE_KEYS.members,
+                { maxAgeMs: CACHE_TTL_MS.stalePageData }
             );
             if (stale) {
                 applyMembersData(stale.data);

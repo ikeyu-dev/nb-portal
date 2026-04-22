@@ -12,6 +12,8 @@ export const CACHE_SECONDS = {
 
 export const CACHE_TTL_MS = {
     pageData: CACHE_SECONDS.gasData * 1000,
+    stalePageData: 24 * 60 * 60 * 1000,
+    meetingMemoDraft: 10 * 60 * 1000,
 } as const;
 
 export const CLIENT_CACHE_KEYS = {

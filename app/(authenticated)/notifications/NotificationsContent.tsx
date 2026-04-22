@@ -60,7 +60,8 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                 }
             } catch (err) {
                 const stale = getStaleClientCacheEntry<Notification[]>(
-                    CLIENT_CACHE_KEYS.notifications
+                    CLIENT_CACHE_KEYS.notifications,
+                    { maxAgeMs: CACHE_TTL_MS.stalePageData }
                 );
                 if (stale) {
                     setNotifications(stale.data);
