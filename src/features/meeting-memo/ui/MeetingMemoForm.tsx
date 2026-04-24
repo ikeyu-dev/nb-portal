@@ -126,6 +126,7 @@ const normalizeDraft = (draft: Partial<MemoFormData>): MemoFormData => {
 export function MeetingMemoForm() {
     const [formData, setFormData] = useState<MemoFormData>(createDefaultFormData);
     const hasRestoredDraftRef = useRef(false);
+    const shouldSkipInitialPersistRef = useRef(true);
 
     const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">(
         "idle"
@@ -151,6 +152,11 @@ export function MeetingMemoForm() {
 
     useEffect(() => {
         if (typeof window === "undefined" || !hasRestoredDraftRef.current) {
+            return;
+        }
+
+        if (shouldSkipInitialPersistRef.current) {
+            shouldSkipInitialPersistRef.current = false;
             return;
         }
 
