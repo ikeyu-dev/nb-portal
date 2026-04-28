@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+    MEMBER_PERMISSION_LABELS,
+    MEMBER_PERMISSIONS,
+} from "@/src/shared/types/api";
 import type {
     MemberRow,
     MembersData,
@@ -55,13 +59,18 @@ const getBooleanStatusLabel = (checked: boolean): string =>
 
 const normalizeEditableValues = (
     values: string[],
+    headers: string[],
     sourceValues: SheetCellValue[] = []
 ): Array<string | boolean> =>
-    values.map((value, index) =>
-        isBooleanCell(sourceValues[index] ?? value)
+    values.map((value, index) => {
+        if (isPermissionHeader(headers[index]) && value.trim() === "") {
+            return "TMP_NORMAL";
+        }
+
+        return isBooleanCell(sourceValues[index] ?? value)
             ? getBooleanCellValue(value)
-            : value
-    );
+            : value;
+    });
 
 function BooleanToggle({
     checked,
@@ -93,16 +102,19 @@ function BooleanToggle({
 }
 
 function MemberField({
+    header,
     label,
     value,
     sourceValue,
     onChange,
 }: {
+    header: string;
     label: string;
     value: string;
     sourceValue?: SheetCellValue;
     onChange: (value: string) => void;
 }) {
+    const isPermission = isPermissionHeader(header);
     const isBoolean = isBooleanCell(sourceValue ?? value);
     const shouldUseTextarea = value.includes("\n") || value.length > 60;
 
@@ -111,7 +123,22 @@ function MemberField({
             <div className="label pt-0">
                 <span className="label-text font-medium">{label}</span>
             </div>
-            {isBoolean ? (
+            {isPermission ? (
+                <select
+                    className="select select-bordered w-full"
+                    value={value || "TMP_NORMAL"}
+                    onChange={(event) => onChange(event.target.value)}
+                >
+                    {MEMBER_PERMISSIONS.map((permission) => (
+                        <option
+                            key={permission}
+                            value={permission}
+                        >
+                            {MEMBER_PERMISSION_LABELS[permission]}
+                        </option>
+                    ))}
+                </select>
+            ) : isBoolean ? (
                 <div className="flex items-center justify-between rounded-lg bg-base-200 px-4 py-3">
                     <span className="text-sm text-base-content/70">
                         {getBooleanStatusLabel(getBooleanCellValue(value))}
@@ -160,6 +187,9 @@ const isNameHeader = (header: string): boolean =>
 
 const isNicknameHeader = (header: string): boolean =>
     header.trim().toLowerCase() === "nickname";
+
+const isPermissionHeader = (header: string): boolean =>
+    header.trim().toLowerCase() === "permission";
 
 const isBooleanHeader = (header: string): boolean =>
     header.trim().toLowerCase().startsWith("is");
@@ -245,7 +275,10 @@ export default function MembersPage() {
         () =>
             headers
                 .map((header, index) => ({ header, index }))
-                .filter(({ header }) => !isNameHeader(header))
+                .filter(
+                    ({ header }) =>
+                        !isNameHeader(header) && !isPermissionHeader(header)
+                )
                 .map(({ index }) => index),
         [headers]
     );
@@ -360,7 +393,7 @@ export default function MembersPage() {
     const handleCreate = async () => {
         setIsSubmitting(true);
         setModalError(null);
-        const values = normalizeEditableValues(createValues);
+        const values = normalizeEditableValues(createValues, headers);
 
         try {
             const response = await fetch("/api/members", {
@@ -396,6 +429,7 @@ export default function MembersPage() {
         setModalError(null);
         const values = normalizeEditableValues(
             editValues,
+            headers,
             editingMember.values
         );
 
@@ -717,6 +751,7 @@ export default function MembersPage() {
                             {headers.map((header, index) => (
                                 <MemberField
                                     key={`${header}-${index}`}
+                                    header={header}
                                     label={getHeaderLabel(header)}
                                     value={createValues[index] || ""}
                                     onChange={(value) => {
@@ -784,6 +819,7 @@ export default function MembersPage() {
                             {headers.map((header, index) => (
                                 <MemberField
                                     key={`${header}-${index}`}
+                                    header={header}
                                     label={getHeaderLabel(header)}
                                     value={editValues[index] || ""}
                                     sourceValue={editingMember.values[index]}
