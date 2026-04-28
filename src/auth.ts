@@ -1,5 +1,9 @@
 import NextAuth from "next-auth";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
+import {
+    MEMBER_PERMISSIONS,
+    type MemberPermission,
+} from "@/src/shared/types/api";
 
 const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
 
@@ -40,21 +44,29 @@ const extractStudentId = (email: string | null | undefined): string | null => {
 /** 部員確認API呼び出し（あだ名も同時に取得） */
 const verifyMember = async (
     identifier: string
-): Promise<{ isMember: boolean; name: string | null }> => {
+): Promise<{
+    isMember: boolean;
+    name: string | null;
+    permission: MemberPermission | null;
+}> => {
     try {
         const apiUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
-        if (!apiUrl) return { isMember: false, name: null };
+        if (!apiUrl) return { isMember: false, name: null, permission: null };
 
         const res = await fetch(
             `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`
         );
         const data = await res.json();
+        const permission = MEMBER_PERMISSIONS.includes(data.permission)
+            ? (data.permission as MemberPermission)
+            : null;
         return {
             isMember: data.success && data.isMember === true,
             name: data.name || null,
+            permission,
         };
     } catch {
-        return { isMember: false, name: null };
+        return { isMember: false, name: null, permission: null };
     }
 };
 
@@ -89,6 +101,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
             // jwtコールバックに引き渡すため一時的に格納
             (user as Record<string, unknown>).memberName = result.name;
+            (user as Record<string, unknown>).permission = result.permission;
             return true;
         },
         async jwt({ token, user, account }) {
@@ -98,6 +111,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 token.memberName =
                     ((user as Record<string, unknown>).memberName as string) ||
                     null;
+                token.permission =
+                    ((user as Record<string, unknown>).permission as
+                        | MemberPermission
+                        | null) || undefined;
             }
             // 初回ログイン時にプロファイル画像を取得（一度だけ）
             if (account?.access_token && !token.profileImageFetched) {
@@ -115,6 +132,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
             if (token.memberName) {
                 session.memberName = token.memberName as string;
+            }
+            if (token.permission) {
+                session.permission = token.permission as MemberPermission;
             }
             if (token.profileImage) {
                 session.profileImage = token.profileImage as string;

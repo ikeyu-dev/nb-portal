@@ -8,6 +8,26 @@ export interface ApiResponse<T> {
     timestamp?: string;
 }
 
+export const MEMBER_PERMISSIONS = [
+    "OBOG",
+    "NORMAL",
+    "HEAD",
+    "SUB_HEAD",
+    "ACCOUNTANT",
+    "TMP_NORMAL",
+] as const;
+
+export type MemberPermission = (typeof MEMBER_PERMISSIONS)[number];
+
+export const MEMBER_PERMISSION_LABELS: Record<MemberPermission, string> = {
+    OBOG: "OB・OG",
+    NORMAL: "部員",
+    HEAD: "部長",
+    SUB_HEAD: "副部長",
+    ACCOUNTANT: "会計",
+    TMP_NORMAL: "仮入部",
+};
+
 // Items型（スプレッドシートのヘッダーに応じて調整してください）
 export interface Item {
     [key: string]: string | number | boolean | Date;

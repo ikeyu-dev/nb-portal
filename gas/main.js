@@ -1257,10 +1257,12 @@ const handleVerifyMember = (e) => {
         const normalizedIdentifier = String(identifier).toLowerCase().trim();
 
         let memberName = null;
+        let memberPermission = null;
         const isMember = values.some((row) => {
             const studentId = String(row[0]).toLowerCase().trim();
             if (studentId === normalizedIdentifier) {
                 memberName = String(row[2] || "").trim() || null;
+                memberPermission = String(row[7] || "").trim() || null;
                 return true;
             }
             return false;
@@ -1271,6 +1273,7 @@ const handleVerifyMember = (e) => {
             isMember: isMember,
             identifier: identifier,
             name: memberName,
+            permission: memberPermission,
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
