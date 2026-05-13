@@ -61,6 +61,7 @@ export function NextMeetingCard({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAnnouncing, setIsAnnouncing] = useState(false);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
+    const [isAnnounceConfirmOpen, setIsAnnounceConfirmOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -82,6 +83,12 @@ export function NextMeetingCard({
         if (isSubmitting) return;
         setIsEditorOpen(false);
         setError(null);
+    };
+
+    const openAnnounceConfirm = () => {
+        setError(null);
+        setSuccessMessage(null);
+        setIsAnnounceConfirmOpen(true);
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -122,8 +129,14 @@ export function NextMeetingCard({
 
         setIsAnnouncing(true);
         try {
-            await announceNextMeeting();
+            const result = await announceNextMeeting();
+            if (!result.success) {
+                setError(result.error || "次回部会連絡の送信に失敗しました");
+                return;
+            }
+
             setSuccessMessage("次回部会連絡をDiscordに送信しました");
+            setIsAnnounceConfirmOpen(false);
         } catch (announceError) {
             setError(
                 announceError instanceof Error
@@ -208,7 +221,7 @@ export function NextMeetingCard({
                                 <button
                                     type="button"
                                     className="btn btn-primary btn-outline btn-sm gap-2"
-                                    onClick={handleAnnounce}
+                                    onClick={openAnnounceConfirm}
                                     disabled={isAnnouncing}
                                 >
                                     {isAnnouncing ? (
@@ -342,6 +355,61 @@ export function NextMeetingCard({
                         method="dialog"
                         className="modal-backdrop"
                         onSubmit={closeEditor}
+                    >
+                        <button type="submit">close</button>
+                    </form>
+                </dialog>
+            )}
+
+            {isAnnounceConfirmOpen && (
+                <dialog className="modal modal-open">
+                    <div className="modal-box max-w-md">
+                        <h3 className="font-bold text-lg mb-3">
+                            次回部会連絡を送信
+                        </h3>
+                        <p className="text-sm text-base-content/70">
+                            Discord に次回部会連絡を送信します。
+                        </p>
+                        <p className="mt-3 rounded-lg bg-base-200 px-3 py-2 text-sm font-medium">
+                            {formatNextMeeting(meeting)}
+                        </p>
+                        {error && (
+                            <div className="alert alert-error mt-4">
+                                {error}
+                            </div>
+                        )}
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn"
+                                onClick={() =>
+                                    setIsAnnounceConfirmOpen(false)
+                                }
+                                disabled={isAnnouncing}
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleAnnounce}
+                                disabled={isAnnouncing}
+                            >
+                                {isAnnouncing && (
+                                    <span className="loading loading-spinner loading-sm" />
+                                )}
+                                送信する
+                            </button>
+                        </div>
+                    </div>
+                    <form
+                        method="dialog"
+                        className="modal-backdrop"
+                        onSubmit={() => {
+                            if (!isAnnouncing) {
+                                setIsAnnounceConfirmOpen(false);
+                            }
+                        }}
                     >
                         <button type="submit">close</button>
                     </form>

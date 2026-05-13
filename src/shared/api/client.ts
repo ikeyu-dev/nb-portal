@@ -125,7 +125,7 @@ export async function announceNextMeeting(): Promise<ApiResponse<null>> {
             },
         });
         const result = (await response.json()) as ApiResponse<null>;
-        if (!response.ok || !result.success) {
+        if (!response.ok) {
             throw new Error(
                 result.error || `HTTP error! status: ${response.status}`
             );
@@ -133,7 +133,6 @@ export async function announceNextMeeting(): Promise<ApiResponse<null>> {
 
         return result;
     } catch (error) {
-        console.error("Next meeting announce error:", error);
         throw error;
     }
 }

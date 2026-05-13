@@ -5,14 +5,6 @@ const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 const normalizeAnnounceError = (error?: string) => {
     if (!error) return "次回部会連絡の送信に失敗しました";
-
-    if (
-        error.includes("Discord webhook rate limited") ||
-        error.includes("error code: 1015")
-    ) {
-        return "Discord側の送信制限中です。しばらく待ってから再度送信してください。";
-    }
-
     return error;
 };
 
@@ -65,7 +57,7 @@ export async function POST() {
                 ...data,
                 error: isSuccess ? data?.error : normalizeAnnounceError(data?.error),
             },
-            { status: isSuccess ? 200 : 502 }
+            { status: response.ok ? 200 : 502 }
         );
     } catch (error) {
         console.error("Next meeting announce API route error:", error);

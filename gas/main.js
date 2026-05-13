@@ -402,28 +402,60 @@ const sendToDiscord = (webhookURL, embeds, options = {}) => {
         muteHttpExceptions: true,
     };
 
+    const normalizeRetryAfterMs = (value) => {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue) || numericValue <= 0) return null;
+
+        // Discord usually returns seconds, but Cloudflare 1015 responses may
+        // surface millisecond-like integer values through Apps Script.
+        return numericValue >= 1000
+            ? Math.ceil(numericValue)
+            : Math.ceil(numericValue * 1000);
+    };
+
+    const getRetryAfterMs = (response) => {
+        const body = response.getContentText();
+        try {
+            const parsedBody = JSON.parse(body);
+            const retryAfterMs = normalizeRetryAfterMs(parsedBody.retry_after);
+            if (retryAfterMs) return retryAfterMs;
+        } catch (_) {
+            // Non-JSON rate limit bodies are handled by headers below.
+        }
+
+        const headers = response.getAllHeaders();
+        const retryAfterHeader =
+            headers["Retry-After"] ||
+            headers["retry-after"] ||
+            headers["X-RateLimit-Reset-After"] ||
+            headers["x-ratelimit-reset-after"];
+
+        return normalizeRetryAfterMs(retryAfterHeader) || 5000;
+    };
+
     const sendRequest = () => UrlFetchApp.fetch(webhookURL, request);
 
     let response = sendRequest();
     let responseCode = response.getResponseCode();
 
     if (responseCode === 429) {
-        const headers = response.getAllHeaders();
-        const retryAfterHeader =
-            headers["Retry-After"] || headers["retry-after"] || "5";
-        const retryAfterSeconds = Number(retryAfterHeader);
-        const waitMs = Number.isFinite(retryAfterSeconds)
-            ? Math.max(retryAfterSeconds, 1) * 1000
-            : 5000;
+        const responseBody = response.getContentText();
+        if (responseBody.includes("error code: 1015")) {
+            throw new Error(
+                `Discord webhook request blocked by Cloudflare 1015: ${responseBody}`
+            );
+        }
+
+        const waitMs = getRetryAfterMs(response);
 
         if (waitMs > MAX_RETRY_WAIT_MS) {
             throw new Error(
-                `Discord webhook rate limited with excessive retry delay ${waitMs}ms: ${response.getContentText()}`
+                `Discord webhook rate limited with excessive retry delay ${waitMs}ms: ${responseBody}`
             );
         }
 
         console.log(
-            `Discord webhook rate limited. Retrying after ${waitMs}ms. Body: ${response.getContentText()}`
+            `Discord webhook rate limited. Retrying after ${waitMs}ms. Body: ${responseBody}`
         );
         Utilities.sleep(waitMs);
 
