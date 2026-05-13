@@ -196,11 +196,6 @@ const formatNextMeetingDateLabel = (dateString, timeString) => {
 
 const buildNextMeetingReminderEmbed = (settings, options = {}) => {
     const title = options.title || "次回部会のお知らせ";
-    const modeLabel = settings.mode === "DISCORD" ? "Discord" : "対面";
-    const actionLabel =
-        settings.mode === "DISCORD"
-            ? "開始前に Discord を確認してください。"
-            : "開始前に会場と集合時間を確認してください。";
     const dateLabel = formatNextMeetingDateLabel(settings.date, settings.time);
 
     const embed = {
@@ -211,16 +206,6 @@ const buildNextMeetingReminderEmbed = (settings, options = {}) => {
             {
                 name: "日時",
                 value: dateLabel,
-                inline: false,
-            },
-            {
-                name: "開催形式",
-                value: modeLabel,
-                inline: false,
-            },
-            {
-                name: "案内",
-                value: actionLabel,
                 inline: false,
             },
         ],
