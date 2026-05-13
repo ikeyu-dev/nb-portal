@@ -3,6 +3,19 @@ import { auth, resolveMemberProfile } from "@/src/auth";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
+const normalizeAnnounceError = (error?: string) => {
+    if (!error) return "次回部会連絡の送信に失敗しました";
+
+    if (
+        error.includes("Discord webhook rate limited") ||
+        error.includes("error code: 1015")
+    ) {
+        return "Discord側の送信制限中です。しばらく待ってから再度送信してください。";
+    }
+
+    return error;
+};
+
 export async function POST() {
     const session = await auth();
     if (!session?.user) {
@@ -45,7 +58,15 @@ export async function POST() {
         });
 
         const data = await response.json();
-        return NextResponse.json(data, { status: response.ok ? 200 : 500 });
+        const isSuccess = response.ok && data?.success !== false;
+
+        return NextResponse.json(
+            {
+                ...data,
+                error: isSuccess ? data?.error : normalizeAnnounceError(data?.error),
+            },
+            { status: isSuccess ? 200 : 502 }
+        );
     } catch (error) {
         console.error("Next meeting announce API route error:", error);
         return NextResponse.json(

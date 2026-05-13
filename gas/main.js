@@ -574,11 +574,31 @@ const getNextMeetingMentionText = () =>
         "NEXT_MEETING_ROLE_MENTION"
     ) || "@部員";
 
+const getNextMeetingUnsetMentionText = () =>
+    PropertiesService.getScriptProperties().getProperty(
+        "NEXT_MEETING_UNSET_ROLE_MENTION"
+    ) || "@部長";
+
 const getNextMeetingWebhookURL = () =>
     PropertiesService.getScriptProperties().getProperty(
         "NEXT_MEETING_WEBHOOK_URL"
     ) ||
     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+
+const sendNextMeetingUnsetReminder = (webhookURL) => {
+    sendToDiscord(
+        webhookURL,
+        {
+            title: "次回部会が未設定です",
+            description:
+                "本日7:00時点で次回部会が設定されていません。ポータルから次回部会を設定してください。",
+            color: 0xf1c40f,
+        },
+        {
+            content: getNextMeetingUnsetMentionText(),
+        }
+    );
+};
 
 function sendNextMeetingMorningReminder() {
     const webhookURL = getNextMeetingWebhookURL();
@@ -589,18 +609,7 @@ function sendNextMeetingMorningReminder() {
     }
 
     if (!settings) {
-        sendToDiscord(
-            webhookURL,
-            {
-                title: "次回部会が未設定です",
-                description:
-                    "本日7:00時点で次回部会が設定されていません。ポータルから次回部会を設定してください。",
-                color: 0xf1c40f,
-            },
-            {
-                content: getNextMeetingMentionText(),
-            }
-        );
+        sendNextMeetingUnsetReminder(webhookURL);
         return;
     }
 
@@ -631,7 +640,8 @@ function sendNextMeetingReminderNow() {
     }
 
     if (!settings) {
-        throw new Error("Next meeting settings are not configured");
+        sendNextMeetingUnsetReminder(webhookURL);
+        return;
     }
 
     const embed = buildNextMeetingReminderEmbed(settings, {

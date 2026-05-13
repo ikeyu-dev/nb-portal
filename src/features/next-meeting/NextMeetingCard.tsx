@@ -120,11 +120,6 @@ export function NextMeetingCard({
         setError(null);
         setSuccessMessage(null);
 
-        if (!meeting) {
-            setError("次回部会が未設定です");
-            return;
-        }
-
         setIsAnnouncing(true);
         try {
             await announceNextMeeting();
@@ -214,7 +209,7 @@ export function NextMeetingCard({
                                     type="button"
                                     className="btn btn-secondary btn-sm gap-2"
                                     onClick={handleAnnounce}
-                                    disabled={!meeting || isAnnouncing}
+                                    disabled={isAnnouncing}
                                 >
                                     {isAnnouncing ? (
                                         <span className="loading loading-spinner loading-xs" />
