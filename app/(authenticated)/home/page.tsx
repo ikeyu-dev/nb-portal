@@ -1,25 +1,38 @@
-import { getAbsencesServer, getSchedulesServer } from "@/src/shared/api/server";
-import type { Absence, Schedule } from "@/src/shared/types/api";
+import {
+    getAbsencesServer,
+    getNextMeetingServer,
+    getSchedulesServer,
+} from "@/src/shared/api/server";
+import type {
+    Absence,
+    NextMeetingSettings,
+    Schedule,
+} from "@/src/shared/types/api";
 import { DigitalClock } from "@/features/digital-clock";
 import { WeatherWidget } from "@/features/weather";
 import { ScheduleCard } from "@/features/schedule-card";
 import { DateDisplay } from "@/features/date-display";
 import { ProfileImageSaver } from "@/features/profile-image";
+import { NextMeetingCard } from "@/src/features/next-meeting";
 import { auth } from "@/src/auth";
 
 export default async function HomePage() {
     const session = await auth();
+
     let absences: Absence[] = [];
     let schedules: Schedule[] = [];
+    let nextMeeting: NextMeetingSettings | null = null;
     let error: string | null = null;
 
     try {
-        const [absencesRes, schedulesRes] = await Promise.all([
+        const [absencesRes, schedulesRes, nextMeetingRes] = await Promise.all([
             getAbsencesServer(),
             getSchedulesServer(),
+            getNextMeetingServer(),
         ]);
         absences = absencesRes.data || [];
         schedules = schedulesRes.data || [];
+        nextMeeting = nextMeetingRes.data || null;
     } catch (err) {
         error =
             err instanceof Error ? err.message : "データの取得に失敗しました";
@@ -87,8 +100,8 @@ export default async function HomePage() {
     return (
         <>
             <ProfileImageSaver profileImage={session?.profileImage} />
-            <div className="p-4 sm:p-6 lg:p-10 max-w-full lg:h-screen lg:flex lg:flex-col lg:overflow-hidden">
-                <div className="flex items-center gap-3 mb-8 max-lg:hidden shrink-0">
+            <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden lg:px-8 lg:py-6">
+                <div className="mb-5 flex items-center gap-3 max-lg:hidden shrink-0 lg:mb-6">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         className="h-6 w-6 text-primary"
@@ -111,17 +124,15 @@ export default async function HomePage() {
                     </h1>
                 </div>
                 {error && (
-                    <div className="alert alert-error mb-6">
+                    <div className="alert alert-error mb-5">
                         <span>{error}</span>
                     </div>
                 )}
 
-                {/* Cards Grid - モバイル: 時計天気→スケジュール→欠席者, デスクトップ: 2列グリッド */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:flex-1 lg:min-h-0 lg:grid-rows-[auto_1fr]">
-                    {/* Schedule Card - モバイル: 2番目, デスクトップ: 左下 */}
-                    <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] lg:h-auto order-2 lg:order-2 lg:min-h-0">
-                        <div className="card-body pt-5 flex flex-col overflow-hidden">
-                            <div className="flex items-center gap-2 mb-4 h-8 shrink-0">
+                <div className="grid grid-cols-1 gap-5 lg:flex-1 lg:min-h-0 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-3 h-[420px] lg:order-none lg:col-span-7 lg:row-start-3 lg:h-full lg:min-h-0">
+                        <div className="card-body flex flex-col overflow-hidden p-5 pb-4">
+                            <div className="mb-3 flex h-8 items-center gap-2 shrink-0">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-5 w-5 text-primary"
@@ -263,10 +274,9 @@ export default async function HomePage() {
                         </div>
                     </div>
 
-                    {/* Weather & Clock Combined Card - 常に最上段全幅 */}
-                    <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:col-span-2">
-                        <div className="card-body pt-5">
-                            <div className="flex items-center gap-2 mb-2 h-8 shrink-0">
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:order-none lg:col-span-12 lg:row-start-1">
+                        <div className="card-body p-4">
+                            <div className="flex h-7 items-center gap-2 shrink-0">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-5 w-5 text-primary"
@@ -291,7 +301,7 @@ export default async function HomePage() {
                                     <DateDisplay />
                                 </h2>
                             </div>
-                            <div className="flex flex-col items-center text-center py-4 gap-3">
+                            <div className="flex flex-col items-center gap-1 pt-1 text-center">
                                 <DigitalClock
                                     memberName={session?.memberName}
                                 />
@@ -300,10 +310,15 @@ export default async function HomePage() {
                         </div>
                     </div>
 
-                    {/* Absences Section - モバイル: 3番目, デスクトップ: 右下 */}
-                    <div className="card bg-base-100 shadow-xl border border-base-300 h-[420px] lg:h-auto order-3 overflow-hidden lg:min-h-0">
-                        <div className="card-body pt-5 flex flex-col">
-                            <div className="flex items-center gap-2 mb-4 h-8">
+                    <NextMeetingCard
+                        initialMeeting={nextMeeting}
+                        permission={session?.permission}
+                        className="order-2 lg:order-none lg:col-span-12 lg:row-start-2"
+                    />
+
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-4 h-[420px] overflow-hidden lg:order-none lg:col-span-5 lg:row-start-3 lg:h-full lg:min-h-0">
+                        <div className="card-body flex flex-col p-5 pb-4">
+                            <div className="mb-3 flex h-8 items-center gap-2">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     className="h-5 w-5 text-primary"

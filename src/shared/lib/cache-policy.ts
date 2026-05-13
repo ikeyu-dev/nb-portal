@@ -4,6 +4,7 @@ export const CACHE_TAGS = {
     members: "members",
     absences: "absences",
     notifications: "notifications",
+    nextMeeting: "next-meeting",
 } as const;
 
 export const CACHE_SECONDS = {

@@ -4,6 +4,8 @@ import type {
     Schedule,
     Absence,
     MembersData,
+    NextMeetingSettings,
+    NextMeetingMode,
 } from "../types/api";
 
 /**
@@ -81,6 +83,37 @@ export async function checkHealth(): Promise<
     ApiResponse<{ message: string; timestamp: string }>
 > {
     return fetchFromGAS("health");
+}
+
+export async function getNextMeeting(): Promise<
+    ApiResponse<NextMeetingSettings | null>
+> {
+    return fetchFromGAS<NextMeetingSettings | null>("next-meeting");
+}
+
+export async function updateNextMeeting(data: {
+    date: string;
+    time: string;
+    mode: NextMeetingMode;
+}): Promise<ApiResponse<NextMeetingSettings>> {
+    try {
+        const response = await fetch("/api/next-meeting", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        });
+        const result = (await response.json()) as ApiResponse<NextMeetingSettings>;
+        if (!response.ok) {
+            throw new Error(result.error || `HTTP error! status: ${response.status}`);
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Next meeting update error:", error);
+        throw error;
+    }
 }
 
 // 欠席連絡送信データの型

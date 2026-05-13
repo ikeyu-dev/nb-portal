@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import {
-    MEMBER_PERMISSIONS,
+    normalizeMemberPermission,
     type MemberPermission,
 } from "@/src/shared/types/api";
 
@@ -41,32 +41,63 @@ const extractStudentId = (email: string | null | undefined): string | null => {
     return localPart.substring(0, 7).toLowerCase();
 };
 
+const getDisplayName = (
+    nickname: string | null,
+    memberName: string | null
+): string | null => {
+    const normalizedNickname = nickname?.trim();
+    if (normalizedNickname && normalizedNickname !== "---") {
+        return normalizedNickname;
+    }
+
+    const normalizedMemberName = memberName?.trim();
+    return normalizedMemberName || null;
+};
+
 /** 部員確認API呼び出し（あだ名も同時に取得） */
-const verifyMember = async (
+export const resolveMemberProfile = async (
     identifier: string
 ): Promise<{
     isMember: boolean;
     name: string | null;
+    nickname: string | null;
+    displayName: string | null;
     permission: MemberPermission | null;
 }> => {
     try {
         const apiUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
-        if (!apiUrl) return { isMember: false, name: null, permission: null };
+        if (!apiUrl) {
+            return {
+                isMember: false,
+                name: null,
+                nickname: null,
+                displayName: null,
+                permission: null,
+            };
+        }
 
         const res = await fetch(
             `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`
         );
         const data = await res.json();
-        const permission = MEMBER_PERMISSIONS.includes(data.permission)
-            ? (data.permission as MemberPermission)
-            : null;
+        const name = data.name || null;
+        const nickname = data.nickname || null;
+        const permission = normalizeMemberPermission(data.permission);
         return {
             isMember: data.success && data.isMember === true,
-            name: data.name || null,
+            name,
+            nickname,
+            displayName: getDisplayName(nickname, name),
             permission,
         };
     } catch {
-        return { isMember: false, name: null, permission: null };
+        return {
+            isMember: false,
+            name: null,
+            nickname: null,
+            displayName: null,
+            permission: null,
+        };
     }
 };
 
@@ -94,13 +125,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             }
 
             // 部員確認（あだ名も同時に取得）
-            const result = await verifyMember(studentId);
+            const result = await resolveMemberProfile(studentId);
             if (!result.isMember) {
                 return "/unauthorized";
             }
 
             // jwtコールバックに引き渡すため一時的に格納
             (user as Record<string, unknown>).memberName = result.name;
+            (user as Record<string, unknown>).nickname = result.nickname;
+            (user as Record<string, unknown>).displayName = result.displayName;
             (user as Record<string, unknown>).permission = result.permission;
             return true;
         },
@@ -111,11 +144,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 token.memberName =
                     ((user as Record<string, unknown>).memberName as string) ||
                     null;
+                token.nickname =
+                    ((user as Record<string, unknown>).nickname as string) ||
+                    null;
+                token.displayName =
+                    ((user as Record<string, unknown>).displayName as string) ||
+                    null;
                 token.permission =
                     ((user as Record<string, unknown>).permission as
                         | MemberPermission
                         | null) || undefined;
             }
+
+            // 既存セッション互換:
+            // permission / 表示名が入っていない古いJWTは、学籍番号から再解決する
+            if (
+                token.studentId &&
+                (!token.permission || !token.memberName || !token.displayName)
+            ) {
+                const result = await resolveMemberProfile(token.studentId as string);
+                if (result.isMember) {
+                    token.memberName = result.name;
+                    token.nickname = result.nickname;
+                    token.displayName = result.displayName;
+                    token.permission = result.permission || undefined;
+                }
+            }
+
             // 初回ログイン時にプロファイル画像を取得（一度だけ）
             if (account?.access_token && !token.profileImageFetched) {
                 const image = await fetchProfileImage(account.access_token);
@@ -133,11 +188,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             if (token.memberName) {
                 session.memberName = token.memberName as string;
             }
+            if (token.nickname) {
+                session.nickname = token.nickname as string;
+            }
+            if (token.displayName) {
+                session.displayName = token.displayName as string;
+            }
             if (token.permission) {
                 session.permission = token.permission as MemberPermission;
             }
             if (token.profileImage) {
                 session.profileImage = token.profileImage as string;
+            }
+            if (session.user) {
+                session.user.name =
+                    (token.displayName as string) ||
+                    (token.memberName as string) ||
+                    session.user.name ||
+                    (token.studentId as string) ||
+                    null;
             }
             return session;
         },

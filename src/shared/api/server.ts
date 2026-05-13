@@ -4,6 +4,7 @@ import type {
     Schedule,
     Absence,
     MembersData,
+    NextMeetingSettings,
 } from "../types/api";
 import { auth } from "@/src/auth";
 import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
@@ -106,6 +107,71 @@ const getEventAbsencesCached = unstable_cache(
     { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.gasData }
 );
 
+const getNextMeetingCached = unstable_cache(
+    async () => fetchFromGASServer<NextMeetingSettings | null>("next-meeting"),
+    ["gas-next-meeting"],
+    { tags: [CACHE_TAGS.nextMeeting], revalidate: CACHE_SECONDS.gasData }
+);
+
+const getHeaderIndex = (
+    headers: string[],
+    headerName: string,
+    fallbackIndex: number
+) => {
+    const index = headers.findIndex(
+        (header) => header.trim().toLowerCase() === headerName
+    );
+    return index >= 0 ? index : fallbackIndex;
+};
+
+const getMemberDisplayNameMap = (membersData: MembersData | undefined) => {
+    const displayNameMap = new Map<string, string>();
+    if (!membersData) return displayNameMap;
+
+    const headers = membersData.headers.map((header) =>
+        String(header || "").trim().toLowerCase()
+    );
+    const studentNumberIndex = getHeaderIndex(headers, "studentnumber", 0);
+    const nameIndex = getHeaderIndex(headers, "name", 2);
+    const nicknameIndex = getHeaderIndex(headers, "nickname", -1);
+
+    membersData.members.forEach((member) => {
+        const studentId = String(member.values[studentNumberIndex] || "")
+            .trim()
+            .toLowerCase();
+        if (!studentId) return;
+
+        const nickname =
+            nicknameIndex >= 0
+                ? String(member.values[nicknameIndex] || "").trim()
+                : "";
+        const name = String(member.values[nameIndex] || "").trim();
+        const displayName = nickname && nickname !== "---" ? nickname : name;
+
+        if (displayName) {
+            displayNameMap.set(studentId, displayName);
+        }
+    });
+
+    return displayNameMap;
+};
+
+const enrichNextMeeting = (
+    meeting: NextMeetingSettings | null,
+    membersData: MembersData | undefined
+) => {
+    if (!meeting?.updatedBy) return meeting;
+
+    const displayNameMap = getMemberDisplayNameMap(membersData);
+    const updatedByName =
+        displayNameMap.get(meeting.updatedBy.trim().toLowerCase()) || null;
+
+    return {
+        ...meeting,
+        updatedByName,
+    };
+};
+
 /**
  * Items取得API（サーバーサイド用）
  */
@@ -148,4 +214,24 @@ export async function getEventAbsencesServer(
 ): Promise<ApiResponse<Absence[]>> {
     await requireAuthenticatedSession();
     return getEventAbsencesCached(eventId);
+}
+
+export async function getNextMeetingServer(): Promise<
+    ApiResponse<NextMeetingSettings | null>
+> {
+    await requireAuthenticatedSession();
+    const nextMeetingRes = await getNextMeetingCached();
+    let membersData: MembersData | undefined;
+
+    try {
+        const membersRes = await getMembersCached();
+        membersData = membersRes.data;
+    } catch (error) {
+        console.error("Members fetch for next meeting display failed:", error);
+    }
+
+    return {
+        ...nextMeetingRes,
+        data: enrichNextMeeting(nextMeetingRes.data || null, membersData),
+    };
 }

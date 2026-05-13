@@ -37,6 +37,7 @@ export const gasApiPathSchema = z.enum([
     "members",
     "absences",
     "event-absences",
+    "next-meeting",
     "health",
     "notifications",
 ]);
@@ -136,6 +137,16 @@ export const memberDeleteSchema = z.object({
 });
 
 export type MemberDeleteData = z.infer<typeof memberDeleteSchema>;
+
+export const nextMeetingUpdateSchema = z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付形式はYYYY-MM-DDです"),
+    time: z.string().regex(/^\d{2}:\d{2}$/, "時刻形式はHH:MMです"),
+    mode: z.enum(["IN_PERSON", "DISCORD"], {
+        error: "開催形式はIN_PERSONまたはDISCORDです",
+    }),
+});
+
+export type NextMeetingUpdateData = z.infer<typeof nextMeetingUpdateSchema>;
 
 /**
  * バリデーションエラーを整形して返す
