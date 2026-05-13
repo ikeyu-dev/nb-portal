@@ -4,6 +4,7 @@ export {
     getAbsences,
     getEventAbsences,
     getNextMeeting,
+    announceNextMeeting,
     checkHealth,
     updateNextMeeting,
 } from "./client";

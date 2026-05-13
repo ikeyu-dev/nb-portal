@@ -116,6 +116,28 @@ export async function updateNextMeeting(data: {
     }
 }
 
+export async function announceNextMeeting(): Promise<ApiResponse<null>> {
+    try {
+        const response = await fetch("/api/next-meeting/announce", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+        });
+        const result = (await response.json()) as ApiResponse<null>;
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result.error || `HTTP error! status: ${response.status}`
+            );
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Next meeting announce error:", error);
+        throw error;
+    }
+}
+
 // 欠席連絡送信データの型
 export interface AbsenceSubmitData {
     eventId: string;

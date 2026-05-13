@@ -197,6 +197,9 @@ const formatNextMeetingDateLabel = (dateString, timeString) => {
 const buildNextMeetingReminderEmbed = (settings, options = {}) => {
     const title = options.title || "次回部会のお知らせ";
     const dateLabel = formatNextMeetingDateLabel(settings.date, settings.time);
+    const updatedAtLabel = settings.updatedAt
+        ? formatDateTime(settings.updatedAt)
+        : null;
 
     const embed = {
         title,
@@ -214,7 +217,7 @@ const buildNextMeetingReminderEmbed = (settings, options = {}) => {
     if (settings.updatedAt || settings.updatedBy) {
         embed.footer = {
             text: [
-                settings.updatedAt ? `更新 ${settings.updatedAt}` : null,
+                updatedAtLabel ? `更新 ${updatedAtLabel}` : null,
                 settings.updatedBy || null,
             ]
                 .filter(Boolean)
@@ -818,6 +821,12 @@ function doPost(e) {
                 return handleDeleteSchedule(postData);
             case "next-meeting":
                 return handlePostNextMeeting(postData);
+            case "next-meeting/announce":
+                sendNextMeetingReminderNow();
+                return createResponse({
+                    success: true,
+                    message: "Next meeting announcement sent",
+                });
             case "items":
                 return handlePostItems(postData);
             case "members":

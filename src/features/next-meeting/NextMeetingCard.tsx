@@ -8,7 +8,7 @@ import {
     type NextMeetingMode,
     type NextMeetingSettings,
 } from "@/src/shared/types/api";
-import { updateNextMeeting } from "@/src/shared/api";
+import { announceNextMeeting, updateNextMeeting } from "@/src/shared/api";
 
 const canManageNextMeeting = (permission?: MemberPermission) =>
     permission === "HEAD" || permission === "SUB_HEAD";
@@ -59,6 +59,7 @@ export function NextMeetingCard({
         initialMeeting?.mode || "DISCORD"
     );
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isAnnouncing, setIsAnnouncing] = useState(false);
     const [isEditorOpen, setIsEditorOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -115,6 +116,30 @@ export function NextMeetingCard({
         }
     };
 
+    const handleAnnounce = async () => {
+        setError(null);
+        setSuccessMessage(null);
+
+        if (!meeting) {
+            setError("次回部会が未設定です");
+            return;
+        }
+
+        setIsAnnouncing(true);
+        try {
+            await announceNextMeeting();
+            setSuccessMessage("次回部会連絡をDiscordに送信しました");
+        } catch (announceError) {
+            setError(
+                announceError instanceof Error
+                    ? announceError.message
+                    : "次回部会連絡の送信に失敗しました"
+            );
+        } finally {
+            setIsAnnouncing(false);
+        }
+    };
+
     return (
         <div
             className={`card bg-base-100 shadow-xl border border-base-300 ${className}`}
@@ -162,11 +187,12 @@ export function NextMeetingCard({
                             )}
                         </div>
                         {canManage && (
-                            <div className="flex shrink-0 items-center">
+                            <div className="flex shrink-0 items-center gap-2">
                                 <button
                                     type="button"
                                     className="btn btn-primary btn-sm gap-2"
                                     onClick={openEditor}
+                                    disabled={isAnnouncing}
                                 >
                                     <svg
                                         xmlns="http://www.w3.org/2000/svg"
@@ -183,6 +209,38 @@ export function NextMeetingCard({
                                         />
                                     </svg>
                                     編集
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary btn-sm gap-2"
+                                    onClick={handleAnnounce}
+                                    disabled={!meeting || isAnnouncing}
+                                >
+                                    {isAnnouncing ? (
+                                        <span className="loading loading-spinner loading-xs" />
+                                    ) : (
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="h-4 w-4"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M22 2L11 13"
+                                            />
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M22 2L15 22L11 13L2 9L22 2Z"
+                                            />
+                                        </svg>
+                                    )}
+                                    送信
                                 </button>
                             </div>
                         )}
