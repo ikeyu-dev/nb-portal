@@ -207,7 +207,7 @@ export function NextMeetingCard({
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn btn-secondary btn-sm gap-2"
+                                    className="btn btn-primary btn-outline btn-sm gap-2"
                                     onClick={handleAnnounce}
                                     disabled={isAnnouncing}
                                 >
