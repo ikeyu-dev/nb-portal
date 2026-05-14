@@ -34,8 +34,6 @@ const HEADER_LABELS: Record<string, string> = {
 const getHeaderLabel = (header: string): string =>
     HEADER_LABELS[header.trim().toLowerCase()] || header;
 
-type BooleanFilterValue = "all" | "done" | "pending";
-
 const stringifyCell = (value: SheetCellValue): string => {
     if (value === null || value === undefined) return "";
     return String(value);
@@ -187,8 +185,14 @@ const normalizeSearchTarget = (member: MemberRow): string =>
 const isNameHeader = (header: string): boolean =>
     header.trim().toLowerCase() === "name";
 
+const isStudentNumberHeader = (header: string): boolean =>
+    header.trim().toLowerCase() === "studentnumber";
+
 const isNicknameHeader = (header: string): boolean =>
     header.trim().toLowerCase() === "nickname";
+
+const isLineNameHeader = (header: string): boolean =>
+    header.trim().toLowerCase() === "linename";
 
 const isPermissionHeader = (header: string): boolean =>
     header.trim().toLowerCase() === "permission";
@@ -196,13 +200,19 @@ const isPermissionHeader = (header: string): boolean =>
 const isBooleanHeader = (header: string): boolean =>
     header.trim().toLowerCase().startsWith("is");
 
+const getAdmissionYear = (studentNumber: SheetCellValue): string | null => {
+    const value = stringifyCell(studentNumber).trim();
+    const yearFragment = value.slice(1, 3);
+
+    if (!/^\d{2}$/.test(yearFragment)) return null;
+    return `20${yearFragment}`;
+};
+
 export default function MembersPage() {
     const [headers, setHeaders] = useState<string[]>([]);
     const [members, setMembers] = useState<MemberRow[]>([]);
     const [query, setQuery] = useState("");
-    const [booleanFilters, setBooleanFilters] = useState<
-        Record<number, BooleanFilterValue>
-    >({});
+    const [selectedAdmissionYear, setSelectedAdmissionYear] = useState("all");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -273,50 +283,62 @@ export default function MembersPage() {
         void fetchMembers();
     }, [fetchMembers]);
 
-    const visibleColumnIndices = useMemo(
-        () =>
-            headers
-                .map((header, index) => ({ header, index }))
-                .filter(
-                    ({ header }) =>
-                        !isNameHeader(header) && !isPermissionHeader(header)
-                )
-                .map(({ index }) => index),
+    const studentNumberColumnIndex = useMemo(
+        () => headers.findIndex(isStudentNumberHeader),
         [headers]
     );
 
-    const booleanColumnIndices = useMemo(
+    const visibleColumnIndices = useMemo(
         () =>
-            visibleColumnIndices.filter(
-                (index) =>
-                    isBooleanHeader(headers[index]) ||
-                    members.some((member) => isBooleanCell(member.values[index]))
-            ),
-        [headers, members, visibleColumnIndices]
+            [
+                headers.findIndex(isStudentNumberHeader),
+                headers.findIndex(isNicknameHeader),
+                headers.findIndex(isNameHeader),
+                headers.findIndex(isLineNameHeader),
+            ].filter((index) => index >= 0),
+        [headers]
     );
+
+    const admissionYears = useMemo(() => {
+        if (studentNumberColumnIndex < 0) return [];
+
+        return Array.from(
+            new Set(
+                members
+                    .map((member) =>
+                        getAdmissionYear(
+                            member.values[studentNumberColumnIndex]
+                        )
+                    )
+                    .filter((year): year is string => Boolean(year))
+            )
+        ).sort((a, b) => Number(b) - Number(a));
+    }, [members, studentNumberColumnIndex]);
 
     const filteredMembers = useMemo(() => {
         const normalizedQuery = query.trim().toLowerCase();
-        const activeBooleanFilters = Object.entries(booleanFilters).filter(
-            ([, value]) => value !== "all"
-        );
 
         return members.filter((member) => {
             const matchesQuery =
                 !normalizedQuery ||
                 normalizeSearchTarget(member).includes(normalizedQuery);
+            const matchesAdmissionYear =
+                selectedAdmissionYear === "all" ||
+                studentNumberColumnIndex < 0 ||
+                getAdmissionYear(member.values[studentNumberColumnIndex]) ===
+                    selectedAdmissionYear;
 
-            if (!matchesQuery) return false;
-
-            return activeBooleanFilters.every(([indexKey, filterValue]) => {
-                const value = member.values[Number(indexKey)];
-                if (!isBooleanCell(value)) return false;
-
-                const checked = getBooleanCellValue(value);
-                return filterValue === "done" ? checked : !checked;
-            });
+            return matchesQuery && matchesAdmissionYear;
         });
-    }, [booleanFilters, members, query]);
+    }, [members, query, selectedAdmissionYear, studentNumberColumnIndex]);
+
+    const hasActiveFilters =
+        query.trim() !== "" || selectedAdmissionYear !== "all";
+
+    const clearFilters = () => {
+        setQuery("");
+        setSelectedAdmissionYear("all");
+    };
 
     const nameColumnIndex = useMemo(
         () => headers.findIndex(isNameHeader),
@@ -546,74 +568,6 @@ export default function MembersPage() {
                     </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <label className="input input-bordered flex items-center gap-2 w-full sm:max-w-md">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="size-4 opacity-60"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
-                        <input
-                            type="search"
-                            className="grow"
-                            placeholder="名簿を検索"
-                            value={query}
-                            onChange={(event) => setQuery(event.target.value)}
-                        />
-                    </label>
-                    <div className="stats stats-horizontal bg-base-50">
-                        <div className="stat py-2 px-4">
-                            <div className="stat-title text-sm">
-                                表示:{filteredMembers.length}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {booleanColumnIndices.length > 0 && (
-                    <div className="flex flex-wrap gap-3">
-                        {booleanColumnIndices.map((index) => {
-                            const currentFilter =
-                                booleanFilters[index] || "all";
-
-                            return (
-                                <div
-                                    key={index}
-                                    className="flex w-full flex-col gap-1 sm:w-44"
-                                >
-                                    <span className="text-xs text-base-content/70">
-                                        {getHeaderLabel(headers[index])}
-                                    </span>
-                                    <select
-                                        className="select select-bordered select-sm"
-                                        value={currentFilter}
-                                        onChange={(event) =>
-                                            setBooleanFilters((prev) => ({
-                                                ...prev,
-                                                [index]: event.target
-                                                    .value as BooleanFilterValue,
-                                            }))
-                                        }
-                                    >
-                                        <option value="all">すべて</option>
-                                        <option value="done">済</option>
-                                        <option value="pending">未</option>
-                                    </select>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
                 {error && (
                     <div className="alert alert-error">
                         <span>{error}</span>
@@ -625,9 +579,90 @@ export default function MembersPage() {
                         <span className="loading loading-spinner loading-lg text-primary" />
                     </div>
                 ) : (
-                    <div className="border border-base-300 rounded-lg overflow-hidden w-full">
+                    <div className="rounded-lg border border-base-300 bg-base-100 overflow-hidden w-full">
+                        <div className="border-b border-base-300 bg-base-50 p-3 sm:p-4">
+                            <div className="grid grid-cols-1 items-end gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_16rem_auto_auto]">
+                                <label className="form-control w-full">
+                                    <span className="label-text mb-1 hidden text-sm sm:inline">
+                                        検索
+                                    </span>
+                                    <div className="input input-bordered input-sm flex items-center gap-2 bg-base-100 sm:input-md">
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            className="size-4 opacity-60"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                            strokeWidth={2}
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
+                                            />
+                                        </svg>
+                                        <input
+                                            type="search"
+                                            className="grow"
+                                            placeholder="検索"
+                                            value={query}
+                                            onChange={(event) =>
+                                                setQuery(event.target.value)
+                                            }
+                                        />
+                                    </div>
+                                </label>
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:contents">
+                                <label className="form-control w-full">
+                                    <span className="label-text mb-1 hidden text-sm sm:inline">
+                                        入学年度
+                                    </span>
+                                    <select
+                                        className="select select-bordered select-sm w-full bg-base-100 sm:select-md"
+                                        value={selectedAdmissionYear}
+                                        onChange={(event) =>
+                                            setSelectedAdmissionYear(
+                                                event.target.value
+                                            )
+                                        }
+                                    >
+                                        <option value="all">すべて</option>
+                                        {admissionYears.map((year) => (
+                                            <option
+                                                key={year}
+                                                value={year}
+                                            >
+                                                {year}年度
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                <div className="hidden h-12 items-center justify-center rounded-lg border border-base-300 bg-base-100 px-4 text-sm text-base-content/70 lg:flex">
+                                    {filteredMembers.length} / {members.length}件
+                                </div>
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm sm:btn-md"
+                                    onClick={clearFilters}
+                                    disabled={!hasActiveFilters}
+                                >
+                                    クリア
+                                </button>
+                                </div>
+                            </div>
+                            <div className="mt-2 text-right text-xs text-base-content/60 lg:hidden">
+                                {filteredMembers.length} / {members.length}件
+                            </div>
+                        </div>
                         <div className="overflow-x-auto">
-                            <table className="table table-zebra table-pin-rows w-full">
+                            <table className="table table-zebra table-pin-rows table-fixed min-w-[38rem] w-full">
+                            <colgroup>
+                                <col className="w-28 sm:w-36" />
+                                <col className="w-32 sm:w-48" />
+                                <col className="w-32 sm:w-44" />
+                                <col className="w-32 sm:w-48" />
+                                <col className="w-16 sm:w-20" />
+                            </colgroup>
                             <thead>
                                 <tr>
                                     {visibleColumnIndices.map((index) => (
@@ -638,7 +673,7 @@ export default function MembersPage() {
                                             {getHeaderLabel(headers[index])}
                                         </th>
                                     ))}
-                                    <th className="w-28 bg-base-200 text-base-content">
+                                    <th className="w-28 bg-base-200 text-right text-base-content">
                                         操作
                                     </th>
                                 </tr>
@@ -648,7 +683,7 @@ export default function MembersPage() {
                                     filteredMembers.map((member) => (
                                     <tr
                                         key={member.rowNumber}
-                                        className="hover cursor-pointer"
+                                        className="hover cursor-pointer align-middle"
                                         onClick={() => openEditModal(member)}
                                     >
                                         {visibleColumnIndices.map((index) => {
@@ -662,7 +697,7 @@ export default function MembersPage() {
                                             return (
                                                 <td
                                                     key={`${member.rowNumber}-${header}-${index}`}
-                                                    className="max-w-48 whitespace-pre-wrap break-words"
+                                                    className="py-4"
                                                 >
                                                     {isBooleanCell(value) ? (
                                                         <BooleanToggle
@@ -671,16 +706,42 @@ export default function MembersPage() {
                                                             )}
                                                             readOnly
                                                         />
+                                                    ) : isStudentNumberHeader(
+                                                          header
+                                                      ) ? (
+                                                        <span className="block truncate font-mono text-sm">
+                                                            {stringifyCell(
+                                                                value
+                                                            )}
+                                                        </span>
+                                                    ) : isNicknameHeader(
+                                                          header
+                                                      ) ? (
+                                                        <span className="block truncate font-medium">
+                                                            {stringifyCell(
+                                                                value
+                                                            )}
+                                                        </span>
+                                                    ) : isNameHeader(header) ? (
+                                                        <span className="block truncate">
+                                                            {stringifyCell(
+                                                                value
+                                                            )}
+                                                        </span>
                                                     ) : (
-                                                        stringifyCell(value)
+                                                        <span className="block truncate">
+                                                            {stringifyCell(
+                                                                value
+                                                            )}
+                                                        </span>
                                                     )}
                                                 </td>
                                             );
                                         })}
-                                        <td className="text-right">
+                                        <td className="py-4 text-right">
                                             <button
                                                 type="button"
-                                                className="btn btn-primary btn-outline btn-sm gap-2 whitespace-nowrap"
+                                                className="btn btn-primary btn-outline btn-sm whitespace-nowrap"
                                                 onClick={(event) => {
                                                     event.stopPropagation();
                                                     openEditModal(member);
@@ -700,7 +761,6 @@ export default function MembersPage() {
                                                         d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
                                                     />
                                                 </svg>
-                                                編集
                                             </button>
                                         </td>
                                     </tr>
