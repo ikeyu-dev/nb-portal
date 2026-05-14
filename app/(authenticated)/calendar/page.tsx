@@ -1386,7 +1386,7 @@ export default function CalendarPage() {
                                                             schedule
                                                         )
                                                     }
-                                                    className="p-4 bg-base-100 rounded-xl border-l-4 shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                                                    className="p-5 bg-base-100 rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
                                                     style={{
                                                         borderLeftColor:
                                                             eventColor,
