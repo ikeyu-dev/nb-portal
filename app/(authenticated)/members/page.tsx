@@ -290,15 +290,12 @@ export default function MembersPage() {
 
     const visibleColumnIndices = useMemo(
         () =>
-            headers
-                .map((header, index) => ({ header, index }))
-                .filter(
-                    ({ header }) =>
-                        isStudentNumberHeader(header) ||
-                        isNicknameHeader(header) ||
-                        isLineNameHeader(header)
-                )
-                .map(({ index }) => index),
+            [
+                headers.findIndex(isStudentNumberHeader),
+                headers.findIndex(isNicknameHeader),
+                headers.findIndex(isNameHeader),
+                headers.findIndex(isLineNameHeader),
+            ].filter((index) => index >= 0),
         [headers]
     );
 
@@ -658,10 +655,11 @@ export default function MembersPage() {
                             </div>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="table table-zebra table-pin-rows table-fixed min-w-[32rem] w-full">
+                            <table className="table table-zebra table-pin-rows table-fixed min-w-[38rem] w-full">
                             <colgroup>
                                 <col className="w-28 sm:w-36" />
                                 <col className="w-32 sm:w-48" />
+                                <col className="w-32 sm:w-44" />
                                 <col className="w-32 sm:w-48" />
                                 <col className="w-16 sm:w-20" />
                             </colgroup>
@@ -720,6 +718,12 @@ export default function MembersPage() {
                                                           header
                                                       ) ? (
                                                         <span className="block truncate font-medium">
+                                                            {stringifyCell(
+                                                                value
+                                                            )}
+                                                        </span>
+                                                    ) : isNameHeader(header) ? (
+                                                        <span className="block truncate">
                                                             {stringifyCell(
                                                                 value
                                                             )}
