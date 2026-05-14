@@ -50,7 +50,7 @@ export default function ScheduleCard({
             {!hideCard && (
                 <div
                     onClick={() => setIsModalOpen(true)}
-                    className="p-5 bg-base-100 rounded-xl border-l-4 shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
+                    className="p-5 bg-base-100 rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
                     style={{ borderLeftColor: color }}
                 >
                     <div className="flex flex-col lg:flex-row gap-4">
