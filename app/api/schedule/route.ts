@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.schedules, "max");
+            revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
         }
 
@@ -106,6 +107,7 @@ export async function DELETE(request: NextRequest) {
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.schedules, "max");
+            revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
         }
 
@@ -164,6 +166,7 @@ export async function PUT(request: NextRequest) {
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.schedules, "max");
+            revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
         }
 

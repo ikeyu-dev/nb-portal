@@ -19,6 +19,33 @@ export const MEMBER_PERMISSIONS = [
 
 export type MemberPermission = (typeof MEMBER_PERMISSIONS)[number];
 
+export const normalizeMemberPermission = (
+    value: unknown
+): MemberPermission | null => {
+    const normalized = String(value ?? "")
+        .trim()
+        .toUpperCase()
+        .replaceAll("＿", "_")
+        .replaceAll("-", "_")
+        .replace(/\s+/g, "_");
+
+    const aliases: Record<string, MemberPermission> = {
+        OBOG: "OBOG",
+        NORMAL: "NORMAL",
+        HEAD: "HEAD",
+        SUB_HEAD: "SUB_HEAD",
+        SUB__HEAD: "SUB_HEAD",
+        SUBHEAD: "SUB_HEAD",
+        ACCOUNTANT: "ACCOUNTANT",
+        ACCOUNTNTAT: "ACCOUNTANT",
+        TMP_NORMAL: "TMP_NORMAL",
+        TMP__NORMAL: "TMP_NORMAL",
+        TMPNORMAL: "TMP_NORMAL",
+    };
+
+    return aliases[normalized] || null;
+};
+
 export const MEMBER_PERMISSION_LABELS: Record<MemberPermission, string> = {
     OBOG: "OB・OG",
     NORMAL: "部員",
@@ -27,6 +54,25 @@ export const MEMBER_PERMISSION_LABELS: Record<MemberPermission, string> = {
     ACCOUNTANT: "会計",
     TMP_NORMAL: "仮入部",
 };
+
+export const NEXT_MEETING_MODES = ["IN_PERSON", "DISCORD"] as const;
+
+export type NextMeetingMode = (typeof NEXT_MEETING_MODES)[number];
+
+export const NEXT_MEETING_MODE_LABELS: Record<NextMeetingMode, string> = {
+    IN_PERSON: "対面",
+    DISCORD: "Discord",
+};
+
+export interface NextMeetingSettings {
+    eventId?: string;
+    date: string;
+    time: string;
+    mode: NextMeetingMode;
+    updatedAt?: string | null;
+    updatedBy?: string | null;
+    updatedByName?: string | null;
+}
 
 // Items型（スプレッドシートのヘッダーに応じて調整してください）
 export interface Item {

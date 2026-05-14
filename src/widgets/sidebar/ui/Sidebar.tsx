@@ -12,6 +12,13 @@ interface SidebarProps {
 
 export default async function Sidebar({ children }: SidebarProps) {
     const session = await auth();
+    const displayName =
+        session?.displayName ||
+        session?.memberName ||
+        session?.user?.name ||
+        session?.studentId ||
+        null;
+
     return (
         <div className="drawer lg:drawer-open max-lg:hidden">
             <input
@@ -53,7 +60,7 @@ export default async function Sidebar({ children }: SidebarProps) {
                         <div className="p-4 border-t border-base-300 space-y-3">
                             <div className="flex items-center gap-3">
                                 <ProfileAvatar
-                                    name={session.user.name}
+                                    name={displayName}
                                     size="sm"
                                 />
                                 <div className="flex-1 min-w-0">
@@ -64,7 +71,7 @@ export default async function Sidebar({ children }: SidebarProps) {
                                                 "clamp(0.75rem, 1.2vw, 0.875rem)",
                                         }}
                                     >
-                                        {session.user.name}
+                                        {displayName}
                                     </p>
                                     <p
                                         className="text-base-content/60 truncate"

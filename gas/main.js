@@ -87,6 +87,147 @@ const formatValue = (value, formatType) => {
     return value;
 };
 
+const NEXT_MEETING_TITLES = ["部会", "次回部会"];
+const NEXT_MEETING_DEFAULT_TITLE = "部会";
+const NEXT_MEETING_DEFAULT_COLOR = "primary";
+
+const getNextMeetingModeLabel = (mode) =>
+    mode === "IN_PERSON" ? "対面" : "Discord";
+
+const parseNextMeetingMode = (value) => {
+    const normalized = String(value || "").trim().toUpperCase();
+    if (normalized === "対面" || normalized === "IN_PERSON") {
+        return "IN_PERSON";
+    }
+    return "DISCORD";
+};
+
+const toNextMeetingDate = (year, month, date) =>
+    `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+
+const toNextMeetingTime = (hour, minute) =>
+    `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
+const splitNextMeetingDate = (dateString) => {
+    const [year, month, date] = String(dateString).split("-").map(Number);
+    return { year, month, date };
+};
+
+const splitNextMeetingTime = (timeString) => {
+    const [timeHH, timeMM] = String(timeString).split(":").map(Number);
+    return { timeHH, timeMM };
+};
+
+const buildNextMeetingSettingsFromScheduleRow = (row) => ({
+    eventId: String(row[0]),
+    date: toNextMeetingDate(row[1], row[2], row[3]),
+    time: toNextMeetingTime(row[4], row[5]),
+    mode: parseNextMeetingMode(row[7]),
+    updatedBy: row[15] || row[13] || null,
+    updatedAt: row[16] || row[14] || null,
+});
+
+const findNextMeetingSchedule = (sheet) => {
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return null;
+
+    const rows = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
+    const today = new Date();
+    const todayTimestamp = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+    ).getTime();
+
+    const candidates = [];
+    rows.forEach((row, index) => {
+        const title = String(row[6] || "").trim();
+        if (!NEXT_MEETING_TITLES.includes(title)) return;
+
+        const year = Number(row[1]);
+        const month = Number(row[2]);
+        const date = Number(row[3]);
+        if (!year || !month || !date) return;
+
+        const timestamp = new Date(year, month - 1, date).getTime();
+        if (timestamp < todayTimestamp) return;
+
+        candidates.push({
+            rowNumber: index + 2,
+            row,
+            timestamp,
+            timeHH: Number(row[4]) || 0,
+            timeMM: Number(row[5]) || 0,
+        });
+    });
+
+    candidates.sort((a, b) => {
+        if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+        if (a.timeHH !== b.timeHH) return a.timeHH - b.timeHH;
+        return a.timeMM - b.timeMM;
+    });
+
+    return candidates[0] || null;
+};
+
+const getNextMeetingSettings = () => {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName("schedules");
+    if (!sheet) return null;
+
+    const nextMeeting = findNextMeetingSchedule(sheet);
+    return nextMeeting
+        ? buildNextMeetingSettingsFromScheduleRow(nextMeeting.row)
+        : null;
+};
+
+const getTodayString = () =>
+    Utilities.formatDate(
+        new Date(),
+        Session.getScriptTimeZone(),
+        "yyyy-MM-dd"
+    );
+
+const formatNextMeetingDateLabel = (dateString, timeString) => {
+    const date = new Date(`${dateString}T00:00:00`);
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    return `${dateString.replace(/-/g, "/")}(${weekdays[date.getDay()]}) ${timeString}`;
+};
+
+const buildNextMeetingReminderEmbed = (settings, options = {}) => {
+    const title = options.title || "次回部会のお知らせ";
+    const dateLabel = formatNextMeetingDateLabel(settings.date, settings.time);
+    const updatedAtLabel = settings.updatedAt
+        ? formatDateTime(settings.updatedAt)
+        : null;
+
+    const embed = {
+        title,
+        description: options.description || "次回の部会予定です。",
+        color: settings.mode === "DISCORD" ? 0x5865f2 : 0x2ecc71,
+        fields: [
+            {
+                name: "日時",
+                value: dateLabel,
+                inline: false,
+            },
+        ],
+    };
+
+    if (settings.updatedAt || settings.updatedBy) {
+        embed.footer = {
+            text: [
+                updatedAtLabel ? `更新 ${updatedAtLabel}` : null,
+                settings.updatedBy || null,
+            ]
+                .filter(Boolean)
+                .join(" / "),
+        };
+    }
+
+    return embed;
+};
+
 // ============================================
 // プッシュ通知送信
 // Next.jsのAPIを呼び出して全購読者にプッシュ通知を送信
@@ -242,18 +383,91 @@ const buildAbsenceEmbed = (params) => {
  * Discord WebhookにEmbedメッセージを送信
  * @param {string} webhookURL - Discord Webhook URL
  * @param {Object|Object[]} embeds - Embedオブジェクトまたは配列
+ * @param {Object} options - { content?: string }
  */
-const sendToDiscord = (webhookURL, embeds) => {
+const sendToDiscord = (webhookURL, embeds, options = {}) => {
     const embedArray = Array.isArray(embeds) ? embeds : [embeds];
-    const message = { embeds: embedArray };
+    const message = {
+        embeds: embedArray,
+    };
+    if (options.content) {
+        message.content = options.content;
+    }
+    const MAX_RETRY_WAIT_MS = 5 * 60 * 1000;
 
-    const param = {
+    const request = {
         method: "POST",
         headers: { "Content-type": "application/json" },
         payload: JSON.stringify(message),
+        muteHttpExceptions: true,
     };
 
-    UrlFetchApp.fetch(webhookURL, param);
+    const normalizeRetryAfterMs = (value) => {
+        const numericValue = Number(value);
+        if (!Number.isFinite(numericValue) || numericValue <= 0) return null;
+
+        // Discord usually returns seconds, but Cloudflare 1015 responses may
+        // surface millisecond-like integer values through Apps Script.
+        return numericValue >= 1000
+            ? Math.ceil(numericValue)
+            : Math.ceil(numericValue * 1000);
+    };
+
+    const getRetryAfterMs = (response) => {
+        const body = response.getContentText();
+        try {
+            const parsedBody = JSON.parse(body);
+            const retryAfterMs = normalizeRetryAfterMs(parsedBody.retry_after);
+            if (retryAfterMs) return retryAfterMs;
+        } catch (_) {
+            // Non-JSON rate limit bodies are handled by headers below.
+        }
+
+        const headers = response.getAllHeaders();
+        const retryAfterHeader =
+            headers["Retry-After"] ||
+            headers["retry-after"] ||
+            headers["X-RateLimit-Reset-After"] ||
+            headers["x-ratelimit-reset-after"];
+
+        return normalizeRetryAfterMs(retryAfterHeader) || 5000;
+    };
+
+    const sendRequest = () => UrlFetchApp.fetch(webhookURL, request);
+
+    let response = sendRequest();
+    let responseCode = response.getResponseCode();
+
+    if (responseCode === 429) {
+        const responseBody = response.getContentText();
+        if (responseBody.includes("error code: 1015")) {
+            throw new Error(
+                `Discord webhook request blocked by Cloudflare 1015: ${responseBody}`
+            );
+        }
+
+        const waitMs = getRetryAfterMs(response);
+
+        if (waitMs > MAX_RETRY_WAIT_MS) {
+            throw new Error(
+                `Discord webhook rate limited with excessive retry delay ${waitMs}ms: ${responseBody}`
+            );
+        }
+
+        console.log(
+            `Discord webhook rate limited. Retrying after ${waitMs}ms. Body: ${responseBody}`
+        );
+        Utilities.sleep(waitMs);
+
+        response = sendRequest();
+        responseCode = response.getResponseCode();
+    }
+
+    if (responseCode < 200 || responseCode >= 300) {
+        throw new Error(
+            `Discord webhook request failed with status ${responseCode}: ${response.getContentText()}`
+        );
+    }
 };
 
 /**
@@ -387,6 +601,142 @@ function sendAllAbsece() {
     sendToDiscord(webhookURL, embed);
 }
 
+const getNextMeetingMentionText = () =>
+    PropertiesService.getScriptProperties().getProperty(
+        "NEXT_MEETING_ROLE_MENTION"
+    ) || "@部員";
+
+const getNextMeetingUnsetMentionText = () =>
+    PropertiesService.getScriptProperties().getProperty(
+        "NEXT_MEETING_UNSET_ROLE_MENTION"
+    ) || "@部長";
+
+const getNextMeetingWebhookURL = () =>
+    PropertiesService.getScriptProperties().getProperty(
+        "NEXT_MEETING_WEBHOOK_URL"
+    ) ||
+    PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+
+const sendNextMeetingUnsetReminder = (webhookURL) => {
+    sendToDiscord(
+        webhookURL,
+        {
+            title: "次回部会が未設定です",
+            description:
+                "本日7:00時点で次回部会が設定されていません。ポータルから次回部会を設定してください。",
+            color: 0xf1c40f,
+        },
+        {
+            content: getNextMeetingUnsetMentionText(),
+        }
+    );
+};
+
+function sendNextMeetingMorningReminder() {
+    const webhookURL = getNextMeetingWebhookURL();
+    const settings = getNextMeetingSettings();
+
+    if (!webhookURL) {
+        return;
+    }
+
+    if (!settings) {
+        sendNextMeetingUnsetReminder(webhookURL);
+        return;
+    }
+
+    if (settings.date !== getTodayString()) {
+        return;
+    }
+
+    const embed = buildNextMeetingReminderEmbed(settings, {
+        title: "本日の部会リマインド",
+        description:
+            settings.mode === "DISCORD"
+                ? "本日の部会は Discord 開催です。"
+                : "本日の部会は対面開催です。",
+    });
+    sendToDiscord(webhookURL, embed, {
+        content: getNextMeetingMentionText(),
+    });
+}
+
+function sendNextMeetingReminderNow() {
+    const webhookURL = getNextMeetingWebhookURL();
+    const settings = getNextMeetingSettings();
+
+    if (!webhookURL) {
+        throw new Error(
+            "NEXT_MEETING_WEBHOOK_URL or WEBHOOK_URL is not configured"
+        );
+    }
+
+    if (!settings) {
+        sendNextMeetingUnsetReminder(webhookURL);
+        return;
+    }
+
+    const embed = buildNextMeetingReminderEmbed(settings, {
+        title: "次回部会のお知らせ",
+        description:
+            settings.mode === "DISCORD"
+                ? "次回部会は Discord で行います。"
+                : "次回部会は対面で行います。",
+    });
+    sendToDiscord(webhookURL, embed, {
+        content: getNextMeetingMentionText(),
+    });
+}
+
+function sendNextMeetingEveningReminder() {
+    const webhookURL = getNextMeetingWebhookURL();
+    const settings = getNextMeetingSettings();
+
+    if (
+        !webhookURL ||
+        !settings ||
+        settings.date !== getTodayString() ||
+        settings.mode !== "DISCORD"
+    ) {
+        return;
+    }
+
+    const embed = buildNextMeetingReminderEmbed(settings, {
+        title: "本日18:00 Discord部会リマインド",
+        description: "このあとの部会は Discord 開催です。",
+    });
+    sendToDiscord(webhookURL, embed, {
+        content: getNextMeetingMentionText(),
+    });
+}
+
+function setupNextMeetingReminderTriggers() {
+    const handlerNames = [
+        "sendNextMeetingMorningReminder",
+        "sendNextMeetingEveningReminder",
+    ];
+
+    ScriptApp.getProjectTriggers().forEach((trigger) => {
+        if (handlerNames.includes(trigger.getHandlerFunction())) {
+            ScriptApp.deleteTrigger(trigger);
+        }
+    });
+
+    ScriptApp.newTrigger("sendNextMeetingMorningReminder")
+        .timeBased()
+        .atHour(7)
+        .nearMinute(0)
+        .everyDays(1)
+        .create();
+
+    ScriptApp.newTrigger("sendNextMeetingEveningReminder")
+        .timeBased()
+        .atHour(18)
+        .nearMinute(0)
+        .everyDays(1)
+        .create();
+}
+
 // ============================================
 // Web API エンドポイント
 // Next.jsフロントエンドからのHTTPリクエストを処理
@@ -441,6 +791,8 @@ function doGet(e) {
                 return handleGetAbsences(e);
             case "event-absences":
                 return handleGetEventAbsences(e);
+            case "next-meeting":
+                return handleGetNextMeeting(e);
             case "verify-member":
                 return handleVerifyMember(e);
             case "notifications":
@@ -465,6 +817,7 @@ function doGet(e) {
                         schedules: "?path=schedules",
                         absences: "?path=absences&date=YYYY-MM-DD",
                         eventAbsences: "?path=event-absences&eventId=EVENT_ID",
+                        nextMeeting: "?path=next-meeting",
                         verifyMember:
                             "?path=verify-member&identifier=STUDENT_NUMBER",
                         notifications: "?path=notifications&limit=N",
@@ -508,6 +861,14 @@ function doPost(e) {
                 return handleUpdateSchedule(postData);
             case "schedules/delete":
                 return handleDeleteSchedule(postData);
+            case "next-meeting":
+                return handlePostNextMeeting(postData);
+            case "next-meeting/announce":
+                sendNextMeetingReminderNow();
+                return createResponse({
+                    success: true,
+                    message: "Next meeting announcement sent",
+                });
             case "items":
                 return handlePostItems(postData);
             case "members":
@@ -1211,6 +1572,133 @@ const handleDeleteMember = (data) => {
     }
 };
 
+const handleGetNextMeeting = () => {
+    try {
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("schedules");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'schedules' not found", 404);
+        }
+
+        const nextMeeting = findNextMeetingSchedule(sheet);
+        return createResponse({
+            success: true,
+            data: nextMeeting
+                ? buildNextMeetingSettingsFromScheduleRow(nextMeeting.row)
+                : null,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+const handlePostNextMeeting = (data) => {
+    try {
+        const { date, time, mode, updatedBy } = data;
+
+        if (!date || !time || !mode) {
+            return createErrorResponse(
+                "Missing required fields (date, time, mode)",
+                400
+            );
+        }
+
+        if (!["IN_PERSON", "DISCORD"].includes(mode)) {
+            return createErrorResponse("Invalid mode", 400);
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("schedules");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'schedules' not found", 404);
+        }
+
+        const { year, month, date: day } = splitNextMeetingDate(date);
+        const { timeHH, timeMM } = splitNextMeetingTime(time);
+        const modeLabel = getNextMeetingModeLabel(mode);
+        const now = new Date();
+        const timestamp = Utilities.formatDate(
+            now,
+            Session.getScriptTimeZone(),
+            "yyyy/MM/dd HH:mm:ss"
+        );
+        const nextMeeting = findNextMeetingSchedule(sheet);
+        let eventId;
+
+        if (nextMeeting) {
+            eventId = String(nextMeeting.row[0]);
+            const updateData = [
+                Number(year),
+                Number(month),
+                Number(day),
+                Number(timeHH),
+                Number(timeMM),
+                NEXT_MEETING_DEFAULT_TITLE,
+                modeLabel,
+                "",
+                "",
+                "",
+                "",
+                NEXT_MEETING_DEFAULT_COLOR,
+            ];
+
+            sheet.getRange(nextMeeting.rowNumber, 2, 1, 12).setValues([
+                updateData,
+            ]);
+            sheet
+                .getRange(nextMeeting.rowNumber, 16, 1, 2)
+                .setValues([[updatedBy || "", timestamp]]);
+        } else {
+            const lastRow = sheet.getLastRow();
+            const newRowNumber = lastRow + 1;
+            const eventIdNumber = newRowNumber - 1;
+            eventId = "E-" + String(eventIdNumber).padStart(2, "0");
+            const rowData = [
+                eventId,
+                Number(year),
+                Number(month),
+                Number(day),
+                Number(timeHH),
+                Number(timeMM),
+                NEXT_MEETING_DEFAULT_TITLE,
+                modeLabel,
+                "",
+                "",
+                "",
+                "",
+                NEXT_MEETING_DEFAULT_COLOR,
+                updatedBy || "",
+                timestamp,
+                updatedBy || "",
+                timestamp,
+            ];
+
+            sheet.appendRow(rowData);
+        }
+
+        const settings = {
+            eventId,
+            date,
+            time,
+            mode,
+            updatedAt: timestamp,
+            updatedBy: updatedBy || null,
+        };
+
+        const dateLabel = `${year}/${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`;
+        sendPushNotification(`予定更新: ${NEXT_MEETING_DEFAULT_TITLE}`, dateLabel, "/calendar");
+
+        return createResponse({
+            success: true,
+            data: settings,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
 // ============================================
 // API: 部員認証
 // シート名: members
@@ -1223,7 +1711,7 @@ const handleDeleteMember = (data) => {
 /**
  * 学籍番号がmembersシートに存在するか確認
  * @param {Object} e - リクエストイベントオブジェクト（e.parameter.identifierが必須）
- * @returns {TextOutput} { success, isMember: boolean, identifier, name: string|null }
+ * @returns {TextOutput} { success, isMember: boolean, identifier, name: string|null, nickname: string|null, permission: string|null }
  */
 const handleVerifyMember = (e) => {
     try {
@@ -1249,6 +1737,15 @@ const handleVerifyMember = (e) => {
             });
         }
 
+        const headers = sheet
+            .getRange(1, 1, 1, sheet.getLastColumn())
+            .getValues()[0]
+            .map((header) => String(header || "").trim().toLowerCase());
+        const studentNumberIndex = headers.indexOf("studentnumber");
+        const nameIndex = headers.indexOf("name");
+        const nicknameIndex = headers.indexOf("nickname");
+        const permissionIndex = headers.indexOf("permission");
+
         // 2行目以降の全列を取得
         const range = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
         const values = range.getValues();
@@ -1257,12 +1754,25 @@ const handleVerifyMember = (e) => {
         const normalizedIdentifier = String(identifier).toLowerCase().trim();
 
         let memberName = null;
+        let memberNickname = null;
         let memberPermission = null;
         const isMember = values.some((row) => {
-            const studentId = String(row[0]).toLowerCase().trim();
+            const studentId = String(
+                row[studentNumberIndex >= 0 ? studentNumberIndex : 0] || ""
+            )
+                .toLowerCase()
+                .trim();
             if (studentId === normalizedIdentifier) {
-                memberName = String(row[2] || "").trim() || null;
-                memberPermission = String(row[7] || "").trim() || null;
+                memberName =
+                    String(row[nameIndex >= 0 ? nameIndex : 2] || "").trim() ||
+                    null;
+                memberNickname =
+                    String(row[nicknameIndex >= 0 ? nicknameIndex : -1] || "")
+                        .trim() || null;
+                memberPermission =
+                    String(
+                        row[permissionIndex >= 0 ? permissionIndex : 7] || ""
+                    ).trim() || null;
                 return true;
             }
             return false;
@@ -1273,6 +1783,7 @@ const handleVerifyMember = (e) => {
             isMember: isMember,
             identifier: identifier,
             name: memberName,
+            nickname: memberNickname,
             permission: memberPermission,
         });
     } catch (error) {
