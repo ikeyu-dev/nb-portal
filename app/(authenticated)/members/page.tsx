@@ -67,7 +67,8 @@ const normalizeEditableValues = (
             return "TMP_NORMAL";
         }
 
-        return isBooleanCell(sourceValues[index] ?? value)
+        return isBooleanHeader(headers[index]) ||
+            isBooleanCell(sourceValues[index] ?? value)
             ? getBooleanCellValue(value)
             : value;
     });
@@ -115,7 +116,8 @@ function MemberField({
     onChange: (value: string) => void;
 }) {
     const isPermission = isPermissionHeader(header);
-    const isBoolean = isBooleanCell(sourceValue ?? value);
+    const isBoolean =
+        isBooleanHeader(header) || isBooleanCell(sourceValue ?? value);
     const shouldUseTextarea = value.includes("\n") || value.length > 60;
 
     return (
@@ -743,11 +745,11 @@ export default function MembersPage() {
                     className="modal modal-open"
                     onClose={() => closeCreateModal()}
                 >
-                    <div className="modal-box max-w-4xl p-0 overflow-hidden">
+                    <div className="modal-box max-w-xl p-0 overflow-hidden">
                         <div className="bg-base-200 px-6 py-5">
                             <h2 className="font-bold text-lg">名簿に追加</h2>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[62vh] overflow-y-auto p-6">
+                        <div className="grid grid-cols-1 gap-4 max-h-[62vh] overflow-y-auto p-6">
                             {headers.map((header, index) => (
                                 <MemberField
                                     key={`${header}-${index}`}
@@ -810,12 +812,12 @@ export default function MembersPage() {
                     className="modal modal-open"
                     onClose={() => closeEditModal()}
                 >
-                    <div className="modal-box max-w-4xl p-0 overflow-hidden">
+                    <div className="modal-box max-w-xl p-0 overflow-hidden">
                         <div className="bg-base-200 px-6 py-5">
                             <h2 className="font-bold text-lg">編集</h2>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[62vh] overflow-y-auto p-6">
+                        <div className="grid grid-cols-1 gap-4 max-h-[62vh] overflow-y-auto p-6">
                             {headers.map((header, index) => (
                                 <MemberField
                                     key={`${header}-${index}`}
