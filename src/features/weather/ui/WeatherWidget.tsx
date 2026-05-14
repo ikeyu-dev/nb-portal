@@ -293,25 +293,21 @@ export default function WeatherWidget() {
     }
 
     return (
-        <div className="flex flex-wrap items-center justify-center gap-3 text-base-content/70">
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-base-content/70">
             <div className="flex items-center gap-1.5">
-                <div className="w-6 h-6">
+                <div className="h-5 w-5">
                     <WeatherIcon code={weather.weatherCode} />
                 </div>
                 <span className="font-semibold text-base-content">
                     {getWeatherDescription(weather.weatherCode)}
                 </span>
             </div>
-            <span className="font-bold text-lg tabular-nums text-base-content">
+            <span className="font-bold tabular-nums text-base-content">
                 {weather.temperature}
-                <span className="text-sm text-base-content/60">°C</span>
+                <span className="text-xs text-base-content/60">°C</span>
             </span>
-            <span className="text-sm tabular-nums">
-                湿度 {weather.humidity}%
-            </span>
-            <span className="text-sm tabular-nums">
-                風速 {weather.windSpeed}m/s
-            </span>
+            <span className="tabular-nums">湿度 {weather.humidity}%</span>
+            <span className="tabular-nums">風速 {weather.windSpeed}m/s</span>
         </div>
     );
 }

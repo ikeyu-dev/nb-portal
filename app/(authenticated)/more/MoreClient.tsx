@@ -12,9 +12,12 @@ interface User {
 
 interface MoreClientProps {
     user: User | undefined;
+    displayName?: string | null;
 }
 
-export default function MoreClient({ user }: MoreClientProps) {
+export default function MoreClient({ user, displayName }: MoreClientProps) {
+    const resolvedDisplayName = displayName || user?.name || null;
+
     return (
         <div className="p-4 lg:p-6 w-full">
             <div className="max-w-4xl mx-auto space-y-8">
@@ -146,12 +149,12 @@ export default function MoreClient({ user }: MoreClientProps) {
                             </h2>
                             <div className="flex items-center gap-4 mt-2">
                                 <ProfileAvatar
-                                    name={user.name}
+                                    name={resolvedDisplayName}
                                     size="md"
                                 />
                                 <div className="flex-1 min-w-0">
                                     <p className="font-medium text-base truncate">
-                                        {user.name}
+                                        {resolvedDisplayName}
                                     </p>
                                     <p className="text-sm text-base-content/60 truncate">
                                         {user.email}

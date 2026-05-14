@@ -45,10 +45,10 @@ export default function DigitalClock({ memberName }: DigitalClockProps) {
     const greeting = getGreeting(Number(hours));
 
     return (
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center">
             <p
                 suppressHydrationWarning
-                className="text-sm text-base-content/60"
+                className="text-xs text-base-content/60"
             >
                 {greeting}
                 {memberName && `、${memberName}さん`}
@@ -56,13 +56,13 @@ export default function DigitalClock({ memberName }: DigitalClockProps) {
             <div className="flex items-baseline justify-center">
                 <span
                     suppressHydrationWarning
-                    className="text-5xl font-bold tabular-nums"
+                    className="text-4xl font-bold tabular-nums"
                 >
                     {hours}:{minutes}
                 </span>
                 <span
                     suppressHydrationWarning
-                    className="text-2xl font-bold tabular-nums text-base-content/60"
+                    className="text-xl font-bold tabular-nums text-base-content/60"
                 >
                     :{seconds}
                 </span>
