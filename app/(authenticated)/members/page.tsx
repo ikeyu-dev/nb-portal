@@ -224,6 +224,9 @@ export default function MembersPage() {
     const [editValues, setEditValues] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [modalError, setModalError] = useState<string | null>(null);
+    const [checkedMemberRows, setCheckedMemberRows] = useState<Set<number>>(
+        () => new Set()
+    );
 
     const applyMembersData = useCallback((data: MembersData) => {
         setHeaders(data.headers);
@@ -338,6 +341,20 @@ export default function MembersPage() {
     const clearFilters = () => {
         setQuery("");
         setSelectedAdmissionYear("all");
+    };
+
+    const toggleMemberCheck = (rowNumber: number, checked: boolean) => {
+        setCheckedMemberRows((currentRows) => {
+            const nextRows = new Set(currentRows);
+
+            if (checked) {
+                nextRows.add(rowNumber);
+            } else {
+                nextRows.delete(rowNumber);
+            }
+
+            return nextRows;
+        });
     };
 
     const nameColumnIndex = useMemo(
@@ -529,7 +546,7 @@ export default function MembersPage() {
 
     return (
         <div className="p-4 lg:p-6 w-full">
-            <div className="max-w-7xl mx-auto space-y-6">
+            <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-3">
                         <svg
@@ -657,6 +674,7 @@ export default function MembersPage() {
                         <div className="overflow-x-auto">
                             <table className="table table-zebra table-pin-rows table-fixed min-w-[38rem] w-full">
                             <colgroup>
+                                <col className="w-12 sm:w-14" />
                                 <col className="w-28 sm:w-36" />
                                 <col className="w-32 sm:w-48" />
                                 <col className="w-32 sm:w-44" />
@@ -665,6 +683,10 @@ export default function MembersPage() {
                             </colgroup>
                             <thead>
                                 <tr>
+                                    <th
+                                        className="bg-base-200 text-base-content"
+                                        aria-label="チェック"
+                                    />
                                     {visibleColumnIndices.map((index) => (
                                         <th
                                             key={`${headers[index]}-${index}`}
@@ -686,6 +708,28 @@ export default function MembersPage() {
                                         className="hover cursor-pointer align-middle"
                                         onClick={() => openEditModal(member)}
                                     >
+                                        <td className="py-4 text-center">
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-primary checkbox-sm"
+                                                checked={checkedMemberRows.has(
+                                                    member.rowNumber
+                                                )}
+                                                aria-label={`${getPrimaryValue(
+                                                    member,
+                                                    headers
+                                                )}をチェック`}
+                                                onClick={(event) =>
+                                                    event.stopPropagation()
+                                                }
+                                                onChange={(event) =>
+                                                    toggleMemberCheck(
+                                                        member.rowNumber,
+                                                        event.target.checked
+                                                    )
+                                                }
+                                            />
+                                        </td>
                                         {visibleColumnIndices.map((index) => {
                                             const header = headers[index];
                                             const value = getDisplayCellValue(
@@ -769,7 +813,7 @@ export default function MembersPage() {
                                     <tr>
                                         <td
                                             colSpan={
-                                                visibleColumnIndices.length + 1
+                                                visibleColumnIndices.length + 2
                                             }
                                             className="text-center text-base-content/60 py-8"
                                         >
