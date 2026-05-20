@@ -44,9 +44,21 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
+        const sessionDisplayName =
+            session.displayName ||
+            session.memberName ||
+            session.nickname ||
+            session.user.name ||
+            session.studentId;
+        const submitBody = {
+            ...body,
+            studentNumber: body.studentNumber || session.studentId,
+            name: body.name || sessionDisplayName,
+            reason: body.type === "出席" ? body.reason || "出席" : body.reason,
+        };
 
         // 入力バリデーション
-        const validationResult = absenceSubmitSchema.safeParse(body);
+        const validationResult = absenceSubmitSchema.safeParse(submitBody);
         if (!validationResult.success) {
             return NextResponse.json(
                 {

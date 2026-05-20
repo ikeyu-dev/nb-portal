@@ -7,7 +7,9 @@ import type {
     Absence,
     NextMeetingSettings,
     Schedule,
+    ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
+import { normalizeScheduleAttendanceMode } from "@/src/shared/types/api";
 import { DigitalClock } from "@/features/digital-clock";
 import { WeatherWidget } from "@/features/weather";
 import { ScheduleCard } from "@/features/schedule-card";
@@ -15,6 +17,13 @@ import { DateDisplay } from "@/features/date-display";
 import { ProfileImageSaver } from "@/features/profile-image";
 import { NextMeetingCard } from "@/src/features/next-meeting";
 import { auth } from "@/src/auth";
+
+const getScheduleAttendanceMode = (
+    schedule: Schedule
+): ScheduleAttendanceMode =>
+    normalizeScheduleAttendanceMode(
+        schedule.ATTENDANCE_MODE ?? schedule.attendanceMode
+    );
 
 export default async function HomePage() {
     const session = await auth();
@@ -65,10 +74,12 @@ export default async function HomePage() {
         })
         .map((schedule) => String(Object.values(schedule)[0]));
 
-    // 本日の欠席者をフィルタリング（今日のイベントに紐づく欠席者のみ）
+    // 本日の欠席者をフィルタリング（出席申告は除外）
     const todayAbsences = absences.filter((absence) => {
-        const absenceEventId = String(Object.values(absence)[1]); // B列のEVENT_ID
-        return todayEventIds.includes(absenceEventId);
+        const values = Object.values(absence);
+        const absenceEventId = String(values[1]); // B列のEVENT_ID
+        const type = String(values[4] ?? ""); // E列の種別
+        return todayEventIds.includes(absenceEventId) && type !== "出席";
     });
 
     const upcomingSchedules = schedules
@@ -100,7 +111,7 @@ export default async function HomePage() {
     return (
         <>
             <ProfileImageSaver profileImage={session?.profileImage} />
-            <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden lg:px-8 lg:py-6">
+            <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
                 <div className="mb-5 flex items-center gap-3 max-lg:hidden shrink-0 lg:mb-6">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -129,9 +140,9 @@ export default async function HomePage() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-5 lg:flex-1 lg:min-h-0 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
-                    <div className="card bg-base-100 shadow-xl border border-base-300 order-3 h-[420px] lg:order-none lg:col-span-7 lg:row-start-3 lg:h-full lg:min-h-0">
-                        <div className="card-body flex flex-col overflow-hidden p-5 pb-4">
+                <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-3 lg:order-3 lg:col-span-6">
+                        <div className="card-body flex flex-col p-5 pb-4">
                             <div className="mb-3 flex h-8 items-center gap-2 shrink-0">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
@@ -162,7 +173,7 @@ export default async function HomePage() {
                                 )}
                             </div>
                             {upcomingSchedules.length > 0 ? (
-                                <div className="flex-1 overflow-y-auto pr-2 space-y-4 min-h-0">
+                                <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
                                     {upcomingSchedules.map(
                                         (schedule: Schedule, index: number) => {
                                             const values =
@@ -184,6 +195,10 @@ export default async function HomePage() {
                                             const detail = String(
                                                 values[8] ?? ""
                                             ); // I列 (DETAIL)
+                                            const attendanceMode =
+                                                getScheduleAttendanceMode(
+                                                    schedule
+                                                );
 
                                             // 日付文字列を作成
                                             const scheduleDate = new Date(
@@ -236,6 +251,16 @@ export default async function HomePage() {
                                                     where={where}
                                                     detail={detail}
                                                     absences={eventAbsences}
+                                                    attendanceMode={
+                                                        attendanceMode
+                                                    }
+                                                    currentStudentNumber={
+                                                        session?.studentId
+                                                    }
+                                                    currentDisplayName={
+                                                        session?.displayName ||
+                                                        session?.memberName
+                                                    }
                                                     dateLabel={dateLabel}
                                                     timeLabel={timeLabel}
                                                 />
@@ -274,7 +299,7 @@ export default async function HomePage() {
                         </div>
                     </div>
 
-                    <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:order-none lg:col-span-12 lg:row-start-1">
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:order-1 lg:col-span-12">
                         <div className="card-body p-4">
                             <div className="flex h-7 items-center gap-2 shrink-0">
                                 <svg
@@ -313,10 +338,10 @@ export default async function HomePage() {
                     <NextMeetingCard
                         initialMeeting={nextMeeting}
                         permission={session?.permission}
-                        className="order-2 lg:order-none lg:col-span-12 lg:row-start-2"
+                        className="order-2 lg:order-2 lg:col-span-12"
                     />
 
-                    <div className="card bg-base-100 shadow-xl border border-base-300 order-4 h-[420px] overflow-hidden lg:order-none lg:col-span-5 lg:row-start-3 lg:h-full lg:min-h-0">
+                    <div className="card bg-base-100 shadow-xl border border-base-300 order-4 overflow-hidden lg:order-4 lg:col-span-6">
                         <div className="card-body flex flex-col p-5 pb-4">
                             <div className="mb-3 flex h-8 items-center gap-2">
                                 <svg

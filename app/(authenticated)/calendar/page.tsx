@@ -2,7 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
-import type { Absence } from "@/src/shared/types/api";
+import {
+    normalizeScheduleAttendanceMode,
+    SCHEDULE_ATTENDANCE_MODE_LABELS,
+} from "@/src/shared/types/api";
+import type {
+    Absence,
+    ScheduleAttendanceMode,
+} from "@/src/shared/types/api";
 import { HelpButton } from "@/src/features/help";
 import {
     getClientCacheEntry,
@@ -68,10 +75,18 @@ interface EventForm {
     endDate: string;
     isAllDay: boolean;
     color: EventColorId;
+    attendanceMode: ScheduleAttendanceMode;
 }
 
 const CALENDAR_REFRESH_INTERVAL = CACHE_TTL_MS.pageData;
 const CALENDAR_REFETCH_COOLDOWN = 60 * 1000;
+
+const getScheduleAttendanceMode = (
+    schedule: Schedule
+): ScheduleAttendanceMode =>
+    normalizeScheduleAttendanceMode(
+        schedule.ATTENDANCE_MODE ?? schedule.attendanceMode
+    );
 
 export default function CalendarPage() {
     const [schedules, setSchedules] = useState<Schedule[]>([]);
@@ -103,6 +118,7 @@ export default function CalendarPage() {
         endDate: "",
         isAllDay: false,
         color: "primary",
+        attendanceMode: "ABSENCE",
     });
     const [editForm, setEditForm] = useState<EventForm>({
         title: "",
@@ -118,6 +134,7 @@ export default function CalendarPage() {
         endDate: "",
         isAllDay: false,
         color: "primary",
+        attendanceMode: "ABSENCE",
     });
 
     useEffect(() => {
@@ -335,6 +352,7 @@ export default function CalendarPage() {
             endDate: "",
             isAllDay: false,
             color: "primary",
+            attendanceMode: "ABSENCE",
         });
         setEditForm({
             title: "",
@@ -350,6 +368,7 @@ export default function CalendarPage() {
             endDate: "",
             isAllDay: false,
             color: "primary",
+            attendanceMode: "ABSENCE",
         });
     };
 
@@ -375,6 +394,7 @@ export default function CalendarPage() {
             endDate: "",
             isAllDay: false,
             color: "primary",
+            attendanceMode: "ABSENCE",
         });
     };
 
@@ -403,6 +423,7 @@ export default function CalendarPage() {
                     endMonth: addForm.endMonth || undefined,
                     endDate: addForm.endDate || undefined,
                     color: addForm.color,
+                    attendanceMode: addForm.attendanceMode,
                 }),
             });
 
@@ -424,6 +445,7 @@ export default function CalendarPage() {
                     END_MM: data.data.endMonth || "",
                     END_DD: data.data.endDate || "",
                     COLOR: data.data.color || "primary",
+                    ATTENDANCE_MODE: data.data.attendanceMode || "ABSENCE",
                 };
                 setSchedules((prev) => {
                     const next = [...prev, newSchedule];
@@ -520,6 +542,7 @@ export default function CalendarPage() {
                     : "",
             isAllDay,
             color: (values[12] as EventColorId) || "primary",
+            attendanceMode: getScheduleAttendanceMode(selectedEvent),
         });
         setShowEditModal(true);
     };
@@ -542,6 +565,7 @@ export default function CalendarPage() {
             endDate: "",
             isAllDay: false,
             color: "primary",
+            attendanceMode: "ABSENCE",
         });
     };
 
@@ -625,6 +649,7 @@ export default function CalendarPage() {
                     endMonth: editForm.endMonth || undefined,
                     endDate: editForm.endDate || undefined,
                     color: editForm.color,
+                    attendanceMode: editForm.attendanceMode,
                 }),
             });
 
@@ -650,6 +675,8 @@ export default function CalendarPage() {
                                 END_MM: data.data.endMonth || "",
                                 END_DD: data.data.endDate || "",
                                 COLOR: data.data.color || "primary",
+                                ATTENDANCE_MODE:
+                                    data.data.attendanceMode || "ABSENCE",
                             };
                         }
                         return schedule;
@@ -1297,7 +1324,7 @@ export default function CalendarPage() {
             {/* イベント一覧モーダル */}
             {selectedDate && !selectedEvent && !showAddModal && (
                 <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)] flex flex-col">
+                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)] flex flex-col bg-base-200">
                         <button
                             onClick={closeModal}
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -1319,7 +1346,7 @@ export default function CalendarPage() {
                                     この日の予定はありません
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
                                     {selectedDate.events.map(
                                         (eventWithPos, index) => {
                                             const { schedule, position } =
@@ -1339,6 +1366,12 @@ export default function CalendarPage() {
                                             const where = String(
                                                 values[7] ?? ""
                                             );
+                                            const attendanceMode =
+                                                getScheduleAttendanceMode(
+                                                    schedule
+                                                );
+                                            const attendanceModeBadgeClass =
+                                                "border-base-content/35 bg-base-200/70 text-base-content/70";
                                             const endYear = values[9]
                                                 ? Number(values[9])
                                                 : 0;
@@ -1361,6 +1394,21 @@ export default function CalendarPage() {
                                                       rawTimeMM
                                                   ).padStart(2, "0")}`
                                                 : null;
+                                            const startDate = new Date(
+                                                startYear,
+                                                startMonth - 1,
+                                                startDay
+                                            );
+                                            const startDayOfWeek = [
+                                                "日",
+                                                "月",
+                                                "火",
+                                                "水",
+                                                "木",
+                                                "金",
+                                                "土",
+                                            ][startDate.getDay()];
+                                            const startDateLabel = `${startMonth}/${startDay}(${startDayOfWeek})`;
 
                                             // 複数日イベントの期間表示
                                             const isMultiDay =
@@ -1371,7 +1419,13 @@ export default function CalendarPage() {
                                                 endMonth &&
                                                 endDay
                                                     ? `${startYear}年 ${startMonth}月 ${startDay}日 〜 ${endYear}年 ${endMonth}月 ${endDay}日`
-                                                    : null;
+                                                    : startDateLabel;
+                                            const dateTimeLabel = [
+                                                dateRangeLabel,
+                                                timeLabel,
+                                            ]
+                                                .filter(Boolean)
+                                                .join(" ");
 
                                             // イベントの色を取得
                                             const eventColor = getColorHex(
@@ -1386,47 +1440,93 @@ export default function CalendarPage() {
                                                             schedule
                                                         )
                                                     }
-                                                    className="p-5 bg-base-100 rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer hover:bg-base-200/50"
-                                                    style={{
-                                                        borderLeftColor:
-                                                            eventColor,
-                                                    }}
+                                                    className="group bg-base-100 px-4 py-4 transition-colors hover:bg-base-200/50 cursor-pointer sm:px-5"
                                                 >
-                                                    <div className="flex items-center gap-3">
+                                                    <div className="flex items-stretch gap-4">
                                                         <div
-                                                            className="w-3 h-3 rounded-full shrink-0"
+                                                            className="w-1 rounded-full"
                                                             style={{
                                                                 backgroundColor:
                                                                     eventColor,
                                                             }}
-                                                        ></div>
-                                                        <div className="flex-1">
-                                                            <div className="font-bold text-lg flex items-center gap-2">
+                                                        />
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-lg font-bold">
                                                                 {title}
-                                                                {timeLabel && (
-                                                                    <span className="text-sm font-normal text-base-content/70">
+                                                            </div>
+                                                            <div className="mt-0">
+                                                                <span
+                                                                    className={`badge badge-outline badge-sm ${attendanceModeBadgeClass}`}
+                                                                >
+                                                                    {
+                                                                        SCHEDULE_ATTENDANCE_MODE_LABELS[
+                                                                            attendanceMode
+                                                                        ]
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-base-content/80">
+                                                                <div className="flex items-center gap-1">
+                                                                    <svg
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                        className="h-4 w-4 text-primary"
+                                                                        fill="none"
+                                                                        viewBox="0 0 24 24"
+                                                                        stroke="currentColor"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={
+                                                                                2
+                                                                            }
+                                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                        />
+                                                                    </svg>
+                                                                    <span className="font-medium">
                                                                         {
-                                                                            timeLabel
+                                                                            dateTimeLabel
                                                                         }
                                                                     </span>
+                                                                </div>
+                                                                {where && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <svg
+                                                                            xmlns="http://www.w3.org/2000/svg"
+                                                                            className="h-4 w-4 text-primary"
+                                                                            fill="none"
+                                                                            viewBox="0 0 24 24"
+                                                                            stroke="currentColor"
+                                                                        >
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth={
+                                                                                    2
+                                                                                }
+                                                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                                            />
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth={
+                                                                                    2
+                                                                                }
+                                                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                                                            />
+                                                                        </svg>
+                                                                        <span className="font-medium">
+                                                                            {
+                                                                                where
+                                                                            }
+                                                                        </span>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                            {dateRangeLabel && (
-                                                                <div className="text-sm text-base-content/70 mt-1">
-                                                                    {
-                                                                        dateRangeLabel
-                                                                    }
-                                                                </div>
-                                                            )}
-                                                            {where && (
-                                                                <div className="text-sm text-base-content/70 mt-1">
-                                                                    {where}
-                                                                </div>
-                                                            )}
                                                         </div>
                                                         <svg
                                                             xmlns="http://www.w3.org/2000/svg"
-                                                            className="h-5 w-5 text-base-content/50"
+                                                            className="mt-1 h-5 w-5 shrink-0 text-base-content/40 transition-transform group-hover:translate-x-0.5 group-hover:text-base-content/60"
                                                             fill="none"
                                                             viewBox="0 0 24 24"
                                                             stroke="currentColor"
@@ -1541,6 +1641,66 @@ export default function CalendarPage() {
                                     />
                                     <span className="label-text">終日</span>
                                 </label>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        出欠方式
+                                    </span>
+                                </label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                        <input
+                                            type="radio"
+                                            name="addAttendanceMode"
+                                            className="radio radio-primary mt-1"
+                                            checked={
+                                                addForm.attendanceMode ===
+                                                "ABSENCE"
+                                            }
+                                            onChange={() =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    attendanceMode: "ABSENCE",
+                                                })
+                                            }
+                                        />
+                                        <span>
+                                            <span className="block font-medium">
+                                                全員参加
+                                            </span>
+                                            <span className="text-sm text-base-content/70">
+                                                全員参加が原則。欠席者が連絡します。
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                        <input
+                                            type="radio"
+                                            name="addAttendanceMode"
+                                            className="radio radio-primary mt-1"
+                                            checked={
+                                                addForm.attendanceMode ===
+                                                "ATTENDANCE"
+                                            }
+                                            onChange={() =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    attendanceMode:
+                                                        "ATTENDANCE",
+                                                })
+                                            }
+                                        />
+                                        <span>
+                                            <span className="block font-medium">
+                                                希望者参加
+                                            </span>
+                                            <span className="text-sm text-base-content/70">
+                                                参加希望者が出席を申告します。
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
                             </div>
                             {addForm.isAllDay ? (
                                 <>
@@ -1770,6 +1930,8 @@ export default function CalendarPage() {
                     const title = String(values[6] ?? "予定");
                     const where = String(values[7] ?? "");
                     const detail = String(values[8] ?? "");
+                    const attendanceMode =
+                        getScheduleAttendanceMode(selectedEvent);
 
                     const scheduleDate = new Date(year, month - 1, date);
                     const scheduleDayOfWeek = [
@@ -1808,6 +1970,7 @@ export default function CalendarPage() {
                             where={where}
                             detail={detail}
                             absences={eventAbsences}
+                            attendanceMode={attendanceMode}
                             dateLabel={dateLabel}
                             timeLabel={timeLabel}
                             defaultOpen={true}
@@ -1876,6 +2039,66 @@ export default function CalendarPage() {
                                     />
                                     <span className="label-text">終日</span>
                                 </label>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        出欠方式
+                                    </span>
+                                </label>
+                                <div className="grid grid-cols-1 gap-2">
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                        <input
+                                            type="radio"
+                                            name="editAttendanceMode"
+                                            className="radio radio-primary mt-1"
+                                            checked={
+                                                editForm.attendanceMode ===
+                                                "ABSENCE"
+                                            }
+                                            onChange={() =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    attendanceMode: "ABSENCE",
+                                                })
+                                            }
+                                        />
+                                        <span>
+                                            <span className="block font-medium">
+                                                全員参加
+                                            </span>
+                                            <span className="text-sm text-base-content/70">
+                                                全員参加が原則。欠席者が連絡します。
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                        <input
+                                            type="radio"
+                                            name="editAttendanceMode"
+                                            className="radio radio-primary mt-1"
+                                            checked={
+                                                editForm.attendanceMode ===
+                                                "ATTENDANCE"
+                                            }
+                                            onChange={() =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    attendanceMode:
+                                                        "ATTENDANCE",
+                                                })
+                                            }
+                                        />
+                                        <span>
+                                            <span className="block font-medium">
+                                                希望者参加
+                                            </span>
+                                            <span className="text-sm text-base-content/70">
+                                                参加希望者が出席を申告します。
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
                             </div>
                             <div className="form-control">
                                 <label className="label">

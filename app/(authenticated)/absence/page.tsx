@@ -5,7 +5,7 @@ import { AbsenceFormContent } from "./AbsenceFormContent";
 export default async function AbsencePage() {
     const session = await auth();
     const studentId = session?.studentId || null;
-    const memberName = session?.memberName || null;
+    const memberName = session?.displayName || session?.memberName || null;
 
     return (
         <Suspense
