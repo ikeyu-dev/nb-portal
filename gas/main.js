@@ -319,6 +319,7 @@ const getFormData = (e) => {
 
 /** 種別に応じたEmbed色を返す */
 const getAbsenceColor = (type) => {
+    if (type === "出席") return 0x57f287;
     if (type === "欠席") return 0xed4245;
     if (type === "遅刻") return 0xfee75c;
     if (type === "早退") return 0xf0b232;
@@ -350,6 +351,7 @@ const formatTypeWithTime = (type, opts = {}) => {
  */
 const buildAbsenceEmbed = (params) => {
     const typeDisplay = formatTypeWithTime(params.type, params);
+    const isAttendance = params.type === "出席";
     const fields = [
         { name: "氏名", value: params.name || "不明", inline: true },
         { name: "種別", value: typeDisplay, inline: true },
@@ -367,7 +369,7 @@ const buildAbsenceEmbed = (params) => {
     }
 
     const embed = {
-        title: "欠席連絡",
+        title: isAttendance ? "出席申告" : "欠席連絡",
         color: getAbsenceColor(params.type),
         fields,
     };
@@ -1180,8 +1182,27 @@ const handleDeleteItem = (postData) => {
 // ============================================
 // API: スケジュール一覧取得
 // シート名: schedules
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:COLOR, N:CREATED_BY, O:CREATED_AT, P:UPDATED_BY, Q:UPDATED_AT
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:COLOR, N:CREATED_BY, O:CREATED_AT, P:UPDATED_BY, Q:UPDATED_AT, R:ATTENDANCE_MODE
 // ============================================
+
+const SCHEDULE_ATTENDANCE_MODE_COLUMN = 18;
+
+const normalizeScheduleAttendanceMode = (mode) =>
+    String(mode || "").trim().toUpperCase() === "ATTENDANCE"
+        ? "ATTENDANCE"
+        : "ABSENCE";
+
+const ensureScheduleAttendanceModeHeader = (sheet) => {
+    const header = String(
+        sheet.getRange(1, SCHEDULE_ATTENDANCE_MODE_COLUMN).getValue() || ""
+    ).trim();
+
+    if (!header) {
+        sheet
+            .getRange(1, SCHEDULE_ATTENDANCE_MODE_COLUMN)
+            .setValue("ATTENDANCE_MODE");
+    }
+};
 
 /**
  * スケジュール一覧を取得
@@ -1197,6 +1218,8 @@ const handleGetSchedules = (e) => {
             return createErrorResponse("Sheet 'schedules' not found", 404);
         }
 
+        ensureScheduleAttendanceModeHeader(sheet);
+
         const lastRow = sheet.getLastRow();
         if (lastRow < 2) {
             return createResponse({
@@ -1206,12 +1229,12 @@ const handleGetSchedules = (e) => {
             });
         }
 
-        // A2:M（2行目以降、13列）のデータを取得（終了日とカラーを含む）
-        const range = sheet.getRange(2, 1, lastRow - 1, 13);
+        // A2:R（2行目以降、18列）のデータを取得（終了日、カラー、出欠方式を含む）
+        const range = sheet.getRange(2, 1, lastRow - 1, 18);
         const values = range.getValues();
 
-        // ヘッダー行（A1:M1）を取得
-        const headers = sheet.getRange(1, 1, 1, 13).getValues()[0];
+        // ヘッダー行（A1:R1）を取得
+        const headers = sheet.getRange(1, 1, 1, 18).getValues()[0];
 
         // ヘッダーをキーとしたオブジェクト配列に変換
         const schedules = values.map((row) => {
@@ -1819,6 +1842,7 @@ const handlePostSchedule = (postData) => {
             endMonth,
             endDate,
             color,
+            attendanceMode,
             createdBy,
         } = postData;
 
@@ -1836,6 +1860,8 @@ const handlePostSchedule = (postData) => {
         if (!sheet) {
             return createErrorResponse("Sheet 'schedules' not found", 404);
         }
+
+        ensureScheduleAttendanceModeHeader(sheet);
 
         // EVENT_IDを自動生成（E-XX形式、行番号-1で0埋め2桁）
         const lastRow = sheet.getLastRow();
@@ -1868,6 +1894,9 @@ const handlePostSchedule = (postData) => {
             color || "primary",
             createdBy || "",
             createdAt,
+            "",
+            "",
+            normalizeScheduleAttendanceMode(attendanceMode),
         ];
 
         sheet.appendRow(rowData);
@@ -1893,6 +1922,7 @@ const handlePostSchedule = (postData) => {
                 endMonth: endMonth || null,
                 endDate: endDate || null,
                 color: color || "primary",
+                attendanceMode: normalizeScheduleAttendanceMode(attendanceMode),
                 createdBy: createdBy || "",
                 createdAt,
             },
@@ -1930,7 +1960,13 @@ const handlePostAbsence = (postData) => {
         } = postData;
 
         // 必須フィールドの検証
-        if (!eventId || !studentNumber || !name || !type || !reason) {
+        if (
+            !eventId ||
+            !studentNumber ||
+            !name ||
+            !type ||
+            (type !== "出席" && !reason)
+        ) {
             return createErrorResponse("Missing required fields", 400);
         }
 
@@ -1956,7 +1992,7 @@ const handlePostAbsence = (postData) => {
             studentNumber,
             name,
             type,
-            reason,
+            type === "出席" ? "" : reason,
             reasonDetail || "",
             timeLeavingEarly || "",
             timeStepOut || "",
@@ -1973,7 +2009,7 @@ const handlePostAbsence = (postData) => {
             const embed = buildAbsenceEmbed({
                 name,
                 type,
-                reason,
+                reason: type === "出席" ? "" : reason,
                 reasonDetail,
                 timestamp,
                 timeLeavingEarly,
@@ -1989,7 +2025,10 @@ const handlePostAbsence = (postData) => {
 
         if (domain && studentNumber) {
             const email = `${studentNumber}@${domain}`;
-            const subject = "欠席連絡フォーム送信完了通知";
+            const isAttendance = type === "出席";
+            const subject = isAttendance
+                ? "出席申告フォーム送信完了通知"
+                : "欠席連絡フォーム送信完了通知";
 
             let bodyText = `${name} さん\n\n`;
             bodyText += `以下の内容でフォームが送信されました．\n\n`;
@@ -2002,14 +2041,16 @@ const handlePostAbsence = (postData) => {
                 bodyText += `(${timeStepOut || ""} ~ ${timeReturn || ""})`;
             }
 
-            bodyText += `\n理由: ${reason}\n`;
+            if (!isAttendance) {
+                bodyText += `\n理由: ${reason}\n`;
+            }
             if (reasonDetail) {
                 bodyText += `詳細: ${reasonDetail}\n`;
             }
             bodyText += `\n送信日時: ${timestamp}\n`;
 
             MailApp.sendEmail(email, subject, bodyText, {
-                name: "欠席連絡システム",
+                name: isAttendance ? "出席申告システム" : "欠席連絡システム",
             });
         }
 
@@ -2057,6 +2098,7 @@ const handleUpdateSchedule = (postData) => {
             endMonth,
             endDate,
             color,
+            attendanceMode,
             updatedBy,
         } = postData;
 
@@ -2074,6 +2116,8 @@ const handleUpdateSchedule = (postData) => {
         if (!sheet) {
             return createErrorResponse("Sheet 'schedules' not found", 404);
         }
+
+        ensureScheduleAttendanceModeHeader(sheet);
 
         const lastRow = sheet.getLastRow();
         if (lastRow < 2) {
@@ -2124,6 +2168,9 @@ const handleUpdateSchedule = (postData) => {
         ];
 
         sheet.getRange(targetRow, 2, 1, 12).setValues([updateData]);
+        sheet
+            .getRange(targetRow, SCHEDULE_ATTENDANCE_MODE_COLUMN)
+            .setValue(normalizeScheduleAttendanceMode(attendanceMode));
 
         // P列（UPDATED_BY）とQ列（UPDATED_AT）を更新
         if (updatedBy) {
@@ -2153,6 +2200,7 @@ const handleUpdateSchedule = (postData) => {
                 endMonth: endMonth || null,
                 endDate: endDate || null,
                 color: color || "primary",
+                attendanceMode: normalizeScheduleAttendanceMode(attendanceMode),
                 updatedBy: updatedBy || "",
                 updatedAt,
             },

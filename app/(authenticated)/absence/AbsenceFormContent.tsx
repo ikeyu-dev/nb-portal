@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { submitAbsence } from "@/src/shared/api/client";
 import { HelpButton } from "@/src/features/help";
+import { normalizeScheduleAttendanceMode } from "@/src/shared/types/api";
 
 interface AbsenceFormContentProps {
     studentId: string | null;
@@ -17,6 +18,11 @@ export function AbsenceFormContent({
 }: AbsenceFormContentProps) {
     const searchParams = useSearchParams();
     const eventId = searchParams.get("eventId") || "";
+    const attendanceMode = normalizeScheduleAttendanceMode(
+        searchParams.get("mode")
+    );
+    const isAttendanceEvent = attendanceMode === "ATTENDANCE";
+    const pageTitle = isAttendanceEvent ? "出席申告" : "欠席連絡";
 
     const [formData, setFormData] = useState({
         studentNumber: studentId || "",
@@ -47,18 +53,28 @@ export function AbsenceFormContent({
                 eventId,
                 studentNumber: formData.studentNumber,
                 name: formData.name,
-                type: formData.type,
-                reason: formData.reasonCategory,
-                reasonDetail: formData.reasonDetail || undefined,
-                timeStepOut: formData.timeStepOut || undefined,
-                timeReturn: formData.timeReturn || undefined,
-                timeLeavingEarly: formData.timeLeavingEarly || undefined,
+                type: isAttendanceEvent ? "出席" : formData.type,
+                reason: isAttendanceEvent ? "出席" : formData.reasonCategory,
+                reasonDetail: isAttendanceEvent
+                    ? undefined
+                    : formData.reasonDetail || undefined,
+                timeStepOut: isAttendanceEvent
+                    ? undefined
+                    : formData.timeStepOut || undefined,
+                timeReturn: isAttendanceEvent
+                    ? undefined
+                    : formData.timeReturn || undefined,
+                timeLeavingEarly: isAttendanceEvent
+                    ? undefined
+                    : formData.timeLeavingEarly || undefined,
             });
 
             if (result.success) {
                 setSubmitStatus({
                     type: "success",
-                    message: "欠席連絡を送信しました",
+                    message: isAttendanceEvent
+                        ? "出席申告を送信しました"
+                        : "欠席連絡を送信しました",
                 });
 
                 // 学籍番号とあだ名は維持し、それ以外をリセット
@@ -97,7 +113,7 @@ export function AbsenceFormContent({
                     className="font-bold"
                     style={{ fontSize: "clamp(1.5rem, 4vw, 1.875rem)" }}
                 >
-                    欠席連絡
+                    {pageTitle}
                 </h1>
                 <HelpButton sectionId="absence" />
             </div>
@@ -176,103 +192,124 @@ export function AbsenceFormContent({
                             />
                         </div>
 
-                        {/* 種別 */}
-                        <div className="form-control">
-                            <label className="label">
-                                <span
-                                    className="label-text font-semibold"
-                                    style={{
-                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                                    }}
-                                >
-                                    種別 <span className="text-error">*</span>
-                                </span>
-                            </label>
-                            <select
-                                className="select select-bordered w-full"
-                                value={formData.type}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        type: e.target.value,
-                                    })
-                                }
-                                required
-                            >
-                                <option value="">選択してください</option>
-                                <option value="欠席">欠席</option>
-                                <option value="遅刻">遅刻</option>
-                                <option value="中抜け">中抜け</option>
-                                <option value="早退">早退</option>
-                            </select>
-                        </div>
+                        {!isAttendanceEvent && (
+                            <>
+                                {/* 種別 */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span
+                                            className="label-text font-semibold"
+                                            style={{
+                                                fontSize:
+                                                    "clamp(0.875rem, 2vw, 1rem)",
+                                            }}
+                                        >
+                                            種別{" "}
+                                            <span className="text-error">
+                                                *
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <select
+                                        className="select select-bordered w-full"
+                                        value={formData.type}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                type: e.target.value,
+                                            })
+                                        }
+                                        required
+                                    >
+                                        <option value="">
+                                            選択してください
+                                        </option>
+                                        <option value="欠席">欠席</option>
+                                        <option value="遅刻">遅刻</option>
+                                        <option value="中抜け">中抜け</option>
+                                        <option value="早退">早退</option>
+                                    </select>
+                                </div>
 
-                        {/* 理由カテゴリ */}
-                        <div className="form-control">
-                            <label className="label">
-                                <span
-                                    className="label-text font-semibold"
-                                    style={{
-                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                                    }}
-                                >
-                                    理由 <span className="text-error">*</span>
-                                </span>
-                            </label>
-                            <select
-                                className="select select-bordered w-full"
-                                value={formData.reasonCategory}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        reasonCategory: e.target.value,
-                                    })
-                                }
-                                required
-                            >
-                                <option value="">選択してください</option>
-                                <option value="体調不良">体調不良</option>
-                                <option value="授業">授業</option>
-                                <option value="家庭の都合">家庭の都合</option>
-                                <option value="その他">その他</option>
-                            </select>
-                        </div>
+                                {/* 理由カテゴリ */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span
+                                            className="label-text font-semibold"
+                                            style={{
+                                                fontSize:
+                                                    "clamp(0.875rem, 2vw, 1rem)",
+                                            }}
+                                        >
+                                            理由{" "}
+                                            <span className="text-error">
+                                                *
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <select
+                                        className="select select-bordered w-full"
+                                        value={formData.reasonCategory}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                reasonCategory: e.target.value,
+                                            })
+                                        }
+                                        required
+                                    >
+                                        <option value="">
+                                            選択してください
+                                        </option>
+                                        <option value="体調不良">
+                                            体調不良
+                                        </option>
+                                        <option value="授業">授業</option>
+                                        <option value="家庭の都合">
+                                            家庭の都合
+                                        </option>
+                                        <option value="その他">その他</option>
+                                    </select>
+                                </div>
 
-                        {/* 詳細（任意） */}
-                        <div className="form-control">
-                            <label className="label">
-                                <span
-                                    className="label-text font-semibold"
-                                    style={{
-                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
-                                    }}
-                                >
-                                    詳細
-                                    <span className="text-base-content/50 font-normal ml-2">
-                                        任意
-                                    </span>
-                                </span>
-                            </label>
-                            <textarea
-                                placeholder="補足があれば入力してください"
-                                className="textarea textarea-bordered w-full h-24"
-                                value={formData.reasonDetail}
-                                onChange={(e) =>
-                                    setFormData({
-                                        ...formData,
-                                        reasonDetail: e.target.value,
-                                    })
-                                }
-                            />
-                            <label className="label">
-                                <span className="label-text-alt text-base-content/50">
-                                    詳細はスプレッドシートにのみ記録されます
-                                </span>
-                            </label>
-                        </div>
+                                {/* 詳細（任意） */}
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span
+                                            className="label-text font-semibold"
+                                            style={{
+                                                fontSize:
+                                                    "clamp(0.875rem, 2vw, 1rem)",
+                                            }}
+                                        >
+                                            詳細
+                                            <span className="text-base-content/50 font-normal ml-2">
+                                                任意
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <textarea
+                                        placeholder="補足があれば入力してください"
+                                        className="textarea textarea-bordered w-full h-24"
+                                        value={formData.reasonDetail}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                reasonDetail: e.target.value,
+                                            })
+                                        }
+                                    />
+                                    <label className="label">
+                                        <span className="label-text-alt text-base-content/50">
+                                            詳細はスプレッドシートにのみ記録されます
+                                        </span>
+                                    </label>
+                                </div>
+                            </>
+                        )}
 
                         {/* 中抜けの場合 */}
-                        {formData.type === "中抜け" && (
+                        {!isAttendanceEvent && formData.type === "中抜け" && (
                             <div className="space-y-4 p-4 bg-base-200/50 rounded-lg border border-base-300">
                                 <h3
                                     className="font-semibold"
@@ -322,7 +359,7 @@ export function AbsenceFormContent({
                         )}
 
                         {/* 早退の場合 */}
-                        {formData.type === "早退" && (
+                        {!isAttendanceEvent && formData.type === "早退" && (
                             <div className="space-y-4 p-4 bg-base-200/50 rounded-lg border border-base-300">
                                 <h3
                                     className="font-semibold"
@@ -363,7 +400,11 @@ export function AbsenceFormContent({
                                 }`}
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting ? "送信中..." : "送信"}
+                                {isSubmitting
+                                    ? "送信中..."
+                                    : isAttendanceEvent
+                                      ? "出席申告を送信"
+                                      : "欠席連絡を送信"}
                             </button>
                             <a
                                 href="/home"

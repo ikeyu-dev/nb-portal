@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     MEMBER_PERMISSION_LABELS,
     MEMBER_PERMISSIONS,
@@ -216,6 +216,8 @@ export default function MembersPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isCheckedListModalOpen, setIsCheckedListModalOpen] =
+        useState(false);
     const [editingMember, setEditingMember] = useState<MemberRow | null>(null);
     const [deletingMember, setDeletingMember] = useState<MemberRow | null>(
         null
@@ -224,8 +226,14 @@ export default function MembersPage() {
     const [editValues, setEditValues] = useState<string[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [modalError, setModalError] = useState<string | null>(null);
+    const [lineNameCopyStatus, setLineNameCopyStatus] = useState<
+        "idle" | "copied" | "failed"
+    >("idle");
     const [checkedMemberRows, setCheckedMemberRows] = useState<Set<number>>(
         () => new Set()
+    );
+    const lineNameCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+        null
     );
 
     const applyMembersData = useCallback((data: MembersData) => {
@@ -286,8 +294,22 @@ export default function MembersPage() {
         void fetchMembers();
     }, [fetchMembers]);
 
+    useEffect(
+        () => () => {
+            if (lineNameCopyTimerRef.current) {
+                clearTimeout(lineNameCopyTimerRef.current);
+            }
+        },
+        []
+    );
+
     const studentNumberColumnIndex = useMemo(
         () => headers.findIndex(isStudentNumberHeader),
+        [headers]
+    );
+
+    const lineNameColumnIndex = useMemo(
+        () => headers.findIndex(isLineNameHeader),
         [headers]
     );
 
@@ -335,12 +357,35 @@ export default function MembersPage() {
         });
     }, [members, query, selectedAdmissionYear, studentNumberColumnIndex]);
 
+    const checkedMembers = useMemo(
+        () =>
+            members.filter((member) =>
+                checkedMemberRows.has(member.rowNumber)
+            ),
+        [checkedMemberRows, members]
+    );
+
+    const checkedLineNames = useMemo(() => {
+        if (lineNameColumnIndex < 0) return [];
+
+        return checkedMembers
+            .map((member) => stringifyCell(member.values[lineNameColumnIndex]))
+            .map((lineName) => lineName.trim())
+            .filter((lineName) => lineName !== "")
+            .map((lineName) =>
+                lineName.startsWith("@") ? lineName : `@${lineName}`
+            );
+    }, [checkedMembers, lineNameColumnIndex]);
+
     const hasActiveFilters =
-        query.trim() !== "" || selectedAdmissionYear !== "all";
+        query.trim() !== "" ||
+        selectedAdmissionYear !== "all" ||
+        checkedMemberRows.size > 0;
 
     const clearFilters = () => {
         setQuery("");
         setSelectedAdmissionYear("all");
+        setCheckedMemberRows(new Set());
     };
 
     const toggleMemberCheck = (rowNumber: number, checked: boolean) => {
@@ -400,6 +445,31 @@ export default function MembersPage() {
         setIsCreateModalOpen(false);
         setCreateValues([]);
         setModalError(null);
+    };
+
+    const closeCheckedListModal = () => {
+        setIsCheckedListModalOpen(false);
+        setLineNameCopyStatus("idle");
+    };
+
+    const copyCheckedLineNames = async () => {
+        if (checkedLineNames.length === 0) return;
+
+        if (lineNameCopyTimerRef.current) {
+            clearTimeout(lineNameCopyTimerRef.current);
+        }
+
+        try {
+            await navigator.clipboard.writeText(checkedLineNames.join(" "));
+            setLineNameCopyStatus("copied");
+        } catch {
+            setLineNameCopyStatus("failed");
+        }
+
+        lineNameCopyTimerRef.current = setTimeout(() => {
+            setLineNameCopyStatus("idle");
+            lineNameCopyTimerRef.current = null;
+        }, 1000);
     };
 
     const openEditModal = (member: MemberRow) => {
@@ -561,28 +631,57 @@ export default function MembersPage() {
                             <h1 className="text-2xl font-bold">部員名簿</h1>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        className="btn btn-primary btn-sm gap-2"
-                        onClick={openCreateModal}
-                        disabled={isLoading || headers.length === 0}
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="size-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={2}
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            type="button"
+                            className="btn btn-outline btn-sm gap-2"
+                            onClick={() => setIsCheckedListModalOpen(true)}
+                            disabled={isLoading || checkedMembers.length === 0}
                         >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                d="M12 4.5v15m7.5-7.5h-15"
-                            />
-                        </svg>
-                        追加
-                    </button>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="size-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                                />
+                            </svg>
+                            チェック済み
+                            {checkedMembers.length > 0 && (
+                                <span className="badge badge-primary badge-sm">
+                                    {checkedMembers.length}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm gap-2"
+                            onClick={openCreateModal}
+                            disabled={isLoading || headers.length === 0}
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="size-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 4.5v15m7.5-7.5h-15"
+                                />
+                            </svg>
+                            追加
+                        </button>
+                    </div>
                 </div>
 
                 {error && (
@@ -907,7 +1006,135 @@ export default function MembersPage() {
                             type="button"
                             onClick={() => closeCreateModal()}
                         >
-                            close
+                            閉じる
+                        </button>
+                    </form>
+                </dialog>
+            )}
+
+            {isCheckedListModalOpen && (
+                <dialog
+                    className="modal modal-open"
+                    onClose={closeCheckedListModal}
+                >
+                    <div className="modal-box max-w-2xl p-0 overflow-hidden">
+                        <div className="bg-base-200 px-6 py-5">
+                            <h2 className="font-bold text-lg">
+                                チェック済み部員
+                            </h2>
+                            <p className="mt-1 text-sm text-base-content/70">
+                                {checkedMembers.length}名
+                            </p>
+                        </div>
+
+                        <div className="max-h-[62vh] overflow-y-auto p-4 sm:p-6">
+                            {checkedMembers.length > 0 ? (
+                                <div className="overflow-x-auto rounded-lg border border-base-300">
+                                    <table className="table table-zebra table-sm w-full">
+                                        <thead>
+                                            <tr>
+                                                {visibleColumnIndices.map(
+                                                    (index) => (
+                                                        <th
+                                                            key={`${headers[index]}-${index}-checked`}
+                                                            className="whitespace-nowrap bg-base-200"
+                                                        >
+                                                            {getHeaderLabel(
+                                                                headers[index]
+                                                            )}
+                                                        </th>
+                                                    )
+                                                )}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {checkedMembers.map((member) => (
+                                                <tr key={member.rowNumber}>
+                                                    {visibleColumnIndices.map(
+                                                        (index) => {
+                                                            const header =
+                                                                headers[index];
+                                                            const value =
+                                                                getDisplayCellValue(
+                                                                    member,
+                                                                    header,
+                                                                    index
+                                                                );
+
+                                                            return (
+                                                                <td
+                                                                    key={`${member.rowNumber}-${header}-${index}-checked`}
+                                                                >
+                                                                    <span
+                                                                        className={`block truncate ${
+                                                                            isStudentNumberHeader(
+                                                                                header
+                                                                            )
+                                                                                ? "font-mono text-sm"
+                                                                                : ""
+                                                                        }`}
+                                                                    >
+                                                                        {isBooleanCell(
+                                                                            value
+                                                                        )
+                                                                            ? getBooleanStatusLabel(
+                                                                                  getBooleanCellValue(
+                                                                                      value
+                                                                                  )
+                                                                              )
+                                                                            : stringifyCell(
+                                                                                  value
+                                                                              )}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center text-base-content/60">
+                                    チェック済みの部員はいません
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-action bg-base-100 border-t border-base-300 m-0 px-6 py-4">
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline"
+                                    onClick={() => void copyCheckedLineNames()}
+                                    disabled={checkedLineNames.length === 0}
+                                >
+                                    {lineNameCopyStatus === "copied"
+                                        ? "コピー済み"
+                                        : lineNameCopyStatus === "failed"
+                                          ? "失敗"
+                                          : "LINE名コピー"}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-primary"
+                                    onClick={closeCheckedListModal}
+                                >
+                                    閉じる
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <form
+                        method="dialog"
+                        className="modal-backdrop"
+                    >
+                        <button
+                            type="button"
+                            onClick={closeCheckedListModal}
+                        >
+                            閉じる
                         </button>
                     </form>
                 </dialog>
@@ -1000,7 +1227,7 @@ export default function MembersPage() {
                             type="button"
                             onClick={() => closeEditModal()}
                         >
-                            close
+                            閉じる
                         </button>
                     </form>
                 </dialog>
@@ -1054,7 +1281,7 @@ export default function MembersPage() {
                             type="button"
                             onClick={() => closeDeleteModal()}
                         >
-                            close
+                            閉じる
                         </button>
                     </form>
                 </dialog>

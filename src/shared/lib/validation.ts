@@ -3,28 +3,45 @@ import { z } from "zod";
 /**
  * 欠席連絡送信データのバリデーションスキーマ
  */
-export const absenceSubmitSchema = z.object({
-    eventId: z
-        .string()
-        .min(1, "イベントIDは必須です")
-        .max(100, "イベントIDが長すぎます"),
-    studentNumber: z
-        .string()
-        .min(1, "学籍番号は必須です")
-        .max(20, "学籍番号が長すぎます")
-        .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です"),
-    name: z.string().min(1, "名前は必須です").max(50, "名前が長すぎます"),
-    type: z.enum(["欠席", "遅刻", "中抜け", "早退"], {
-        error: "無効な欠席種別です",
-    }),
-    reason: z.enum(["体調不良", "授業", "家庭の都合", "その他"], {
-        error: "無効な理由カテゴリです",
-    }),
-    reasonDetail: z.string().max(500, "詳細が長すぎます").optional(),
-    timeStepOut: z.string().max(10).optional(),
-    timeReturn: z.string().max(10).optional(),
-    timeLeavingEarly: z.string().max(10).optional(),
-});
+export const absenceSubmitSchema = z
+    .object({
+        eventId: z
+            .string()
+            .min(1, "イベントIDは必須です")
+            .max(100, "イベントIDが長すぎます"),
+        studentNumber: z
+            .string()
+            .min(1, "学籍番号は必須です")
+            .max(20, "学籍番号が長すぎます")
+            .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です"),
+        name: z
+            .string()
+            .min(1, "名前は必須です")
+            .max(50, "名前が長すぎます"),
+        type: z.enum(["欠席", "遅刻", "中抜け", "早退", "出席"], {
+            error: "無効な欠席種別です",
+        }),
+        reason: z
+            .enum(["体調不良", "授業", "家庭の都合", "その他", "出席"], {
+                error: "無効な理由カテゴリです",
+            })
+            .optional(),
+        reasonDetail: z.string().max(500, "詳細が長すぎます").optional(),
+        timeStepOut: z.string().max(10).optional(),
+        timeReturn: z.string().max(10).optional(),
+        timeLeavingEarly: z.string().max(10).optional(),
+    })
+    .superRefine((data, ctx) => {
+        if (data.type === "出席") return;
+
+        if (!data.reason) {
+            ctx.addIssue({
+                code: "custom",
+                path: ["reason"],
+                message: "理由は必須です",
+            });
+        }
+    });
 
 export type AbsenceSubmitData = z.infer<typeof absenceSubmitSchema>;
 

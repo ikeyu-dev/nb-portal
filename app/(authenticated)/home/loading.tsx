@@ -1,15 +1,15 @@
 export default function HomeLoading() {
     return (
-        <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:flex lg:h-screen lg:flex-col lg:overflow-hidden lg:px-8 lg:py-6">
+        <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
             <div className="mb-5 flex items-center gap-3 max-lg:hidden shrink-0 lg:mb-6">
                 <div className="h-6 w-6 bg-base-300 rounded animate-pulse"></div>
                 <div className="h-7 w-48 bg-base-300 rounded-lg animate-pulse"></div>
             </div>
 
-            <div className="grid grid-cols-1 gap-5 lg:flex-1 lg:min-h-0 lg:grid-cols-12 lg:grid-rows-[auto_auto_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
                 {/* Schedule Card Skeleton */}
-                <div className="card bg-base-100 shadow-xl border border-base-300 order-3 h-[420px] lg:order-none lg:col-span-7 lg:row-start-3 lg:h-full lg:min-h-0">
-                    <div className="card-body flex flex-col overflow-hidden p-5 pb-4">
+                <div className="card bg-base-100 shadow-xl border border-base-300 order-3 lg:order-3 lg:col-span-6">
+                    <div className="card-body flex flex-col p-5 pb-4">
                         <div className="mb-3 flex h-8 items-center gap-2 shrink-0">
                             <div className="h-5 w-5 bg-base-300 rounded animate-pulse"></div>
                             <div className="h-5 w-40 bg-base-300 rounded animate-pulse"></div>
@@ -21,7 +21,7 @@ export default function HomeLoading() {
                 </div>
 
                 {/* Weather & Clock Card Skeleton */}
-                <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:order-none lg:col-span-12 lg:row-start-1">
+                <div className="card bg-base-100 shadow-xl border border-base-300 order-1 lg:order-1 lg:col-span-12">
                     <div className="card-body p-4">
                         <div className="flex h-7 items-center gap-2 shrink-0">
                             <div className="h-5 w-5 bg-base-300 rounded animate-pulse"></div>
@@ -36,7 +36,7 @@ export default function HomeLoading() {
                 </div>
 
                 {/* Next Meeting Card Skeleton */}
-                <div className="card bg-base-100 shadow-xl border border-base-300 order-2 lg:order-none lg:col-span-12 lg:row-start-2">
+                <div className="card bg-base-100 shadow-xl border border-base-300 order-2 lg:order-2 lg:col-span-12">
                     <div className="card-body gap-4 p-5 pb-4">
                         <div className="flex items-center gap-2">
                             <div className="h-5 w-5 bg-base-300 rounded animate-pulse"></div>
@@ -59,7 +59,7 @@ export default function HomeLoading() {
                 </div>
 
                 {/* Absences Card Skeleton */}
-                <div className="card bg-base-100 shadow-xl border border-base-300 order-4 h-[420px] overflow-hidden lg:order-none lg:col-span-5 lg:row-start-3 lg:h-full lg:min-h-0">
+                <div className="card bg-base-100 shadow-xl border border-base-300 order-4 overflow-hidden lg:order-4 lg:col-span-6">
                     <div className="card-body flex flex-col p-5 pb-4">
                         <div className="mb-3 flex h-8 items-center gap-2">
                             <div className="h-5 w-5 bg-base-300 rounded animate-pulse"></div>

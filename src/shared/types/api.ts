@@ -64,6 +64,31 @@ export const NEXT_MEETING_MODE_LABELS: Record<NextMeetingMode, string> = {
     DISCORD: "Discord",
 };
 
+export const SCHEDULE_ATTENDANCE_MODES = ["ABSENCE", "ATTENDANCE"] as const;
+
+export type ScheduleAttendanceMode =
+    (typeof SCHEDULE_ATTENDANCE_MODES)[number];
+
+export const SCHEDULE_ATTENDANCE_MODE_LABELS: Record<
+    ScheduleAttendanceMode,
+    string
+> = {
+    ABSENCE: "全員参加",
+    ATTENDANCE: "希望者参加",
+};
+
+export const normalizeScheduleAttendanceMode = (
+    value: unknown
+): ScheduleAttendanceMode => {
+    const normalized = String(value ?? "")
+        .trim()
+        .toUpperCase()
+        .replaceAll("-", "_")
+        .replace(/\s+/g, "_");
+
+    return normalized === "ATTENDANCE" ? "ATTENDANCE" : "ABSENCE";
+};
+
 export interface NextMeetingSettings {
     eventId?: string;
     date: string;
