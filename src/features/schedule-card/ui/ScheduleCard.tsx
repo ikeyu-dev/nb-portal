@@ -358,19 +358,6 @@ export default function ScheduleCard({
                                 : isAbsenceFormOpen
                                   ? "欠席連絡"
                                   : title}
-                            {!isAttendanceConfirmOpen &&
-                                !isAbsenceFormOpen &&
-                                timeLabel && (
-                                <span
-                                    className="font-normal text-base-content/70"
-                                    style={{
-                                        fontSize:
-                                            "clamp(1rem, 2.5vw, 1.125rem)",
-                                    }}
-                                >
-                                    {timeLabel}
-                                </span>
-                            )}
                         </h3>
                         {isAttendanceConfirmOpen ? (
                             <>
@@ -683,7 +670,7 @@ export default function ScheduleCard({
                             </form>
                         ) : (
                             <>
-                                {(where || dateLabel) && (
+                                {(where || dateLabel || timeLabel) && (
                                     <div
                                         className="flex items-center gap-4 text-base-content/80 mb-4"
                                         style={{
@@ -691,24 +678,28 @@ export default function ScheduleCard({
                                                 "clamp(0.875rem, 2vw, 1.125rem)",
                                         }}
                                     >
-                                        {dateLabel && (
+                                        {(dateLabel || timeLabel) && (
                                             <div className="flex items-center gap-2">
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-5 w-5 text-primary"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                    />
-                                                </svg>
+                                                {dateLabel && (
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="h-5 w-5 text-primary"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                        />
+                                                    </svg>
+                                                )}
                                                 <span className="font-medium">
-                                                    {dateLabel}
+                                                    {[dateLabel, timeLabel]
+                                                        .filter(Boolean)
+                                                        .join(" ")}
                                                 </span>
                                             </div>
                                         )}

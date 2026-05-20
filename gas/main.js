@@ -1182,10 +1182,13 @@ const handleDeleteItem = (postData) => {
 // ============================================
 // API: スケジュール一覧取得
 // シート名: schedules
-// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:COLOR, N:CREATED_BY, O:CREATED_AT, P:UPDATED_BY, Q:UPDATED_AT, R:ATTENDANCE_MODE
+// 列構成: A:EVENT_ID, B:YYYY, C:MM, D:DD, E:TIME_HH, F:TIME_MM, G:TITLE, H:WHERE, I:DETAIL, J:END_YYYY, K:END_MM, L:END_DD, M:COLOR, N:CREATED_BY, O:CREATED_AT, P:UPDATED_BY, Q:UPDATED_AT, R:ATTENDANCE_MODE, S:END_TIME_HH, T:END_TIME_MM
 // ============================================
 
 const SCHEDULE_ATTENDANCE_MODE_COLUMN = 18;
+const SCHEDULE_END_TIME_HH_COLUMN = 19;
+const SCHEDULE_END_TIME_MM_COLUMN = 20;
+const SCHEDULE_COLUMN_COUNT = 20;
 
 const normalizeScheduleAttendanceMode = (mode) =>
     String(mode || "").trim().toUpperCase() === "ATTENDANCE"
@@ -1193,15 +1196,18 @@ const normalizeScheduleAttendanceMode = (mode) =>
         : "ABSENCE";
 
 const ensureScheduleAttendanceModeHeader = (sheet) => {
-    const header = String(
-        sheet.getRange(1, SCHEDULE_ATTENDANCE_MODE_COLUMN).getValue() || ""
-    ).trim();
+    const headers = [
+        [SCHEDULE_ATTENDANCE_MODE_COLUMN, "ATTENDANCE_MODE"],
+        [SCHEDULE_END_TIME_HH_COLUMN, "END_TIME_HH"],
+        [SCHEDULE_END_TIME_MM_COLUMN, "END_TIME_MM"],
+    ];
 
-    if (!header) {
-        sheet
-            .getRange(1, SCHEDULE_ATTENDANCE_MODE_COLUMN)
-            .setValue("ATTENDANCE_MODE");
-    }
+    headers.forEach(([column, value]) => {
+        const header = String(sheet.getRange(1, column).getValue() || "").trim();
+        if (!header) {
+            sheet.getRange(1, column).setValue(value);
+        }
+    });
 };
 
 /**
@@ -1229,12 +1235,14 @@ const handleGetSchedules = (e) => {
             });
         }
 
-        // A2:R（2行目以降、18列）のデータを取得（終了日、カラー、出欠方式を含む）
-        const range = sheet.getRange(2, 1, lastRow - 1, 18);
+        // A2:T（2行目以降、20列）のデータを取得（終了日、カラー、出欠方式、終了時刻を含む）
+        const range = sheet.getRange(2, 1, lastRow - 1, SCHEDULE_COLUMN_COUNT);
         const values = range.getValues();
 
-        // ヘッダー行（A1:R1）を取得
-        const headers = sheet.getRange(1, 1, 1, 18).getValues()[0];
+        // ヘッダー行（A1:T1）を取得
+        const headers = sheet
+            .getRange(1, 1, 1, SCHEDULE_COLUMN_COUNT)
+            .getValues()[0];
 
         // ヘッダーをキーとしたオブジェクト配列に変換
         const schedules = values.map((row) => {
@@ -1835,6 +1843,8 @@ const handlePostSchedule = (postData) => {
             date,
             timeHH,
             timeMM,
+            endTimeHH,
+            endTimeMM,
             title,
             where,
             detail,
@@ -1897,6 +1907,12 @@ const handlePostSchedule = (postData) => {
             "",
             "",
             normalizeScheduleAttendanceMode(attendanceMode),
+            endTimeHH !== undefined && endTimeHH !== ""
+                ? Number(endTimeHH)
+                : "",
+            endTimeMM !== undefined && endTimeMM !== ""
+                ? Number(endTimeMM)
+                : "",
         ];
 
         sheet.appendRow(rowData);
@@ -1915,6 +1931,8 @@ const handlePostSchedule = (postData) => {
                 date: Number(date),
                 timeHH: timeHH || null,
                 timeMM: timeMM || null,
+                endTimeHH: endTimeHH || null,
+                endTimeMM: endTimeMM || null,
                 title,
                 where: where || "",
                 detail: detail || "",
@@ -2091,6 +2109,8 @@ const handleUpdateSchedule = (postData) => {
             date,
             timeHH,
             timeMM,
+            endTimeHH,
+            endTimeMM,
             title,
             where,
             detail,
@@ -2171,6 +2191,18 @@ const handleUpdateSchedule = (postData) => {
         sheet
             .getRange(targetRow, SCHEDULE_ATTENDANCE_MODE_COLUMN)
             .setValue(normalizeScheduleAttendanceMode(attendanceMode));
+        sheet
+            .getRange(targetRow, SCHEDULE_END_TIME_HH_COLUMN, 1, 2)
+            .setValues([
+                [
+                    endTimeHH !== undefined && endTimeHH !== ""
+                        ? Number(endTimeHH)
+                        : "",
+                    endTimeMM !== undefined && endTimeMM !== ""
+                        ? Number(endTimeMM)
+                        : "",
+                ],
+            ]);
 
         // P列（UPDATED_BY）とQ列（UPDATED_AT）を更新
         if (updatedBy) {
@@ -2193,6 +2225,8 @@ const handleUpdateSchedule = (postData) => {
                 date: Number(date),
                 timeHH: timeHH || null,
                 timeMM: timeMM || null,
+                endTimeHH: endTimeHH || null,
+                endTimeMM: endTimeMM || null,
                 title,
                 where: where || "",
                 detail: detail || "",
