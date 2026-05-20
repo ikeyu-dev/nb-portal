@@ -186,6 +186,8 @@ export default async function HomePage() {
                                             const date = Number(values[3]); // D列 (DD)
                                             const rawTimeHH = values[4]; // E列 (TIME_HH)
                                             const rawTimeMM = values[5]; // F列 (TIME_MM)
+                                            const rawEndTimeHH = values[18]; // S列 (END_TIME_HH)
+                                            const rawEndTimeMM = values[19]; // T列 (END_TIME_MM)
                                             const title = String(
                                                 values[6] ?? "予定"
                                             ); // G列 (TITLE)
@@ -230,6 +232,22 @@ export default async function HomePage() {
                                                       rawTimeMM
                                                   ).padStart(2, "0")}`
                                                 : undefined;
+                                            const hasEndTime =
+                                                rawEndTimeHH !== "" &&
+                                                rawEndTimeHH !== null &&
+                                                rawEndTimeHH !== undefined &&
+                                                rawEndTimeMM !== "" &&
+                                                rawEndTimeMM !== null &&
+                                                rawEndTimeMM !== undefined;
+                                            const endTimeLabel = hasEndTime
+                                                ? `${String(rawEndTimeHH).padStart(2, "0")}:${String(
+                                                      rawEndTimeMM
+                                                  ).padStart(2, "0")}`
+                                                : undefined;
+                                            const timeRangeLabel =
+                                                timeLabel && endTimeLabel
+                                                    ? `${timeLabel}-${endTimeLabel}`
+                                                    : timeLabel;
 
                                             // このイベントの欠席者をフィルタリング
                                             // absence_data シートの列構成: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名...
@@ -262,7 +280,7 @@ export default async function HomePage() {
                                                         session?.memberName
                                                     }
                                                     dateLabel={dateLabel}
-                                                    timeLabel={timeLabel}
+                                                    timeLabel={timeRangeLabel}
                                                 />
                                             );
                                         }

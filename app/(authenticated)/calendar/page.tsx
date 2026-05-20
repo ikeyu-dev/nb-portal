@@ -67,6 +67,8 @@ interface EventForm {
     detail: string;
     timeHH: string;
     timeMM: string;
+    endTimeHH: string;
+    endTimeMM: string;
     year: string;
     month: string;
     date: string;
@@ -110,6 +112,8 @@ export default function CalendarPage() {
         detail: "",
         timeHH: "",
         timeMM: "",
+        endTimeHH: "",
+        endTimeMM: "",
         year: "",
         month: "",
         date: "",
@@ -126,6 +130,8 @@ export default function CalendarPage() {
         detail: "",
         timeHH: "",
         timeMM: "",
+        endTimeHH: "",
+        endTimeMM: "",
         year: "",
         month: "",
         date: "",
@@ -344,6 +350,8 @@ export default function CalendarPage() {
             detail: "",
             timeHH: "",
             timeMM: "",
+            endTimeHH: "",
+            endTimeMM: "",
             year: "",
             month: "",
             date: "",
@@ -360,6 +368,8 @@ export default function CalendarPage() {
             detail: "",
             timeHH: "",
             timeMM: "",
+            endTimeHH: "",
+            endTimeMM: "",
             year: "",
             month: "",
             date: "",
@@ -386,6 +396,8 @@ export default function CalendarPage() {
             detail: "",
             timeHH: "",
             timeMM: "",
+            endTimeHH: "",
+            endTimeMM: "",
             year: "",
             month: "",
             date: "",
@@ -416,6 +428,8 @@ export default function CalendarPage() {
                     date: selectedDate.date.getDate(),
                     timeHH: addForm.timeHH || undefined,
                     timeMM: addForm.timeMM || undefined,
+                    endTimeHH: addForm.endTimeHH || undefined,
+                    endTimeMM: addForm.endTimeMM || undefined,
                     title: addForm.title.trim(),
                     where: addForm.where.trim(),
                     detail: addForm.detail.trim(),
@@ -446,6 +460,8 @@ export default function CalendarPage() {
                     END_DD: data.data.endDate || "",
                     COLOR: data.data.color || "primary",
                     ATTENDANCE_MODE: data.data.attendanceMode || "ABSENCE",
+                    END_TIME_HH: data.data.endTimeHH || "",
+                    END_TIME_MM: data.data.endTimeMM || "",
                 };
                 setSchedules((prev) => {
                     const next = [...prev, newSchedule];
@@ -489,6 +505,8 @@ export default function CalendarPage() {
         const values = Object.values(selectedEvent);
         const rawTimeHH = values[4];
         const rawTimeMM = values[5];
+        const rawEndTimeHH = values[18];
+        const rawEndTimeMM = values[19];
         // 終了日はインデックス9, 10, 11（END_YYYY, END_MM, END_DD）
         const rawEndYear = values[9];
         const rawEndMonth = values[10];
@@ -518,6 +536,18 @@ export default function CalendarPage() {
                 rawTimeMM !== null &&
                 rawTimeMM !== undefined
                     ? String(rawTimeMM)
+                    : "",
+            endTimeHH:
+                rawEndTimeHH !== "" &&
+                rawEndTimeHH !== null &&
+                rawEndTimeHH !== undefined
+                    ? String(rawEndTimeHH)
+                    : "",
+            endTimeMM:
+                rawEndTimeMM !== "" &&
+                rawEndTimeMM !== null &&
+                rawEndTimeMM !== undefined
+                    ? String(rawEndTimeMM)
                     : "",
             year: String(values[1] ?? ""),
             month: String(values[2] ?? ""),
@@ -557,6 +587,8 @@ export default function CalendarPage() {
             detail: "",
             timeHH: "",
             timeMM: "",
+            endTimeHH: "",
+            endTimeMM: "",
             year: "",
             month: "",
             date: "",
@@ -642,6 +674,8 @@ export default function CalendarPage() {
                     date: Number(editForm.date),
                     timeHH: editForm.timeHH || undefined,
                     timeMM: editForm.timeMM || undefined,
+                    endTimeHH: editForm.endTimeHH || undefined,
+                    endTimeMM: editForm.endTimeMM || undefined,
                     title: editForm.title.trim(),
                     where: editForm.where.trim(),
                     detail: editForm.detail.trim(),
@@ -671,6 +705,8 @@ export default function CalendarPage() {
                                 DETAIL: data.data.detail,
                                 TIME_HH: data.data.timeHH || "",
                                 TIME_MM: data.data.timeMM || "",
+                                END_TIME_HH: data.data.endTimeHH || "",
+                                END_TIME_MM: data.data.endTimeMM || "",
                                 END_YYYY: data.data.endYear || "",
                                 END_MM: data.data.endMonth || "",
                                 END_DD: data.data.endDate || "",
@@ -810,6 +846,8 @@ export default function CalendarPage() {
         const values = Object.values(schedule);
         const rawTimeHH = values[4];
         const rawTimeMM = values[5];
+        const rawEndTimeHH = values[18];
+        const rawEndTimeMM = values[19];
         const hasTime =
             rawTimeHH !== "" &&
             rawTimeHH !== null &&
@@ -817,11 +855,24 @@ export default function CalendarPage() {
             rawTimeMM !== "" &&
             rawTimeMM !== null &&
             rawTimeMM !== undefined;
-        return hasTime
-            ? `${String(rawTimeHH).padStart(2, "0")}:${String(
-                  rawTimeMM
-              ).padStart(2, "0")}`
-            : null;
+        if (!hasTime) return null;
+
+        const startTime = `${String(rawTimeHH).padStart(2, "0")}:${String(
+            rawTimeMM
+        ).padStart(2, "0")}`;
+        const hasEndTime =
+            rawEndTimeHH !== "" &&
+            rawEndTimeHH !== null &&
+            rawEndTimeHH !== undefined &&
+            rawEndTimeMM !== "" &&
+            rawEndTimeMM !== null &&
+            rawEndTimeMM !== undefined;
+        if (!hasEndTime) return startTime;
+
+        const endTime = `${String(rawEndTimeHH).padStart(2, "0")}:${String(
+            rawEndTimeMM
+        ).padStart(2, "0")}`;
+        return `${startTime}-${endTime}`;
     };
 
     if (isLoading) {
@@ -1360,6 +1411,8 @@ export default function CalendarPage() {
                                             const startDay = Number(values[3]);
                                             const rawTimeHH = values[4];
                                             const rawTimeMM = values[5];
+                                            const rawEndTimeHH = values[18];
+                                            const rawEndTimeMM = values[19];
                                             const title = String(
                                                 values[6] ?? "予定"
                                             );
@@ -1394,6 +1447,22 @@ export default function CalendarPage() {
                                                       rawTimeMM
                                                   ).padStart(2, "0")}`
                                                 : null;
+                                            const hasEndTime =
+                                                rawEndTimeHH !== "" &&
+                                                rawEndTimeHH !== null &&
+                                                rawEndTimeHH !== undefined &&
+                                                rawEndTimeMM !== "" &&
+                                                rawEndTimeMM !== null &&
+                                                rawEndTimeMM !== undefined;
+                                            const endTimeLabel = hasEndTime
+                                                ? `${String(rawEndTimeHH).padStart(2, "0")}:${String(
+                                                      rawEndTimeMM
+                                                  ).padStart(2, "0")}`
+                                                : null;
+                                            const timeRangeLabel =
+                                                timeLabel && endTimeLabel
+                                                    ? `${timeLabel}-${endTimeLabel}`
+                                                    : timeLabel;
                                             const startDate = new Date(
                                                 startYear,
                                                 startMonth - 1,
@@ -1422,7 +1491,7 @@ export default function CalendarPage() {
                                                     : startDateLabel;
                                             const dateTimeLabel = [
                                                 dateRangeLabel,
-                                                timeLabel,
+                                                timeRangeLabel,
                                             ]
                                                 .filter(Boolean)
                                                 .join(" ");
@@ -1636,6 +1705,12 @@ export default function CalendarPage() {
                                                 timeMM: e.target.checked
                                                     ? ""
                                                     : addForm.timeMM,
+                                                endTimeHH: e.target.checked
+                                                    ? ""
+                                                    : addForm.endTimeHH,
+                                                endTimeMM: e.target.checked
+                                                    ? ""
+                                                    : addForm.endTimeMM,
                                             })
                                         }
                                     />
@@ -1784,40 +1859,86 @@ export default function CalendarPage() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text">時刻</span>
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="時"
-                                            min="0"
-                                            max="23"
-                                            className="input input-bordered w-20"
-                                            value={addForm.timeHH}
-                                            onChange={(e) =>
-                                                setAddForm({
-                                                    ...addForm,
-                                                    timeHH: e.target.value,
-                                                })
-                                            }
-                                        />
-                                        <span>:</span>
-                                        <input
-                                            type="number"
-                                            placeholder="分"
-                                            min="0"
-                                            max="59"
-                                            className="input input-bordered w-20"
-                                            value={addForm.timeMM}
-                                            onChange={(e) =>
-                                                setAddForm({
-                                                    ...addForm,
-                                                    timeMM: e.target.value,
-                                                })
-                                            }
-                                        />
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text">
+                                                開始時刻
+                                            </span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                placeholder="時"
+                                                min="0"
+                                                max="23"
+                                                className="input input-bordered w-20"
+                                                value={addForm.timeHH}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        timeHH:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            <span>:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="分"
+                                                min="0"
+                                                max="59"
+                                                className="input input-bordered w-20"
+                                                value={addForm.timeMM}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        timeMM:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text">
+                                                終了時刻
+                                            </span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                placeholder="時"
+                                                min="0"
+                                                max="23"
+                                                className="input input-bordered w-20"
+                                                value={addForm.endTimeHH}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        endTimeHH:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            <span>:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="分"
+                                                min="0"
+                                                max="59"
+                                                className="input input-bordered w-20"
+                                                value={addForm.endTimeMM}
+                                                onChange={(e) =>
+                                                    setAddForm({
+                                                        ...addForm,
+                                                        endTimeMM:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -1927,6 +2048,8 @@ export default function CalendarPage() {
                     const date = Number(values[3]);
                     const rawTimeHH = values[4];
                     const rawTimeMM = values[5];
+                    const rawEndTimeHH = values[18];
+                    const rawEndTimeMM = values[19];
                     const title = String(values[6] ?? "予定");
                     const where = String(values[7] ?? "");
                     const detail = String(values[8] ?? "");
@@ -1957,6 +2080,22 @@ export default function CalendarPage() {
                               rawTimeMM
                           ).padStart(2, "0")}`
                         : undefined;
+                    const hasEndTime =
+                        rawEndTimeHH !== "" &&
+                        rawEndTimeHH !== null &&
+                        rawEndTimeHH !== undefined &&
+                        rawEndTimeMM !== "" &&
+                        rawEndTimeMM !== null &&
+                        rawEndTimeMM !== undefined;
+                    const endTimeLabel = hasEndTime
+                        ? `${String(rawEndTimeHH).padStart(2, "0")}:${String(
+                              rawEndTimeMM
+                          ).padStart(2, "0")}`
+                        : undefined;
+                    const timeRangeLabel =
+                        timeLabel && endTimeLabel
+                            ? `${timeLabel}-${endTimeLabel}`
+                            : timeLabel;
 
                     const eventAbsences = absences.filter((absence) => {
                         const absenceValues = Object.values(absence);
@@ -1972,7 +2111,7 @@ export default function CalendarPage() {
                             absences={eventAbsences}
                             attendanceMode={attendanceMode}
                             dateLabel={dateLabel}
-                            timeLabel={timeLabel}
+                            timeLabel={timeRangeLabel}
                             defaultOpen={true}
                             onClose={closeEventModal}
                             onEdit={openEditModal}
@@ -2034,6 +2173,12 @@ export default function CalendarPage() {
                                                 timeMM: e.target.checked
                                                     ? ""
                                                     : editForm.timeMM,
+                                                endTimeHH: e.target.checked
+                                                    ? ""
+                                                    : editForm.endTimeHH,
+                                                endTimeMM: e.target.checked
+                                                    ? ""
+                                                    : editForm.endTimeMM,
                                             })
                                         }
                                     />
@@ -2220,40 +2365,86 @@ export default function CalendarPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="form-control">
-                                    <label className="label">
-                                        <span className="label-text">時刻</span>
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="時"
-                                            min="0"
-                                            max="23"
-                                            className="input input-bordered w-20"
-                                            value={editForm.timeHH}
-                                            onChange={(e) =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    timeHH: e.target.value,
-                                                })
-                                            }
-                                        />
-                                        <span>:</span>
-                                        <input
-                                            type="number"
-                                            placeholder="分"
-                                            min="0"
-                                            max="59"
-                                            className="input input-bordered w-20"
-                                            value={editForm.timeMM}
-                                            onChange={(e) =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    timeMM: e.target.value,
-                                                })
-                                            }
-                                        />
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text">
+                                                開始時刻
+                                            </span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                placeholder="時"
+                                                min="0"
+                                                max="23"
+                                                className="input input-bordered w-20"
+                                                value={editForm.timeHH}
+                                                onChange={(e) =>
+                                                    setEditForm({
+                                                        ...editForm,
+                                                        timeHH:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            <span>:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="分"
+                                                min="0"
+                                                max="59"
+                                                className="input input-bordered w-20"
+                                                value={editForm.timeMM}
+                                                onChange={(e) =>
+                                                    setEditForm({
+                                                        ...editForm,
+                                                        timeMM:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="form-control">
+                                        <label className="label">
+                                            <span className="label-text">
+                                                終了時刻
+                                            </span>
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="number"
+                                                placeholder="時"
+                                                min="0"
+                                                max="23"
+                                                className="input input-bordered w-20"
+                                                value={editForm.endTimeHH}
+                                                onChange={(e) =>
+                                                    setEditForm({
+                                                        ...editForm,
+                                                        endTimeHH:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            <span>:</span>
+                                            <input
+                                                type="number"
+                                                placeholder="分"
+                                                min="0"
+                                                max="59"
+                                                className="input input-bordered w-20"
+                                                value={editForm.endTimeMM}
+                                                onChange={(e) =>
+                                                    setEditForm({
+                                                        ...editForm,
+                                                        endTimeMM:
+                                                            e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
