@@ -708,10 +708,15 @@ export default function MembersPage() {
                                         className="hover cursor-pointer align-middle"
                                         onClick={() => openEditModal(member)}
                                     >
-                                        <td className="py-4 text-center">
+                                        <td
+                                            className="py-4 text-center"
+                                            onClick={(event) =>
+                                                event.stopPropagation()
+                                            }
+                                        >
                                             <input
                                                 type="checkbox"
-                                                className="checkbox checkbox-primary checkbox-sm"
+                                                className="checkbox checkbox-primary checkbox-md"
                                                 checked={checkedMemberRows.has(
                                                     member.rowNumber
                                                 )}
@@ -719,9 +724,6 @@ export default function MembersPage() {
                                                     member,
                                                     headers
                                                 )}をチェック`}
-                                                onClick={(event) =>
-                                                    event.stopPropagation()
-                                                }
                                                 onChange={(event) =>
                                                     toggleMemberCheck(
                                                         member.rowNumber,
