@@ -11,7 +11,7 @@ import {
 import { announceNextMeeting, updateNextMeeting } from "@/src/shared/api";
 
 const canManageNextMeeting = (permission?: MemberPermission) =>
-    permission === "HEAD" || permission === "SUB_HEAD";
+    permission === "HEAD" || permission === "SUB_HEAD" || permission === "ACCOUNTANT";
 
 const formatNextMeeting = (meeting: NextMeetingSettings | null): string => {
     if (!meeting) return "未設定";
