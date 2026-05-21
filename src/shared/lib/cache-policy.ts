@@ -9,6 +9,7 @@ export const CACHE_TAGS = {
 
 export const CACHE_SECONDS = {
     gasData: 5 * 60,
+    dashboardData: 60,
 } as const;
 
 export const CACHE_TTL_MS = {

@@ -99,6 +99,12 @@ export interface NextMeetingSettings {
     updatedByName?: string | null;
 }
 
+export interface DashboardData {
+    absences: Absence[];
+    schedules: Schedule[];
+    nextMeeting: NextMeetingSettings | null;
+}
+
 // Items型（スプレッドシートのヘッダーに応じて調整してください）
 export interface Item {
     [key: string]: string | number | boolean | Date;

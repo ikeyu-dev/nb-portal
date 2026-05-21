@@ -1,8 +1,4 @@
-import {
-    getAbsencesServer,
-    getNextMeetingServer,
-    getSchedulesServer,
-} from "@/src/shared/api/server";
+import { getDashboardDataServer } from "@/src/shared/api/server";
 import type {
     Absence,
     NextMeetingSettings,
@@ -34,14 +30,10 @@ export default async function HomePage() {
     let error: string | null = null;
 
     try {
-        const [absencesRes, schedulesRes, nextMeetingRes] = await Promise.all([
-            getAbsencesServer(),
-            getSchedulesServer(),
-            getNextMeetingServer(),
-        ]);
-        absences = absencesRes.data || [];
-        schedules = schedulesRes.data || [];
-        nextMeeting = nextMeetingRes.data || null;
+        const dashboardRes = await getDashboardDataServer();
+        absences = dashboardRes.data?.absences || [];
+        schedules = dashboardRes.data?.schedules || [];
+        nextMeeting = dashboardRes.data?.nextMeeting || null;
     } catch (err) {
         error =
             err instanceof Error ? err.message : "データの取得に失敗しました";

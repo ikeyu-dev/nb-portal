@@ -55,6 +55,7 @@ export const gasApiPathSchema = z.enum([
     "absences",
     "event-absences",
     "next-meeting",
+    "dashboard-data",
     "health",
     "notifications",
 ]);

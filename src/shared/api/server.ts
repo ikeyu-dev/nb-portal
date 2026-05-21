@@ -5,6 +5,7 @@ import type {
     Absence,
     MembersData,
     NextMeetingSettings,
+    DashboardData,
 } from "../types/api";
 import { auth } from "@/src/auth";
 import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
@@ -111,6 +112,20 @@ const getNextMeetingCached = unstable_cache(
     async () => fetchFromGASServer<NextMeetingSettings | null>("next-meeting"),
     ["gas-next-meeting"],
     { tags: [CACHE_TAGS.nextMeeting], revalidate: CACHE_SECONDS.gasData }
+);
+
+const getDashboardDataCached = unstable_cache(
+    async () => fetchFromGASServer<DashboardData>("dashboard-data"),
+    ["gas-dashboard-data"],
+    {
+        tags: [
+            CACHE_TAGS.absences,
+            CACHE_TAGS.schedules,
+            CACHE_TAGS.nextMeeting,
+            CACHE_TAGS.members,
+        ],
+        revalidate: CACHE_SECONDS.dashboardData,
+    }
 );
 
 const getHeaderIndex = (
@@ -234,4 +249,11 @@ export async function getNextMeetingServer(): Promise<
         ...nextMeetingRes,
         data: enrichNextMeeting(nextMeetingRes.data || null, membersData),
     };
+}
+
+export async function getDashboardDataServer(): Promise<
+    ApiResponse<DashboardData>
+> {
+    await requireAuthenticatedSession();
+    return getDashboardDataCached();
 }

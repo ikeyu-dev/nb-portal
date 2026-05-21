@@ -87,6 +87,87 @@ const formatValue = (value, formatType) => {
     return value;
 };
 
+const GAS_CACHE_KEYS = {
+    dashboard: "dashboard-data:v2",
+    schedules: "schedules:v2",
+    absences: "absences:v2",
+    memberDisplayNames: "member-display-names:v1",
+};
+
+const GAS_CACHE_SECONDS = {
+    dashboard: 60,
+    schedules: 60,
+    absences: 30,
+    memberDisplayNames: 5 * 60,
+};
+
+const getScriptCache = () => CacheService.getScriptCache();
+
+const getCachedJson = (key) => {
+    try {
+        const cached = getScriptCache().get(key);
+        return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+        console.warn(`Cache read failed: ${key}`, error);
+        return null;
+    }
+};
+
+const putCachedJson = (key, value, expirationSeconds) => {
+    try {
+        getScriptCache().put(key, JSON.stringify(value), expirationSeconds);
+    } catch (error) {
+        console.warn(`Cache write failed: ${key}`, error);
+    }
+};
+
+const removeCacheKeys = (keys) => {
+    try {
+        getScriptCache().removeAll(keys);
+    } catch (error) {
+        console.warn("Cache remove failed", error);
+    }
+};
+
+const clearScheduleCaches = () =>
+    removeCacheKeys([GAS_CACHE_KEYS.dashboard, GAS_CACHE_KEYS.schedules]);
+
+const clearAbsenceCaches = () =>
+    removeCacheKeys([GAS_CACHE_KEYS.dashboard, GAS_CACHE_KEYS.absences]);
+
+const clearMemberCaches = () =>
+    removeCacheKeys([
+        GAS_CACHE_KEYS.dashboard,
+        GAS_CACHE_KEYS.memberDisplayNames,
+    ]);
+
+const clearCachesForEditedSheet = (sheetName) => {
+    switch (sheetName) {
+        case "schedules":
+            clearScheduleCaches();
+            break;
+        case "absence_data":
+            clearAbsenceCaches();
+            break;
+        case "members":
+            clearMemberCaches();
+            break;
+        default:
+            break;
+    }
+};
+
+/**
+ * スプレッドシートを直接編集した場合に関連キャッシュを削除する。
+ * 単純トリガーとしても、インストール型トリガーとしても利用できる。
+ * @param {Object} e - 編集イベント
+ */
+function onEdit(e) {
+    const sheet = e?.range?.getSheet?.();
+    if (!sheet) return;
+    clearCachesForEditedSheet(sheet.getName());
+}
+
 const NEXT_MEETING_TITLES = ["部会", "次回部会"];
 const NEXT_MEETING_DEFAULT_TITLE = "部会";
 const NEXT_MEETING_DEFAULT_COLOR = "primary";
@@ -528,68 +609,91 @@ function onSubmit(e) {
 // ============================================
 
 /**
- * 指定行からフォームデータを取得（一括取得用）
- * @param {Sheet} sheet - スプレッドシートのシートオブジェクト
- * @param {number} row - 行番号
- * @param {Array} headers - ヘッダー配列
- * @returns {Object} フィールド名をキーとしたフォームデータ
- */
-const getFormDataFromRow = (sheet, row, headers) => {
-    const values = sheet
-        .getRange(row, 1, 1, sheet.getLastColumn())
-        .getValues()[0];
-    const formData = {};
-
-    headers.forEach((header, index) => {
-        const value = values[index];
-        for (const mapping of FIELD_MAPPING) {
-            if (mapping.keywords.some((keyword) => header.includes(keyword))) {
-                formData[mapping.field] = formatValue(
-                    value,
-                    mapping.formatType
-                );
-                break;
-            }
-        }
-    });
-
-    return formData;
-};
-
-/**
  * 当日の全欠席・遅刻・早退・中抜けをまとめてDiscordに送信
  * 手動実行または時間トリガーで毎日の活動開始前に実行想定
  */
-function sendAllAbsece() {
+function sendTodayAbsences() {
     const webhookURL =
         PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-    const lastRow = sheet.getLastRow();
-    const headers = sheet
-        .getRange(1, 1, 1, sheet.getLastColumn())
-        .getValues()[0];
+    if (!webhookURL) {
+        throw new Error("WEBHOOK_URL is not configured");
+    }
+
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const schedulesSheet = spreadsheet.getSheetByName("schedules");
+    const absenceSheet = spreadsheet.getSheetByName("absence_data");
+
+    if (!schedulesSheet) {
+        throw new Error("Sheet 'schedules' not found");
+    }
+    if (!absenceSheet) {
+        throw new Error("Sheet 'absence_data' not found");
+    }
 
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    const dateString = `${year}/${month}/${day}`;
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    const dateString = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
+
+    const scheduleLastRow = schedulesSheet.getLastRow();
+    const todayEventIds = new Set();
+    if (scheduleLastRow >= 2) {
+        const scheduleRows = schedulesSheet
+            .getRange(2, 1, scheduleLastRow - 1, 4)
+            .getValues();
+        scheduleRows.forEach((row) => {
+            const eventId = String(row[0] || "");
+            const scheduleYear = Number(row[1]);
+            const scheduleMonth = Number(row[2]);
+            const scheduleDate = Number(row[3]);
+            if (
+                eventId &&
+                scheduleYear === year &&
+                scheduleMonth === month &&
+                scheduleDate === date
+            ) {
+                todayEventIds.add(eventId);
+            }
+        });
+    }
+
+    const targetTypes = new Set(["欠席", "遅刻", "早退", "中抜け"]);
+    const absenceLastRow = absenceSheet.getLastRow();
 
     const fields = [];
-    for (let row = 2; row <= lastRow; row++) {
-        const formData = getFormDataFromRow(sheet, row, headers);
-        const typeDisplay = formatTypeWithTime(formData.type, formData);
-        fields.push({
-            name: formData.name || "不明",
-            value: typeDisplay,
-            inline: true,
+    if (todayEventIds.size > 0 && absenceLastRow >= 2) {
+        // A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:詳細, H:早退時間, I:抜ける時間, J:戻る時間
+        const absenceRows = absenceSheet
+            .getRange(2, 1, absenceLastRow - 1, 10)
+            .getValues();
+
+        absenceRows.forEach((row) => {
+            const eventId = String(row[1] || "");
+            const type = String(row[4] || "");
+            if (!todayEventIds.has(eventId) || !targetTypes.has(type)) return;
+
+            const typeDisplay = formatTypeWithTime(type, {
+                timeLeavingEarly: row[7],
+                timeStepOut: row[8],
+                timeReturn: row[9],
+            });
+
+            fields.push({
+                name: String(row[3] || "不明"),
+                value: typeDisplay,
+                inline: true,
+            });
         });
     }
 
     if (fields.length === 0) {
         fields.push({
             name: "情報",
-            value: "本日の欠席者はいません",
+            value:
+                todayEventIds.size === 0
+                    ? "本日の予定はありません"
+                    : "本日の欠席者はいません",
             inline: false,
         });
     }
@@ -601,6 +705,13 @@ function sendAllAbsece() {
     };
 
     sendToDiscord(webhookURL, embed);
+}
+
+/**
+ * 旧トリガー名との互換用。新規トリガーは sendTodayAbsences を指定する。
+ */
+function sendAllAbsece() {
+    sendTodayAbsences();
 }
 
 const getNextMeetingMentionText = () =>
@@ -795,6 +906,8 @@ function doGet(e) {
                 return handleGetEventAbsences(e);
             case "next-meeting":
                 return handleGetNextMeeting(e);
+            case "dashboard-data":
+                return handleGetDashboardData(e);
             case "verify-member":
                 return handleVerifyMember(e);
             case "notifications":
@@ -820,6 +933,7 @@ function doGet(e) {
                         absences: "?path=absences&date=YYYY-MM-DD",
                         eventAbsences: "?path=event-absences&eventId=EVENT_ID",
                         nextMeeting: "?path=next-meeting",
+                        dashboardData: "?path=dashboard-data",
                         verifyMember:
                             "?path=verify-member&identifier=STUDENT_NUMBER",
                         notifications: "?path=notifications&limit=N",
@@ -1508,6 +1622,7 @@ const handlePostMember = (data) => {
         );
 
         sheet.appendRow(rowValues);
+        clearMemberCaches();
 
         return createResponse({
             success: true,
@@ -1555,6 +1670,7 @@ const handleUpdateMember = (data) => {
         );
 
         sheet.getRange(rowNumber, 1, 1, lastColumn).setValues([updateValues]);
+        clearMemberCaches();
 
         return createResponse({
             success: true,
@@ -1593,6 +1709,7 @@ const handleDeleteMember = (data) => {
         }
 
         sheet.deleteRow(rowNumber);
+        clearMemberCaches();
 
         return createResponse({
             success: true,
@@ -1618,6 +1735,190 @@ const handleGetNextMeeting = () => {
             data: nextMeeting
                 ? buildNextMeetingSettingsFromScheduleRow(nextMeeting.row)
                 : null,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+const buildSchedulesData = (spreadsheet) => {
+    const cached = getCachedJson(GAS_CACHE_KEYS.schedules);
+    if (cached) return cached;
+
+    const sheet = spreadsheet.getSheetByName("schedules");
+    if (!sheet) {
+        throw new Error("Sheet 'schedules' not found");
+    }
+
+    ensureScheduleAttendanceModeHeader(sheet);
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+        putCachedJson(
+            GAS_CACHE_KEYS.schedules,
+            [],
+            GAS_CACHE_SECONDS.schedules
+        );
+        return [];
+    }
+
+    const values = sheet
+        .getRange(2, 1, lastRow - 1, SCHEDULE_COLUMN_COUNT)
+        .getValues();
+    const headers = sheet
+        .getRange(1, 1, 1, SCHEDULE_COLUMN_COUNT)
+        .getValues()[0];
+
+    const schedules = values.map((row) => {
+        const schedule = {};
+        headers.forEach((header, index) => {
+            schedule[header] = row[index];
+        });
+        return schedule;
+    });
+
+    putCachedJson(
+        GAS_CACHE_KEYS.schedules,
+        schedules,
+        GAS_CACHE_SECONDS.schedules
+    );
+    return schedules;
+};
+
+const buildAbsencesData = (spreadsheet) => {
+    const cached = getCachedJson(GAS_CACHE_KEYS.absences);
+    if (cached) return cached;
+
+    const sheet = spreadsheet.getSheetByName("absence_data");
+    if (!sheet) {
+        throw new Error("Sheet 'absence_data' not found");
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) {
+        putCachedJson(GAS_CACHE_KEYS.absences, [], GAS_CACHE_SECONDS.absences);
+        return [];
+    }
+
+    const values = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+    const headers = sheet.getRange(1, 1, 1, 9).getValues()[0];
+
+    const absences = values.map((row) => {
+        const absence = {};
+        headers.forEach((header, index) => {
+            absence[header] = row[index];
+        });
+        return absence;
+    });
+
+    putCachedJson(
+        GAS_CACHE_KEYS.absences,
+        absences,
+        GAS_CACHE_SECONDS.absences
+    );
+    return absences;
+};
+
+const buildMemberDisplayNameMap = (spreadsheet) => {
+    const cached = getCachedJson(GAS_CACHE_KEYS.memberDisplayNames);
+    if (cached) return new Map(cached);
+
+    const displayNameMap = new Map();
+    const sheet = spreadsheet.getSheetByName("members");
+    if (!sheet) return displayNameMap;
+
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    if (lastRow < 2 || lastColumn < 1) return displayNameMap;
+
+    const headers = sheet
+        .getRange(1, 1, 1, lastColumn)
+        .getValues()[0]
+        .map((header) => String(header || "").trim().toLowerCase());
+    const studentNumberIndex = headers.indexOf("studentnumber");
+    const nameIndex = headers.indexOf("name");
+    const nicknameIndex = headers.indexOf("nickname");
+    if (studentNumberIndex < 0) return displayNameMap;
+
+    const rowCount = lastRow - 1;
+    const readColumn = (index) =>
+        index >= 0
+            ? sheet
+                  .getRange(2, index + 1, rowCount, 1)
+                  .getValues()
+                  .map((row) => row[0])
+            : Array.from({ length: rowCount }, () => "");
+    const studentNumbers = readColumn(studentNumberIndex);
+    const names = readColumn(nameIndex);
+    const nicknames = readColumn(nicknameIndex);
+
+    studentNumbers.forEach((studentNumber, index) => {
+        const studentId = String(studentNumber || "").trim().toLowerCase();
+        if (!studentId) return;
+
+        const name = String(names[index] || "").trim();
+        const nickname = String(nicknames[index] || "").trim();
+        const displayName = nickname && nickname !== "---" ? nickname : name;
+        if (displayName) {
+            displayNameMap.set(studentId, displayName);
+        }
+    });
+
+    putCachedJson(
+        GAS_CACHE_KEYS.memberDisplayNames,
+        Array.from(displayNameMap.entries()),
+        GAS_CACHE_SECONDS.memberDisplayNames
+    );
+    return displayNameMap;
+};
+
+const buildNextMeetingData = (spreadsheet) => {
+    const sheet = spreadsheet.getSheetByName("schedules");
+    if (!sheet) {
+        throw new Error("Sheet 'schedules' not found");
+    }
+
+    const nextMeeting = findNextMeetingSchedule(sheet);
+    if (!nextMeeting) return null;
+
+    const settings = buildNextMeetingSettingsFromScheduleRow(nextMeeting.row);
+    if (!settings.updatedBy) return settings;
+
+    const memberDisplayNameMap = buildMemberDisplayNameMap(spreadsheet);
+    return {
+        ...settings,
+        updatedByName:
+            memberDisplayNameMap.get(
+                String(settings.updatedBy).trim().toLowerCase()
+            ) || null,
+    };
+};
+
+const handleGetDashboardData = () => {
+    try {
+        const cached = getCachedJson(GAS_CACHE_KEYS.dashboard);
+        if (cached) {
+            return createResponse({
+                success: true,
+                data: cached,
+            });
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const data = {
+            schedules: buildSchedulesData(spreadsheet),
+            absences: buildAbsencesData(spreadsheet),
+            nextMeeting: buildNextMeetingData(spreadsheet),
+        };
+        putCachedJson(
+            GAS_CACHE_KEYS.dashboard,
+            data,
+            GAS_CACHE_SECONDS.dashboard
+        );
+
+        return createResponse({
+            success: true,
+            data,
         });
     } catch (error) {
         return createErrorResponse(error.toString(), 500);
@@ -1708,6 +2009,7 @@ const handlePostNextMeeting = (data) => {
 
             sheet.appendRow(rowData);
         }
+        clearScheduleCaches();
 
         const settings = {
             eventId,
@@ -1916,6 +2218,7 @@ const handlePostSchedule = (postData) => {
         ];
 
         sheet.appendRow(rowData);
+        clearScheduleCaches();
 
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
@@ -2018,6 +2321,7 @@ const handlePostAbsence = (postData) => {
         ];
 
         sheet.appendRow(rowData);
+        clearAbsenceCaches();
 
         // Discord Webhookに通知を送信
         const webhookURL =
@@ -2210,6 +2514,7 @@ const handleUpdateSchedule = (postData) => {
                 .getRange(targetRow, 16, 1, 2)
                 .setValues([[updatedBy, updatedAt]]);
         }
+        clearScheduleCaches();
 
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
@@ -2304,6 +2609,7 @@ const handleDeleteSchedule = (postData) => {
 
         // 行を削除
         sheet.deleteRow(targetRow);
+        clearScheduleCaches();
 
         // プッシュ通知を送信
         const dateStr = `${year}/${String(month).padStart(2, "0")}/${String(date).padStart(2, "0")}`;
