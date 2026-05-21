@@ -6,6 +6,7 @@ import {
 } from "@/src/shared/types/api";
 
 const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
+const MEMBER_PROFILE_REFRESH_MS = 60 * 1000;
 
 // Microsoft Graph APIからプロファイル画像を取得（小さいサイズ）
 const fetchProfileImage = async (
@@ -77,7 +78,8 @@ export const resolveMemberProfile = async (
         }
 
         const res = await fetch(
-            `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`
+            `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`,
+            { cache: "no-store" }
         );
         const data = await res.json();
         const name = data.name || null;
@@ -154,20 +156,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     ((user as Record<string, unknown>).permission as
                         | MemberPermission
                         | null) || undefined;
+                token.memberProfileSyncedAt = Date.now();
             }
 
-            // 既存セッション互換:
-            // permission / 表示名が入っていない古いJWTは、学籍番号から再解決する
-            if (
+            // GSSを直接編集した権限・表示名もログイン中のセッションへ反映する。
+            const lastSyncedAt =
+                typeof token.memberProfileSyncedAt === "number"
+                    ? token.memberProfileSyncedAt
+                    : 0;
+            const shouldRefreshMemberProfile =
                 token.studentId &&
-                (!token.permission || !token.memberName || !token.displayName)
-            ) {
+                (!token.permission ||
+                    !token.memberName ||
+                    !token.displayName ||
+                    Date.now() - lastSyncedAt > MEMBER_PROFILE_REFRESH_MS);
+            if (shouldRefreshMemberProfile) {
                 const result = await resolveMemberProfile(token.studentId as string);
                 if (result.isMember) {
                     token.memberName = result.name;
                     token.nickname = result.nickname;
                     token.displayName = result.displayName;
                     token.permission = result.permission || undefined;
+                    token.memberProfileSyncedAt = Date.now();
                 }
             }
 

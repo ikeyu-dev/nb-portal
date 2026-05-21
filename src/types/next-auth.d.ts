@@ -21,5 +21,6 @@ declare module "next-auth/jwt" {
         permission?: MemberPermission;
         profileImage?: string;
         profileImageFetched?: boolean;
+        memberProfileSyncedAt?: number;
     }
 }
