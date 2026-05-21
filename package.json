@@ -1,6 +1,6 @@
 {
     "name": "nb-portal",
-    "version": "1.11.0",
+    "version": "1.11.1",
     "private": true,
     "scripts": {
         "dev": "next dev --port 3005",

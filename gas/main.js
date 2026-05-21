@@ -171,6 +171,7 @@ function onEdit(e) {
 const NEXT_MEETING_TITLES = ["部会", "次回部会"];
 const NEXT_MEETING_DEFAULT_TITLE = "部会";
 const NEXT_MEETING_DEFAULT_COLOR = "primary";
+const APP_TIME_ZONE = "Asia/Tokyo";
 
 const getNextMeetingModeLabel = (mode) =>
     mode === "IN_PERSON" ? "対面" : "Discord";
@@ -199,6 +200,16 @@ const splitNextMeetingTime = (timeString) => {
     return { timeHH, timeMM };
 };
 
+const getTodayParts = () => {
+    const todayString = Utilities.formatDate(
+        new Date(),
+        APP_TIME_ZONE,
+        "yyyy-MM-dd"
+    );
+    const [year, month, date] = todayString.split("-").map(Number);
+    return { year, month, date, todayString };
+};
+
 const buildNextMeetingSettingsFromScheduleRow = (row) => ({
     eventId: String(row[0]),
     date: toNextMeetingDate(row[1], row[2], row[3]),
@@ -213,11 +224,11 @@ const findNextMeetingSchedule = (sheet) => {
     if (lastRow < 2) return null;
 
     const rows = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
-    const today = new Date();
+    const today = getTodayParts();
     const todayTimestamp = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
+        today.year,
+        today.month - 1,
+        today.date
     ).getTime();
 
     const candidates = [];
@@ -262,12 +273,7 @@ const getNextMeetingSettings = () => {
         : null;
 };
 
-const getTodayString = () =>
-    Utilities.formatDate(
-        new Date(),
-        Session.getScriptTimeZone(),
-        "yyyy-MM-dd"
-    );
+const getTodayString = () => getTodayParts().todayString;
 
 const formatNextMeetingDateLabel = (dateString, timeString) => {
     const date = new Date(`${dateString}T00:00:00`);
