@@ -844,10 +844,10 @@ const documents: Document[] = [
         ),
     },
     {
-        id: "nb-pa-plan-v3.0.2",
-        title: "機材構成表 v3.0.2",
+        id: "nb-pa-plan-v3.0.1",
+        title: "機材構成表 v3.0.1",
         category: "機材構成表",
-        content: <PdfViewer src="/documents/機材構成表v3.0.2.pdf" />,
+        content: <PdfViewer src="/documents/機材構成表v3.0.1.pdf" />,
     },
 ];
 
