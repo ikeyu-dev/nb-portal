@@ -1,6 +1,7 @@
 import { Header } from "@/src/widgets/header";
 import { Sidebar } from "@/src/widgets/sidebar";
 import { Dock } from "@/src/widgets/dock";
+import { AccessLogger } from "@/src/features/access-log/AccessLogger";
 
 export default async function AuthenticatedLayout({
     children,
@@ -9,6 +10,8 @@ export default async function AuthenticatedLayout({
 }) {
     return (
         <>
+            <AccessLogger />
+
             {/* Drawer - 大画面のみ表示 */}
             <Sidebar>{children}</Sidebar>
 

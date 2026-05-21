@@ -1007,6 +1007,8 @@ function doPost(e) {
                 return handlePushSubscribe(postData);
             case "push-unsubscribe":
                 return handlePushUnsubscribe(postData);
+            case "access-logs":
+                return handlePostAccessLogs(postData);
             default:
                 return createErrorResponse("Invalid endpoint", 404);
         }
@@ -1014,6 +1016,103 @@ function doPost(e) {
         return createErrorResponse(error.toString(), 500);
     }
 }
+
+// ============================================
+// API: アクセス履歴登録
+// シート名: access_logs
+// ============================================
+
+const ACCESS_LOG_HEADERS = [
+    "TIMESTAMP",
+    "CLIENT_TIMESTAMP",
+    "STUDENT_ID",
+    "DISPLAY_NAME",
+    "PERMISSION",
+    "PATH",
+    "METHOD",
+    "USER_AGENT",
+    "IP_HASH",
+];
+
+const getOrCreateAccessLogsSheet = (spreadsheet) => {
+    let sheet = spreadsheet.getSheetByName("access_logs");
+    if (!sheet) {
+        sheet = spreadsheet.insertSheet("access_logs");
+    }
+
+    const lastColumn = sheet.getLastColumn();
+    if (lastColumn < ACCESS_LOG_HEADERS.length) {
+        sheet
+            .getRange(1, 1, 1, ACCESS_LOG_HEADERS.length)
+            .setValues([ACCESS_LOG_HEADERS]);
+        return sheet;
+    }
+
+    const headers = sheet
+        .getRange(1, 1, 1, ACCESS_LOG_HEADERS.length)
+        .getValues()[0];
+    const needsHeaderUpdate = ACCESS_LOG_HEADERS.some(
+        (header, index) => String(headers[index] || "") !== header
+    );
+    if (needsHeaderUpdate) {
+        sheet
+            .getRange(1, 1, 1, ACCESS_LOG_HEADERS.length)
+            .setValues([ACCESS_LOG_HEADERS]);
+    }
+
+    return sheet;
+};
+
+const normalizeAccessLogText = (value, maxLength) =>
+    String(value || "")
+        .trim()
+        .slice(0, maxLength);
+
+const handlePostAccessLogs = (postData) => {
+    try {
+        const logs = Array.isArray(postData.logs) ? postData.logs : [];
+        if (logs.length === 0) {
+            return createErrorResponse("No access logs provided", 400);
+        }
+
+        const rows = logs.slice(0, 10).map((log) => [
+            normalizeAccessLogText(log.timestamp, 40) ||
+                Utilities.formatDate(
+                    new Date(),
+                    APP_TIME_ZONE,
+                    "yyyy-MM-dd'T'HH:mm:ssXXX"
+                ),
+            normalizeAccessLogText(log.clientTimestamp, 40),
+            normalizeAccessLogText(log.studentId, 20),
+            normalizeAccessLogText(log.displayName, 80),
+            normalizeAccessLogText(log.permission, 30),
+            normalizeAccessLogText(log.path, 200),
+            normalizeAccessLogText(log.method, 10),
+            normalizeAccessLogText(log.userAgent, 500),
+            normalizeAccessLogText(log.ipHash, 128),
+        ]);
+
+        const lock = LockService.getScriptLock();
+        lock.waitLock(5000);
+        try {
+            const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+            const sheet = getOrCreateAccessLogsSheet(spreadsheet);
+            const startRow = sheet.getLastRow() + 1;
+            sheet
+                .getRange(startRow, 1, rows.length, ACCESS_LOG_HEADERS.length)
+                .setValues(rows);
+        } finally {
+            lock.releaseLock();
+        }
+
+        return createResponse({
+            success: true,
+            count: rows.length,
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
 
 // ============================================
 // API: 機材一覧取得
