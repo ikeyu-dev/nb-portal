@@ -13,7 +13,7 @@ export async function proxy(request: NextRequest) {
     const publicPaths = ["/", "/login", "/api/auth"];
 
     // APIシークレットで保護されたパス（セッション認証をスキップ）
-    const apiSecretProtectedPaths = ["/api/push-send"];
+    const apiSecretProtectedPaths = ["/api/push-send", "/api/discord-webhook"];
 
     const isPublicPath = publicPaths.some(
         (path) => pathname === path || pathname.startsWith(path + "/")
