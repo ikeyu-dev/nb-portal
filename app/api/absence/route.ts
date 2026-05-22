@@ -106,9 +106,8 @@ const buildAbsenceDescription = (data: AbsenceSubmitData) => {
         getEventDateTimeLabel(data),
     ].filter(Boolean);
     const responseLines = [
-        [formatTypeWithTime(data), data.type !== "出席" ? data.reason : null]
-            .filter(Boolean)
-            .join(" / "),
+        `種別：${formatTypeWithTime(data)}`,
+        data.type !== "出席" && data.reason ? `理由：${data.reason}` : null,
         data.reasonDetail ? `詳細：${data.reasonDetail}` : null,
     ].filter(Boolean);
 
