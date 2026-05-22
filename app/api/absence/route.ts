@@ -111,7 +111,7 @@ const buildAbsenceDescription = (data: AbsenceSubmitData) => {
         [formatTypeWithTime(data), data.type !== "出席" ? data.reason : null]
             .filter(Boolean)
             .join(" / "),
-        data.reasonDetail ? `詳細: ${data.reasonDetail}` : null,
+        data.reasonDetail ? `詳細：${data.reasonDetail}` : null,
     ].filter(Boolean);
 
     return [eventLines.join("\n"), responseLines.join("\n")].join("\n\n");
