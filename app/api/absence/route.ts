@@ -104,7 +104,6 @@ const buildAbsenceDescription = (data: AbsenceSubmitData) => {
     const eventLines = [
         `**${data.eventTitle || data.eventId}**`,
         getEventDateTimeLabel(data),
-        data.eventWhere,
     ].filter(Boolean);
     const responseLines = [
         data.name || "不明",
