@@ -579,6 +579,45 @@ const trySendToDiscord = (webhookURL, embeds, options = {}) => {
 };
 
 /**
+ * Discord Webhookへの直接送信を確認する手動実行用関数
+ * Apps Scriptエディタから実行して、WEBHOOK_URL設定とDiscord到達性を確認する。
+ */
+function testSendDiscordWebhook() {
+    const webhookURL =
+        PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+    if (!webhookURL) {
+        throw new Error("WEBHOOK_URL is not configured");
+    }
+
+    const timestamp = Utilities.formatDate(
+        new Date(),
+        Session.getScriptTimeZone(),
+        "yyyy/MM/dd HH:mm:ss"
+    );
+    const embed = {
+        title: "Discord送信テスト",
+        color: 0x0ea5e9,
+        fields: [
+            {
+                name: "送信元",
+                value: "GAS direct test",
+                inline: true,
+            },
+            {
+                name: "送信日時",
+                value: timestamp,
+                inline: true,
+            },
+        ],
+        footer: { text: "testSendDiscordWebhook" },
+    };
+
+    logDiscordNotification("Discord test notification started");
+    sendToDiscord(webhookURL, embed);
+    logDiscordNotification("Discord test notification succeeded");
+}
+
+/**
  * フォーム送信者にメールで送信完了通知を送る
  * 送信先: 学籍番号@NIT_DOMAIN（スクリプトプロパティで設定）
  * @param {Object} formData - フォームデータ
