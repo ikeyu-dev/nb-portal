@@ -11,10 +11,10 @@ const normalizeAnnounceError = (error?: string) => {
 };
 
 const getNextMeetingMentionText = () =>
-    process.env.DISCORD_NEXT_MEETING_ROLE_MENTION || "@部員";
+    process.env.DISCORD_MEETING_ROLE_MENTION || "@部員";
 
 const getNextMeetingUnsetMentionText = () =>
-    process.env.DISCORD_NEXT_MEETING_UNSET_ROLE_MENTION || "@部長";
+    process.env.DISCORD_MEETING_UNSET_ROLE_MENTION || "@部長";
 
 const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
     const date = new Date(`${dateString}T00:00:00`);
@@ -120,12 +120,12 @@ export async function POST() {
 
         const result = settings
             ? await sendDiscordWebhook({
-                  target: "nextMeeting",
+                  target: "meeting",
                   embeds: [buildNextMeetingReminderEmbed(settings)],
                   content: getNextMeetingMentionText(),
               })
             : await sendDiscordWebhook({
-                  target: "nextMeeting",
+                  target: "meeting",
                   embeds: [
                       {
                           title: "次回部会が未設定です",

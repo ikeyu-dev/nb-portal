@@ -12,21 +12,18 @@ export type DiscordEmbed = {
     };
 };
 
-type DiscordWebhookTarget = "default" | "nextMeeting";
+type DiscordWebhookTarget = "attendance" | "meeting";
 
 const getDiscordWebhookUrl = (target: DiscordWebhookTarget) => {
-    if (target === "nextMeeting") {
-        return (
-            process.env.DISCORD_NEXT_MEETING_WEBHOOK_URL ||
-            process.env.DISCORD_WEBHOOK_URL
-        );
+    if (target === "meeting") {
+        return process.env.DISCORD_MEETING_WEBHOOK_URL;
     }
 
-    return process.env.DISCORD_WEBHOOK_URL;
+    return process.env.DISCORD_ATTENDANCE_WEBHOOK_URL;
 };
 
 export const sendDiscordWebhook = async ({
-    target = "default",
+    target = "attendance",
     embeds,
     content,
 }: {
@@ -40,9 +37,9 @@ export const sendDiscordWebhook = async ({
         return {
             success: false,
             error:
-                target === "nextMeeting"
-                    ? "DISCORD_NEXT_MEETING_WEBHOOK_URL or DISCORD_WEBHOOK_URL is not configured"
-                    : "DISCORD_WEBHOOK_URL is not configured",
+                target === "meeting"
+                    ? "DISCORD_MEETING_WEBHOOK_URL is not configured"
+                    : "DISCORD_ATTENDANCE_WEBHOOK_URL is not configured",
         };
     }
 

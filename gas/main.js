@@ -597,7 +597,7 @@ const sendToDiscordViaApp = (embeds, options = {}) => {
             Authorization: `Bearer ${apiSecret}`,
         },
         payload: JSON.stringify({
-            target: options.target || "default",
+            target: options.target || "attendance",
             embeds: Array.isArray(embeds) ? embeds : [embeds],
             content: options.content || "",
         }),
@@ -832,7 +832,7 @@ const sendNextMeetingUnsetReminder = () => {
         },
         {
             content: getNextMeetingUnsetMentionText(),
-            target: "nextMeeting",
+            target: "meeting",
         }
     );
 };
@@ -858,7 +858,7 @@ function sendNextMeetingMorningReminder() {
     });
     sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
-        target: "nextMeeting",
+        target: "meeting",
     });
 }
 
@@ -879,7 +879,7 @@ function sendNextMeetingReminderNow() {
     });
     sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
-        target: "nextMeeting",
+        target: "meeting",
     });
 }
 
@@ -900,7 +900,7 @@ function sendNextMeetingEveningReminder() {
     });
     sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
-        target: "nextMeeting",
+        target: "meeting",
     });
 }
 

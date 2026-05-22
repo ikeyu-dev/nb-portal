@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json().catch(() => null);
-    const target = body?.target === "nextMeeting" ? "nextMeeting" : "default";
+    const target = body?.target === "meeting" ? "meeting" : "attendance";
     const embeds = Array.isArray(body?.embeds) ? body.embeds : [];
     const content = typeof body?.content === "string" ? body.content : "";
 
