@@ -106,7 +106,6 @@ const buildAbsenceDescription = (data: AbsenceSubmitData) => {
         getEventDateTimeLabel(data),
     ].filter(Boolean);
     const responseLines = [
-        data.name || "不明",
         [formatTypeWithTime(data), data.type !== "出席" ? data.reason : null]
             .filter(Boolean)
             .join(" / "),
@@ -123,7 +122,9 @@ const sendAbsenceDiscordNotification = async (
     const result = await sendDiscordWebhook({
         embeds: [
             {
-                title: data.type === "出席" ? "出席申告" : "欠席連絡",
+                title: `${data.type === "出席" ? "出席申告" : "欠席連絡"}：${
+                    data.name || "不明"
+                }`,
                 description: buildAbsenceDescription(data),
                 color: getAbsenceColor(data.type),
                 ...(timestamp ? { footer: { text: timestamp } } : {}),
