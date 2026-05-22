@@ -2372,6 +2372,8 @@ const handlePostSchedule = (postData) => {
 
 const ABSENCE_COLUMN_COUNT = 10;
 
+const normalizeStudentNumber = (value) => String(value || "").trim().toLowerCase();
+
 const buildAbsenceRowData = ({
     timestamp,
     eventId,
@@ -2386,7 +2388,7 @@ const buildAbsenceRowData = ({
 }) => [
     timestamp,
     eventId,
-    studentNumber,
+    normalizeStudentNumber(studentNumber),
     name,
     type,
     type === "出席" ? "" : reason,
@@ -2404,7 +2406,7 @@ const findAbsenceRowsByEventAndStudent = (sheet, eventId, studentNumber) => {
         .getRange(2, 1, lastRow - 1, ABSENCE_COLUMN_COUNT)
         .getValues();
     const normalizedEventId = String(eventId);
-    const normalizedStudentNumber = String(studentNumber).trim().toLowerCase();
+    const normalizedStudentNumber = normalizeStudentNumber(studentNumber);
 
     return rows
         .map((row, index) => ({
@@ -2413,7 +2415,7 @@ const findAbsenceRowsByEventAndStudent = (sheet, eventId, studentNumber) => {
         }))
         .filter(({ row }) => {
             const rowEventId = String(row[1]);
-            const rowStudentNumber = String(row[2]).trim().toLowerCase();
+            const rowStudentNumber = normalizeStudentNumber(row[2]);
             return (
                 rowEventId === normalizedEventId &&
                 rowStudentNumber === normalizedStudentNumber
@@ -2429,11 +2431,14 @@ const upsertAbsenceRecord = (sheet, rowData) => {
     );
 
     if (matches.length === 0) {
-        sheet.appendRow(rowData);
+        const startRow = sheet.getLastRow() + 1;
+        sheet.getRange(startRow, 3).setNumberFormat("@");
+        sheet.getRange(startRow, 1, 1, ABSENCE_COLUMN_COUNT).setValues([rowData]);
         return "created";
     }
 
     const target = matches[matches.length - 1];
+    sheet.getRange(target.rowNumber, 3).setNumberFormat("@");
     sheet
         .getRange(target.rowNumber, 1, 1, ABSENCE_COLUMN_COUNT)
         .setValues([rowData]);
@@ -2523,7 +2528,6 @@ const handlePostAbsence = (postData) => {
     try {
         const {
             eventId,
-            studentNumber,
             name,
             type,
             reason,
@@ -2532,6 +2536,7 @@ const handlePostAbsence = (postData) => {
             timeReturn,
             timeLeavingEarly,
         } = postData;
+        const studentNumber = normalizeStudentNumber(postData.studentNumber);
 
         if (
             !validateAbsencePostData({
@@ -2639,7 +2644,8 @@ const handleUpdateAbsence = (postData) => handlePostAbsence(postData);
 
 const handleDeleteAbsence = (postData) => {
     try {
-        const { eventId, studentNumber } = postData;
+        const { eventId } = postData;
+        const studentNumber = normalizeStudentNumber(postData.studentNumber);
         if (!eventId || !studentNumber) {
             return createErrorResponse(
                 "Missing required fields (eventId, studentNumber)",
