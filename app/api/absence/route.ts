@@ -100,40 +100,33 @@ const formatTypeWithTime = (data: AbsenceSubmitData) => {
 const getEventDateTimeLabel = (data: AbsenceSubmitData) =>
     [data.eventDateLabel, data.eventTimeLabel].filter(Boolean).join(" ");
 
-const buildEventDescription = (data: AbsenceSubmitData) => {
-    const lines = [
+const buildAbsenceDescription = (data: AbsenceSubmitData) => {
+    const eventLines = [
         `**${data.eventTitle || data.eventId}**`,
         getEventDateTimeLabel(data),
         data.eventWhere,
     ].filter(Boolean);
+    const responseLines = [
+        data.name || "不明",
+        [formatTypeWithTime(data), data.type !== "出席" ? data.reason : null]
+            .filter(Boolean)
+            .join(" / "),
+        data.reasonDetail ? `詳細: ${data.reasonDetail}` : null,
+    ].filter(Boolean);
 
-    return lines.join("\n");
+    return [eventLines.join("\n"), responseLines.join("\n")].join("\n\n");
 };
 
 const sendAbsenceDiscordNotification = async (
     data: AbsenceSubmitData,
     timestamp?: string
 ) => {
-    const fields = [
-        { name: "種別", value: formatTypeWithTime(data), inline: true },
-        { name: "氏名", value: data.name || "不明", inline: true },
-    ];
-
-    if (data.type !== "出席" && data.reason) {
-        fields.push({ name: "理由", value: data.reason, inline: true });
-    }
-
-    if (data.reasonDetail) {
-        fields.push({ name: "詳細", value: data.reasonDetail, inline: false });
-    }
-
     const result = await sendDiscordWebhook({
         embeds: [
             {
                 title: data.type === "出席" ? "出席申告" : "欠席連絡",
-                description: buildEventDescription(data),
+                description: buildAbsenceDescription(data),
                 color: getAbsenceColor(data.type),
-                fields,
                 ...(timestamp ? { footer: { text: timestamp } } : {}),
             },
         ],
