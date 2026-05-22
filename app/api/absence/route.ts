@@ -47,7 +47,26 @@ const postToGAS = async (path: string, body: unknown) => {
         body: JSON.stringify(body),
     });
 
-    return response.json();
+    const responseText = await response.text();
+    try {
+        const data = JSON.parse(responseText);
+        if (!response.ok) {
+            return {
+                success: false,
+                error: data?.error || `GAS API error: ${response.status}`,
+            };
+        }
+        return data;
+    } catch {
+        console.error("GAS API returned non-JSON response:", {
+            status: response.status,
+            body: responseText.slice(0, 500),
+        });
+        return {
+            success: false,
+            error: `GAS API returned non-JSON response: ${response.status}`,
+        };
+    }
 };
 
 /**
