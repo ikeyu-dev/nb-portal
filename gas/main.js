@@ -564,49 +564,9 @@ const trySendToDiscord = (webhookURL, embeds, options = {}) => {
         sendToDiscord(webhookURL, embeds, options);
         return true;
     } catch (error) {
-        console.warn(
-            `Direct Discord notification failed. Trying proxy: ${error.toString()}`
-        );
-        return sendToDiscordViaProxy(webhookURL, embeds, options);
-    }
-};
-
-const sendToDiscordViaProxy = (webhookURL, embeds, options = {}) => {
-    const proxyURL =
-        PropertiesService.getScriptProperties().getProperty(
-            "DISCORD_PROXY_API_URL"
-        ) || "https://nb-portal.vercel.app/api/discord-webhook";
-    const proxySecret =
-        PropertiesService.getScriptProperties().getProperty("PUSH_API_SECRET");
-    if (!proxySecret) {
-        console.warn("Discord proxy skipped: PUSH_API_SECRET is not configured");
+        console.warn(`Discord notification skipped: ${error.toString()}`);
         return false;
     }
-
-    const embedArray = Array.isArray(embeds) ? embeds : [embeds];
-    const response = UrlFetchApp.fetch(proxyURL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${proxySecret}`,
-        },
-        payload: JSON.stringify({
-            webhookURL,
-            embeds: embedArray,
-            content: options.content || "",
-        }),
-        muteHttpExceptions: true,
-    });
-
-    const responseCode = response.getResponseCode();
-    if (responseCode < 200 || responseCode >= 300) {
-        console.warn(
-            `Discord proxy failed with status ${responseCode}: ${response.getContentText()}`
-        );
-        return false;
-    }
-
-    return true;
 };
 
 /**
@@ -2655,6 +2615,8 @@ const handlePostAbsence = (postData) => {
                 timeReturn,
             });
             discordNotified = trySendToDiscord(webhookURL, embed);
+        } else {
+            console.warn("Discord notification skipped: WEBHOOK_URL is not configured");
         }
 
         sendAbsenceCompletionEmail({
