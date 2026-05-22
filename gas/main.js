@@ -559,12 +559,21 @@ const sendToDiscord = (webhookURL, embeds, options = {}) => {
     }
 };
 
+const logDiscordNotification = (message) => {
+    console.log(message);
+    Logger.log(message);
+};
+
 const trySendToDiscord = (webhookURL, embeds, options = {}) => {
     try {
+        logDiscordNotification("Discord notification started");
         sendToDiscord(webhookURL, embeds, options);
+        logDiscordNotification("Discord notification succeeded");
         return true;
     } catch (error) {
-        console.warn(`Discord notification skipped: ${error.toString()}`);
+        logDiscordNotification(
+            `Discord notification skipped: ${error.toString()}`
+        );
         return false;
     }
 };
@@ -2616,7 +2625,9 @@ const handlePostAbsence = (postData) => {
             });
             discordNotified = trySendToDiscord(webhookURL, embed);
         } else {
-            console.warn("Discord notification skipped: WEBHOOK_URL is not configured");
+            logDiscordNotification(
+                "Discord notification skipped: WEBHOOK_URL is not configured"
+            );
         }
 
         sendAbsenceCompletionEmail({
