@@ -4,6 +4,7 @@ import type { Session } from "next-auth";
 import { auth } from "@/src/auth";
 import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
 import {
+    type AbsenceSubmitData,
     absenceDeleteSchema,
     absenceSubmitSchema,
     formatValidationErrors,
@@ -11,6 +12,7 @@ import {
 import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 const buildSubmitBody = (
     body: Record<string, unknown>,
@@ -69,6 +71,94 @@ const postToGAS = async (path: string, body: unknown) => {
     }
 };
 
+const getAbsenceColor = (type: AbsenceSubmitData["type"]) => {
+    const colorMap = {
+        欠席: 0xff0000,
+        遅刻: 0xffa500,
+        早退: 0xffcc00,
+        中抜け: 0x0099ff,
+        出席: 0x00aa66,
+    } as const;
+
+    return colorMap[type] || 0x808080;
+};
+
+const formatTypeWithTime = (data: AbsenceSubmitData) => {
+    if (data.type === "早退" && data.timeLeavingEarly) {
+        return `${data.type}（${data.timeLeavingEarly}）`;
+    }
+
+    if (data.type === "中抜け" && (data.timeStepOut || data.timeReturn)) {
+        return `${data.type}（${data.timeStepOut || ""} ~ ${
+            data.timeReturn || ""
+        }）`;
+    }
+
+    return data.type;
+};
+
+const sendAbsenceDiscordNotification = async (
+    data: AbsenceSubmitData,
+    timestamp?: string
+) => {
+    if (!DISCORD_WEBHOOK_URL) {
+        console.warn("DISCORD_WEBHOOK_URL is not configured");
+        return false;
+    }
+
+    const fields = [
+        { name: "氏名", value: data.name || "不明", inline: true },
+        { name: "種別", value: formatTypeWithTime(data), inline: true },
+    ];
+
+    if (data.type !== "出席" && data.reason) {
+        fields.push({ name: "理由", value: data.reason, inline: false });
+    }
+
+    if (data.reasonDetail) {
+        fields.push({ name: "詳細", value: data.reasonDetail, inline: false });
+    }
+
+    const response = await fetch(DISCORD_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            embeds: [
+                {
+                    title: data.type === "出席" ? "出席申告" : "欠席連絡",
+                    color: getAbsenceColor(data.type),
+                    fields,
+                    ...(timestamp ? { footer: { text: timestamp } } : {}),
+                },
+            ],
+        }),
+    });
+
+    if (!response.ok) {
+        const responseText = await response.text();
+        console.error("Discord webhook failed:", {
+            status: response.status,
+            body: responseText.slice(0, 500),
+        });
+        return false;
+    }
+
+    return true;
+};
+
+const attachDiscordResult = (
+    data: Record<string, unknown>,
+    discordNotified: boolean
+) => ({
+    ...data,
+    data:
+        data.data && typeof data.data === "object"
+            ? { ...data.data, discordNotified }
+            : { discordNotified },
+});
+
 /**
  * 欠席連絡送信API
  * CSRF保護、セッション認証、入力バリデーションを適用
@@ -123,6 +213,13 @@ export async function POST(request: NextRequest) {
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
+            const discordNotified = await sendAbsenceDiscordNotification(
+                validatedData,
+                data.data?.timestamp
+            );
+            return NextResponse.json(
+                attachDiscordResult(data, discordNotified)
+            );
         }
 
         return NextResponse.json(data);
@@ -182,6 +279,13 @@ export async function PUT(request: NextRequest) {
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
+            const discordNotified = await sendAbsenceDiscordNotification(
+                validationResult.data,
+                data.data?.timestamp
+            );
+            return NextResponse.json(
+                attachDiscordResult(data, discordNotified)
+            );
         }
 
         return NextResponse.json(data);

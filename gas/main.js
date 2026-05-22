@@ -2646,28 +2646,28 @@ const handlePostAbsence = (postData) => {
         }
         clearAbsenceCaches();
 
-        // Discord Webhookに通知を送信
-        const webhookURL =
-            PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+        // Discord通知はNext.js API側へ移行済み。
+        // GASからの直送に戻す場合は、このブロックを有効化する。
         let discordNotified = false;
-
-        if (webhookURL) {
-            const embed = buildAbsenceEmbed({
-                name,
-                type,
-                reason: type === "出席" ? "" : reason,
-                reasonDetail,
-                timestamp,
-                timeLeavingEarly,
-                timeStepOut,
-                timeReturn,
-            });
-            discordNotified = trySendToDiscord(webhookURL, embed);
-        } else {
-            logDiscordNotification(
-                "Discord notification skipped: WEBHOOK_URL is not configured"
-            );
-        }
+        // const webhookURL =
+        //     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+        // if (webhookURL) {
+        //     const embed = buildAbsenceEmbed({
+        //         name,
+        //         type,
+        //         reason: type === "出席" ? "" : reason,
+        //         reasonDetail,
+        //         timestamp,
+        //         timeLeavingEarly,
+        //         timeStepOut,
+        //         timeReturn,
+        //     });
+        //     discordNotified = trySendToDiscord(webhookURL, embed);
+        // } else {
+        //     logDiscordNotification(
+        //         "Discord notification skipped: WEBHOOK_URL is not configured"
+        //     );
+        // }
 
         sendAbsenceCompletionEmail({
             studentNumber,
