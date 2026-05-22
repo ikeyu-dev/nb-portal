@@ -119,6 +119,7 @@ export default function ScheduleCard({
     const [isAttendanceConfirmOpen, setIsAttendanceConfirmOpen] =
         useState(false);
     const [isAbsenceFormOpen, setIsAbsenceFormOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isAttendanceSubmitting, setIsAttendanceSubmitting] = useState(false);
     const [isAbsenceSubmitting, setIsAbsenceSubmitting] = useState(false);
     const [isDeletingResponse, setIsDeletingResponse] = useState(false);
@@ -202,6 +203,7 @@ export default function ScheduleCard({
         setIsModalOpen(false);
         setIsAttendanceConfirmOpen(false);
         setIsAbsenceFormOpen(false);
+        setIsDeleteConfirmOpen(false);
         setAttendanceSubmitMessage(null);
         setAbsenceSubmitMessage(null);
         setAttendanceNote("");
@@ -259,6 +261,11 @@ export default function ScheduleCard({
         setIsAbsenceFormOpen(false);
         setAbsenceSubmitMessage(null);
         resetAbsenceForm();
+    };
+
+    const closeDeleteConfirm = () => {
+        if (isDeletingResponse) return;
+        setIsDeleteConfirmOpen(false);
     };
 
     const openAttendanceForm = () => {
@@ -395,8 +402,6 @@ export default function ScheduleCard({
 
     const deleteResponse = async () => {
         if (!ownResponse || isDeletingResponse) return;
-        const confirmed = window.confirm("自分の出欠連絡を削除しますか？");
-        if (!confirmed) return;
 
         setIsDeletingResponse(true);
         setAttendanceSubmitMessage(null);
@@ -417,6 +422,7 @@ export default function ScheduleCard({
             }
 
             removeLocalResponse();
+            setIsDeleteConfirmOpen(false);
             if (isAttendanceEvent) {
                 setAttendanceSubmitMessage("出席申告を削除しました");
             } else {
@@ -543,7 +549,7 @@ export default function ScheduleCard({
                 <dialog className="modal modal-open">
                     <div
                         className={`modal-box bg-base-100 ${
-                            isAttendanceConfirmOpen
+                            isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
                         }`}
@@ -560,6 +566,8 @@ export default function ScheduleCard({
                         >
                             {isAttendanceConfirmOpen
                                 ? "出席申告"
+                                : isDeleteConfirmOpen
+                                  ? "出欠連絡の削除"
                                 : isAbsenceFormOpen
                                   ? "欠席連絡"
                                   : title}
@@ -617,6 +625,38 @@ export default function ScheduleCard({
                                             <span className="loading loading-spinner loading-sm" />
                                         )}
                                         送信
+                                    </button>
+                                </div>
+                            </>
+                        ) : isDeleteConfirmOpen ? (
+                            <>
+                                <div className="space-y-3">
+                                    <p className="text-base font-medium">
+                                        自分の出欠連絡を削除しますか？
+                                    </p>
+                                    <p className="text-sm text-base-content/70">
+                                        この操作は取り消せません。
+                                    </p>
+                                </div>
+                                <div className="modal-action">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={closeDeleteConfirm}
+                                        disabled={isDeletingResponse}
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-error"
+                                        onClick={() => void deleteResponse()}
+                                        disabled={isDeletingResponse}
+                                    >
+                                        {isDeletingResponse && (
+                                            <span className="loading loading-spinner loading-sm" />
+                                        )}
+                                        削除
                                     </button>
                                 </div>
                             </>
@@ -1041,7 +1081,9 @@ export default function ScheduleCard({
                                                                             type="button"
                                                                             className="btn btn-ghost btn-xs text-error"
                                                                             onClick={() =>
-                                                                                void deleteResponse()
+                                                                                setIsDeleteConfirmOpen(
+                                                                                    true
+                                                                                )
                                                                             }
                                                                             disabled={
                                                                                 isAttendanceSubmitting ||
