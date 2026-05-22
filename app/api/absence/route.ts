@@ -100,31 +100,27 @@ const formatTypeWithTime = (data: AbsenceSubmitData) => {
 const getEventDateTimeLabel = (data: AbsenceSubmitData) =>
     [data.eventDateLabel, data.eventTimeLabel].filter(Boolean).join(" ");
 
+const buildEventDescription = (data: AbsenceSubmitData) => {
+    const lines = [
+        `**${data.eventTitle || data.eventId}**`,
+        getEventDateTimeLabel(data),
+        data.eventWhere,
+    ].filter(Boolean);
+
+    return lines.join("\n");
+};
+
 const sendAbsenceDiscordNotification = async (
     data: AbsenceSubmitData,
     timestamp?: string
 ) => {
     const fields = [
-        {
-            name: "イベント",
-            value: data.eventTitle || data.eventId,
-            inline: false,
-        },
-        { name: "氏名", value: data.name || "不明", inline: true },
         { name: "種別", value: formatTypeWithTime(data), inline: true },
+        { name: "氏名", value: data.name || "不明", inline: true },
     ];
-    const dateTimeLabel = getEventDateTimeLabel(data);
-
-    if (dateTimeLabel) {
-        fields.push({ name: "日時", value: dateTimeLabel, inline: true });
-    }
-
-    if (data.eventWhere) {
-        fields.push({ name: "場所", value: data.eventWhere, inline: true });
-    }
 
     if (data.type !== "出席" && data.reason) {
-        fields.push({ name: "理由", value: data.reason, inline: false });
+        fields.push({ name: "理由", value: data.reason, inline: true });
     }
 
     if (data.reasonDetail) {
@@ -135,6 +131,7 @@ const sendAbsenceDiscordNotification = async (
         embeds: [
             {
                 title: data.type === "出席" ? "出席申告" : "欠席連絡",
+                description: buildEventDescription(data),
                 color: getAbsenceColor(data.type),
                 fields,
                 ...(timestamp ? { footer: { text: timestamp } } : {}),
