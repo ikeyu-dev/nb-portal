@@ -122,7 +122,7 @@ const sendAbsenceDiscordNotification = async (
         embeds: [
             {
                 title: `${data.name || "不明"}：${
-                    data.type === "出席" ? "出席申告" : "欠席連絡"
+                    data.type === "出席" ? "出席申告" : "出欠連絡"
                 }`,
                 description: buildAbsenceDescription(data),
                 color: getAbsenceColor(data.type),
