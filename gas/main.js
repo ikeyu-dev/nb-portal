@@ -559,6 +559,16 @@ const sendToDiscord = (webhookURL, embeds, options = {}) => {
     }
 };
 
+const trySendToDiscord = (webhookURL, embeds, options = {}) => {
+    try {
+        sendToDiscord(webhookURL, embeds, options);
+        return true;
+    } catch (error) {
+        console.warn(`Discord notification skipped: ${error.toString()}`);
+        return false;
+    }
+};
+
 /**
  * フォーム送信者にメールで送信完了通知を送る
  * 送信先: 学籍番号@NIT_DOMAIN（スクリプトプロパティで設定）
@@ -2591,6 +2601,7 @@ const handlePostAbsence = (postData) => {
         // Discord Webhookに通知を送信
         const webhookURL =
             PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+        let discordNotified = false;
 
         if (webhookURL) {
             const embed = buildAbsenceEmbed({
@@ -2603,7 +2614,7 @@ const handlePostAbsence = (postData) => {
                 timeStepOut,
                 timeReturn,
             });
-            sendToDiscord(webhookURL, embed);
+            discordNotified = trySendToDiscord(webhookURL, embed);
         }
 
         sendAbsenceCompletionEmail({
@@ -2633,6 +2644,7 @@ const handlePostAbsence = (postData) => {
                 timeStepOut: timeStepOut || "",
                 timeReturn: timeReturn || "",
                 operation,
+                discordNotified,
             },
         });
     } catch (error) {
