@@ -1,11 +1,89 @@
 import { NextResponse } from "next/server";
 import { auth, resolveMemberProfile } from "@/src/auth";
+import { sendDiscordWebhook } from "@/src/shared/lib/discord";
+import type { NextMeetingSettings } from "@/src/shared/types/api";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
 
 const normalizeAnnounceError = (error?: string) => {
     if (!error) return "次回部会連絡の送信に失敗しました";
     return error;
+};
+
+const getNextMeetingMentionText = () =>
+    process.env.DISCORD_NEXT_MEETING_ROLE_MENTION || "@部員";
+
+const getNextMeetingUnsetMentionText = () =>
+    process.env.DISCORD_NEXT_MEETING_UNSET_ROLE_MENTION || "@部長";
+
+const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
+    const date = new Date(`${dateString}T00:00:00`);
+    const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+    return `${dateString.replace(/-/g, "/")}(${weekdays[date.getDay()]}) ${timeString}`;
+};
+
+const formatDateTime = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
+const buildNextMeetingReminderEmbed = (settings: NextMeetingSettings) => {
+    const updatedAtLabel = settings.updatedAt
+        ? formatDateTime(settings.updatedAt)
+        : null;
+    const footerText = [
+        updatedAtLabel ? `更新 ${updatedAtLabel}` : null,
+        settings.updatedBy || settings.updatedByName || null,
+    ]
+        .filter(Boolean)
+        .join(" / ");
+
+    return {
+        title: "次回部会のお知らせ",
+        description:
+            settings.mode === "DISCORD"
+                ? "次回部会は Discord で行います。"
+                : "次回部会は対面で行います。",
+        color: settings.mode === "DISCORD" ? 0x5865f2 : 0x2ecc71,
+        fields: [
+            {
+                name: "日時",
+                value: formatNextMeetingDateLabel(settings.date, settings.time),
+                inline: false,
+            },
+        ],
+        ...(footerText ? { footer: { text: footerText } } : {}),
+    };
+};
+
+const fetchNextMeeting = async () => {
+    if (!GAS_API_URL) {
+        throw new Error("GAS API URL is not configured");
+    }
+
+    const url = new URL(GAS_API_URL);
+    url.searchParams.append("path", "next-meeting");
+
+    const response = await fetch(url.toString(), {
+        method: "GET",
+        cache: "no-store",
+    });
+    const data = await response.json();
+
+    if (!response.ok || data?.success === false) {
+        throw new Error(normalizeAnnounceError(data?.error));
+    }
+
+    return (data?.data || null) as NextMeetingSettings | null;
 };
 
 export async function POST() {
@@ -38,26 +116,38 @@ export async function POST() {
     }
 
     try {
-        const url = new URL(GAS_API_URL);
-        url.searchParams.append("path", "next-meeting/announce");
+        const settings = await fetchNextMeeting();
 
-        const response = await fetch(url.toString(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({}),
-        });
-
-        const data = await response.json();
-        const isSuccess = response.ok && data?.success !== false;
+        const result = settings
+            ? await sendDiscordWebhook({
+                  target: "nextMeeting",
+                  embeds: [buildNextMeetingReminderEmbed(settings)],
+                  content: getNextMeetingMentionText(),
+              })
+            : await sendDiscordWebhook({
+                  target: "nextMeeting",
+                  embeds: [
+                      {
+                          title: "次回部会が未設定です",
+                          description:
+                              "次回部会が設定されていません。ポータルから次回部会を設定してください。",
+                          color: 0xf1c40f,
+                      },
+                  ],
+                  content: getNextMeetingUnsetMentionText(),
+              });
 
         return NextResponse.json(
             {
-                ...data,
-                error: isSuccess ? data?.error : normalizeAnnounceError(data?.error),
+                ...result,
+                message: result.success
+                    ? "Next meeting announcement sent"
+                    : undefined,
+                error: result.success
+                    ? undefined
+                    : normalizeAnnounceError(result.error),
             },
-            { status: response.ok ? 200 : 502 }
+            { status: result.success ? 200 : 502 }
         );
     } catch (error) {
         console.error("Next meeting announce API route error:", error);

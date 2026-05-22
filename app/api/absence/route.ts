@@ -10,9 +10,9 @@ import {
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
 import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
+import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
-const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
 
 const buildSubmitBody = (
     body: Record<string, unknown>,
@@ -101,11 +101,6 @@ const sendAbsenceDiscordNotification = async (
     data: AbsenceSubmitData,
     timestamp?: string
 ) => {
-    if (!DISCORD_WEBHOOK_URL) {
-        console.warn("DISCORD_WEBHOOK_URL is not configured");
-        return false;
-    }
-
     const fields = [
         { name: "氏名", value: data.name || "不明", inline: true },
         { name: "種別", value: formatTypeWithTime(data), inline: true },
@@ -119,29 +114,19 @@ const sendAbsenceDiscordNotification = async (
         fields.push({ name: "詳細", value: data.reasonDetail, inline: false });
     }
 
-    const response = await fetch(DISCORD_WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            embeds: [
-                {
-                    title: data.type === "出席" ? "出席申告" : "欠席連絡",
-                    color: getAbsenceColor(data.type),
-                    fields,
-                    ...(timestamp ? { footer: { text: timestamp } } : {}),
-                },
-            ],
-        }),
+    const result = await sendDiscordWebhook({
+        embeds: [
+            {
+                title: data.type === "出席" ? "出席申告" : "欠席連絡",
+                color: getAbsenceColor(data.type),
+                fields,
+                ...(timestamp ? { footer: { text: timestamp } } : {}),
+            },
+        ],
     });
 
-    if (!response.ok) {
-        const responseText = await response.text();
-        console.error("Discord webhook failed:", {
-            status: response.status,
-            body: responseText.slice(0, 500),
-        });
+    if (!result.success) {
+        console.error("Discord webhook failed:", result);
         return false;
     }
 

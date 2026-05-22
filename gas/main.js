@@ -578,6 +578,40 @@ const trySendToDiscord = (webhookURL, embeds, options = {}) => {
     }
 };
 
+const sendToDiscordViaApp = (embeds, options = {}) => {
+    const apiURL =
+        PropertiesService.getScriptProperties().getProperty(
+            "DISCORD_SEND_API_URL"
+        ) || "https://nb-portal.vercel.app/api/discord-send";
+    const apiSecret =
+        PropertiesService.getScriptProperties().getProperty("PUSH_API_SECRET");
+
+    if (!apiSecret) {
+        throw new Error("PUSH_API_SECRET is not configured");
+    }
+
+    const response = UrlFetchApp.fetch(apiURL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiSecret}`,
+        },
+        payload: JSON.stringify({
+            target: options.target || "default",
+            embeds: Array.isArray(embeds) ? embeds : [embeds],
+            content: options.content || "",
+        }),
+        muteHttpExceptions: true,
+    });
+
+    const responseCode = response.getResponseCode();
+    if (responseCode < 200 || responseCode >= 300) {
+        throw new Error(
+            `Discord app API failed with status ${responseCode}: ${response.getContentText()}`
+        );
+    }
+};
+
 /**
  * Discord Webhookへの直接送信を確認する手動実行用関数
  * Apps Scriptエディタから実行して、WEBHOOK_URL設定とDiscord到達性を確認する。
@@ -659,12 +693,13 @@ const sendEmail = (formData) => {
  * @param {Object} e - フォーム送信イベントオブジェクト
  */
 function onSubmit(e) {
-    const webhookURL =
-        PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-
     const formData = getFormData(e);
     const embed = buildAbsenceEmbed(formData);
-    sendToDiscord(webhookURL, embed);
+    // 以前のGAS直送に戻す場合:
+    // const webhookURL =
+    //     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+    // sendToDiscord(webhookURL, embed);
+    sendToDiscordViaApp(embed);
     sendEmail(formData);
 }
 
@@ -677,12 +712,6 @@ function onSubmit(e) {
  * 手動実行または時間トリガーで毎日の活動開始前に実行想定
  */
 function sendTodayAbsences() {
-    const webhookURL =
-        PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-    if (!webhookURL) {
-        throw new Error("WEBHOOK_URL is not configured");
-    }
-
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const schedulesSheet = spreadsheet.getSheetByName("schedules");
     const absenceSheet = spreadsheet.getSheetByName("absence_data");
@@ -768,7 +797,11 @@ function sendTodayAbsences() {
         fields,
     };
 
-    sendToDiscord(webhookURL, embed);
+    // 以前のGAS直送に戻す場合:
+    // const webhookURL =
+    //     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+    // sendToDiscord(webhookURL, embed);
+    sendToDiscordViaApp(embed);
 }
 
 /**
@@ -788,15 +821,9 @@ const getNextMeetingUnsetMentionText = () =>
         "NEXT_MEETING_UNSET_ROLE_MENTION"
     ) || "@部長";
 
-const getNextMeetingWebhookURL = () =>
-    PropertiesService.getScriptProperties().getProperty(
-        "NEXT_MEETING_WEBHOOK_URL"
-    ) ||
-    PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-
-const sendNextMeetingUnsetReminder = (webhookURL) => {
-    sendToDiscord(
-        webhookURL,
+const sendNextMeetingUnsetReminder = () => {
+    // 以前のGAS直送に戻す場合は、getNextMeetingWebhookURL() を復旧して sendToDiscord を使う。
+    sendToDiscordViaApp(
         {
             title: "次回部会が未設定です",
             description:
@@ -805,20 +832,16 @@ const sendNextMeetingUnsetReminder = (webhookURL) => {
         },
         {
             content: getNextMeetingUnsetMentionText(),
+            target: "nextMeeting",
         }
     );
 };
 
 function sendNextMeetingMorningReminder() {
-    const webhookURL = getNextMeetingWebhookURL();
     const settings = getNextMeetingSettings();
 
-    if (!webhookURL) {
-        return;
-    }
-
     if (!settings) {
-        sendNextMeetingUnsetReminder(webhookURL);
+        sendNextMeetingUnsetReminder();
         return;
     }
 
@@ -833,23 +856,17 @@ function sendNextMeetingMorningReminder() {
                 ? "本日の部会は Discord 開催です。"
                 : "本日の部会は対面開催です。",
     });
-    sendToDiscord(webhookURL, embed, {
+    sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
+        target: "nextMeeting",
     });
 }
 
 function sendNextMeetingReminderNow() {
-    const webhookURL = getNextMeetingWebhookURL();
     const settings = getNextMeetingSettings();
 
-    if (!webhookURL) {
-        throw new Error(
-            "NEXT_MEETING_WEBHOOK_URL or WEBHOOK_URL is not configured"
-        );
-    }
-
     if (!settings) {
-        sendNextMeetingUnsetReminder(webhookURL);
+        sendNextMeetingUnsetReminder();
         return;
     }
 
@@ -860,17 +877,16 @@ function sendNextMeetingReminderNow() {
                 ? "次回部会は Discord で行います。"
                 : "次回部会は対面で行います。",
     });
-    sendToDiscord(webhookURL, embed, {
+    sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
+        target: "nextMeeting",
     });
 }
 
 function sendNextMeetingEveningReminder() {
-    const webhookURL = getNextMeetingWebhookURL();
     const settings = getNextMeetingSettings();
 
     if (
-        !webhookURL ||
         !settings ||
         settings.date !== getTodayString() ||
         settings.mode !== "DISCORD"
@@ -882,8 +898,9 @@ function sendNextMeetingEveningReminder() {
         title: "本日18:00 Discord部会リマインド",
         description: "このあとの部会は Discord 開催です。",
     });
-    sendToDiscord(webhookURL, embed, {
+    sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
+        target: "nextMeeting",
     });
 }
 
