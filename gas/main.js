@@ -977,6 +977,10 @@ function doPost(e) {
         switch (path) {
             case "absences":
                 return handlePostAbsence(postData);
+            case "absences/update":
+                return handleUpdateAbsence(postData);
+            case "absences/delete":
+                return handleDeleteAbsence(postData);
             case "schedules":
                 return handlePostSchedule(postData);
             case "schedules/update":
@@ -2366,6 +2370,150 @@ const handlePostSchedule = (postData) => {
 // 登録後、Discord通知とメール送信を実行
 // ============================================
 
+const ABSENCE_COLUMN_COUNT = 10;
+
+const buildAbsenceRowData = ({
+    timestamp,
+    eventId,
+    studentNumber,
+    name,
+    type,
+    reason,
+    reasonDetail,
+    timeLeavingEarly,
+    timeStepOut,
+    timeReturn,
+}) => [
+    timestamp,
+    eventId,
+    studentNumber,
+    name,
+    type,
+    type === "出席" ? "" : reason,
+    reasonDetail || "",
+    timeLeavingEarly || "",
+    timeStepOut || "",
+    timeReturn || "",
+];
+
+const findAbsenceRowsByEventAndStudent = (sheet, eventId, studentNumber) => {
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
+    const rows = sheet
+        .getRange(2, 1, lastRow - 1, ABSENCE_COLUMN_COUNT)
+        .getValues();
+    const normalizedEventId = String(eventId);
+    const normalizedStudentNumber = String(studentNumber).trim().toLowerCase();
+
+    return rows
+        .map((row, index) => ({
+            rowNumber: index + 2,
+            row,
+        }))
+        .filter(({ row }) => {
+            const rowEventId = String(row[1]);
+            const rowStudentNumber = String(row[2]).trim().toLowerCase();
+            return (
+                rowEventId === normalizedEventId &&
+                rowStudentNumber === normalizedStudentNumber
+            );
+        });
+};
+
+const upsertAbsenceRecord = (sheet, rowData) => {
+    const matches = findAbsenceRowsByEventAndStudent(
+        sheet,
+        rowData[1],
+        rowData[2]
+    );
+
+    if (matches.length === 0) {
+        sheet.appendRow(rowData);
+        return "created";
+    }
+
+    const target = matches[matches.length - 1];
+    sheet
+        .getRange(target.rowNumber, 1, 1, ABSENCE_COLUMN_COUNT)
+        .setValues([rowData]);
+
+    matches
+        .slice(0, -1)
+        .sort((a, b) => b.rowNumber - a.rowNumber)
+        .forEach(({ rowNumber }) => sheet.deleteRow(rowNumber));
+
+    return "updated";
+};
+
+const deleteAbsenceRecord = (sheet, eventId, studentNumber) => {
+    const matches = findAbsenceRowsByEventAndStudent(sheet, eventId, studentNumber);
+    if (matches.length === 0) return false;
+
+    matches
+        .sort((a, b) => b.rowNumber - a.rowNumber)
+        .forEach(({ rowNumber }) => sheet.deleteRow(rowNumber));
+
+    return true;
+};
+
+const validateAbsencePostData = ({
+    eventId,
+    studentNumber,
+    name,
+    type,
+    reason,
+}) =>
+    eventId &&
+    studentNumber &&
+    name &&
+    type &&
+    (type === "出席" || reason);
+
+const sendAbsenceCompletionEmail = ({
+    studentNumber,
+    name,
+    type,
+    reason,
+    reasonDetail,
+    timestamp,
+    timeLeavingEarly,
+    timeStepOut,
+    timeReturn,
+}) => {
+    const domain = PropertiesService.getScriptProperties().getProperty("NIT_DOMAIN");
+    if (!domain || !studentNumber) return;
+
+    const email = `${studentNumber}@${domain}`;
+    const isAttendance = type === "出席";
+    const subject = isAttendance
+        ? "出席申告フォーム送信完了通知"
+        : "欠席連絡フォーム送信完了通知";
+
+    let bodyText = `${name} さん\n\n`;
+    bodyText += `以下の内容でフォームが送信されました．\n\n`;
+    bodyText += `氏名: ${name}\n`;
+    bodyText += `種別: ${type}`;
+
+    if (type === "早退" && timeLeavingEarly) {
+        bodyText += `(${timeLeavingEarly})`;
+    } else if (type === "中抜け" && (timeStepOut || timeReturn)) {
+        bodyText += `(${timeStepOut || ""} ~ ${timeReturn || ""})`;
+    }
+
+    if (!isAttendance) {
+        bodyText += `\n理由: ${reason}\n`;
+    }
+    if (reasonDetail) {
+        bodyText += `詳細: ${reasonDetail}\n`;
+    }
+    bodyText += `\n送信日時: ${timestamp}\n`;
+
+    MailApp.sendEmail(email, subject, bodyText, {
+        name: isAttendance ? "出席申告システム" : "欠席連絡システム",
+    });
+};
+
 /**
  * 新規欠席データを登録し、Discord通知とメール送信を実行
  * @param {Object} postData - リクエストボディ
@@ -2385,13 +2533,14 @@ const handlePostAbsence = (postData) => {
             timeLeavingEarly,
         } = postData;
 
-        // 必須フィールドの検証
         if (
-            !eventId ||
-            !studentNumber ||
-            !name ||
-            !type ||
-            (type !== "出席" && !reason)
+            !validateAbsencePostData({
+                eventId,
+                studentNumber,
+                name,
+                type,
+                reason,
+            })
         ) {
             return createErrorResponse("Missing required fields", 400);
         }
@@ -2411,21 +2560,27 @@ const handlePostAbsence = (postData) => {
             "yyyy/MM/dd HH:mm:ss"
         );
 
-        // 列順: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:詳細, H:早退時間, I:抜ける時間, J:戻る時間
-        const rowData = [
+        const rowData = buildAbsenceRowData({
             timestamp,
             eventId,
             studentNumber,
             name,
             type,
-            type === "出席" ? "" : reason,
-            reasonDetail || "",
-            timeLeavingEarly || "",
-            timeStepOut || "",
-            timeReturn || "",
-        ];
+            reason,
+            reasonDetail,
+            timeLeavingEarly,
+            timeStepOut,
+            timeReturn,
+        });
 
-        sheet.appendRow(rowData);
+        const lock = LockService.getScriptLock();
+        lock.waitLock(5000);
+        let operation;
+        try {
+            operation = upsertAbsenceRecord(sheet, rowData);
+        } finally {
+            lock.releaseLock();
+        }
         clearAbsenceCaches();
 
         // Discord Webhookに通知を送信
@@ -2446,50 +2601,79 @@ const handlePostAbsence = (postData) => {
             sendToDiscord(webhookURL, embed);
         }
 
-        // 送信者にメールで完了通知を送信
-        const domain =
-            PropertiesService.getScriptProperties().getProperty("NIT_DOMAIN");
-
-        if (domain && studentNumber) {
-            const email = `${studentNumber}@${domain}`;
-            const isAttendance = type === "出席";
-            const subject = isAttendance
-                ? "出席申告フォーム送信完了通知"
-                : "欠席連絡フォーム送信完了通知";
-
-            let bodyText = `${name} さん\n\n`;
-            bodyText += `以下の内容でフォームが送信されました．\n\n`;
-            bodyText += `氏名: ${name}\n`;
-            bodyText += `種別: ${type}`;
-
-            if (type === "早退" && timeLeavingEarly) {
-                bodyText += `(${timeLeavingEarly})`;
-            } else if (type === "中抜け" && (timeStepOut || timeReturn)) {
-                bodyText += `(${timeStepOut || ""} ~ ${timeReturn || ""})`;
-            }
-
-            if (!isAttendance) {
-                bodyText += `\n理由: ${reason}\n`;
-            }
-            if (reasonDetail) {
-                bodyText += `詳細: ${reasonDetail}\n`;
-            }
-            bodyText += `\n送信日時: ${timestamp}\n`;
-
-            MailApp.sendEmail(email, subject, bodyText, {
-                name: isAttendance ? "出席申告システム" : "欠席連絡システム",
-            });
-        }
+        sendAbsenceCompletionEmail({
+            studentNumber,
+            name,
+            type,
+            reason,
+            reasonDetail,
+            timestamp,
+            timeLeavingEarly,
+            timeStepOut,
+            timeReturn,
+        });
 
         return createResponse({
             success: true,
-            message: "Absence record created successfully",
+            message: "Absence record saved successfully",
             data: {
                 timestamp,
                 eventId,
                 studentNumber,
                 name,
                 type,
+                reason: type === "出席" ? "" : reason,
+                reasonDetail: reasonDetail || "",
+                timeLeavingEarly: timeLeavingEarly || "",
+                timeStepOut: timeStepOut || "",
+                timeReturn: timeReturn || "",
+                operation,
+            },
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+const handleUpdateAbsence = (postData) => handlePostAbsence(postData);
+
+const handleDeleteAbsence = (postData) => {
+    try {
+        const { eventId, studentNumber } = postData;
+        if (!eventId || !studentNumber) {
+            return createErrorResponse(
+                "Missing required fields (eventId, studentNumber)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("absence_data");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'absence_data' not found", 404);
+        }
+
+        const lock = LockService.getScriptLock();
+        lock.waitLock(5000);
+        let deleted;
+        try {
+            deleted = deleteAbsenceRecord(sheet, eventId, studentNumber);
+        } finally {
+            lock.releaseLock();
+        }
+        if (!deleted) {
+            return createErrorResponse("Absence record not found", 404);
+        }
+
+        clearAbsenceCaches();
+
+        return createResponse({
+            success: true,
+            message: "Absence record deleted successfully",
+            data: {
+                eventId,
+                studentNumber,
             },
         });
     } catch (error) {

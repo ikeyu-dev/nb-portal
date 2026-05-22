@@ -45,6 +45,20 @@ export const absenceSubmitSchema = z
 
 export type AbsenceSubmitData = z.infer<typeof absenceSubmitSchema>;
 
+export const absenceDeleteSchema = z.object({
+    eventId: z
+        .string()
+        .min(1, "イベントIDは必須です")
+        .max(100, "イベントIDが長すぎます"),
+    studentNumber: z
+        .string()
+        .min(1, "学籍番号は必須です")
+        .max(20, "学籍番号が長すぎます")
+        .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です"),
+});
+
+export type AbsenceDeleteData = z.infer<typeof absenceDeleteSchema>;
+
 /**
  * GAS APIパスのバリデーションスキーマ
  */

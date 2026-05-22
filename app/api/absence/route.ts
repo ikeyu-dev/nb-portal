@@ -1,14 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
+import type { Session } from "next-auth";
 import { auth } from "@/src/auth";
 import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
 import {
+    absenceDeleteSchema,
     absenceSubmitSchema,
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
 import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
 
 const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+
+const buildSubmitBody = (
+    body: Record<string, unknown>,
+    session: Session
+) => {
+    const sessionDisplayName =
+        session.displayName ||
+        session.memberName ||
+        session.nickname ||
+        session.user?.name ||
+        session.studentId;
+
+    return {
+        ...body,
+        studentNumber: session.studentId,
+        name: body.name || sessionDisplayName,
+        reason: body.type === "出席" ? body.reason || "出席" : body.reason,
+    };
+};
+
+const postToGAS = async (path: string, body: unknown) => {
+    if (!GAS_API_URL) {
+        throw new Error("GAS API URL is not configured");
+    }
+
+    const url = new URL(GAS_API_URL);
+    url.searchParams.append("path", path);
+
+    const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+    });
+
+    return response.json();
+};
 
 /**
  * 欠席連絡送信API
@@ -44,18 +84,7 @@ export async function POST(request: NextRequest) {
 
     try {
         const body = await request.json();
-        const sessionDisplayName =
-            session.displayName ||
-            session.memberName ||
-            session.nickname ||
-            session.user.name ||
-            session.studentId;
-        const submitBody = {
-            ...body,
-            studentNumber: body.studentNumber || session.studentId,
-            name: body.name || sessionDisplayName,
-            reason: body.type === "出席" ? body.reason || "出席" : body.reason,
-        };
+        const submitBody = buildSubmitBody(body, session);
 
         // 入力バリデーション
         const validationResult = absenceSubmitSchema.safeParse(submitBody);
@@ -70,20 +99,128 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // GAS APIに転送（バリデーション済みのデータを使用）
         const validatedData = validationResult.data;
-        const url = new URL(GAS_API_URL);
-        url.searchParams.append("path", "absences");
+        const data = await postToGAS("absences", validatedData);
 
-        const response = await fetch(url.toString(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
+        if (data?.success === true) {
+            revalidateTag(CACHE_TAGS.absences, "max");
+        }
+
+        return NextResponse.json(data);
+    } catch (error) {
+        console.error("API route error:", error);
+        return NextResponse.json(
+            {
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
             },
-            body: JSON.stringify(validatedData),
-        });
+            { status: 500 }
+        );
+    }
+}
 
-        const data = await response.json();
+export async function PUT(request: NextRequest) {
+    const originError = validateOrigin(request);
+    if (originError) {
+        return originError;
+    }
+
+    const contentTypeError = validateContentType(request);
+    if (contentTypeError) {
+        return contentTypeError;
+    }
+
+    const session = await auth();
+    if (!session?.user) {
+        return NextResponse.json(
+            { success: false, error: "Unauthorized" },
+            { status: 401 }
+        );
+    }
+    if (!GAS_API_URL) {
+        return NextResponse.json(
+            { success: false, error: "GAS API URL is not configured" },
+            { status: 500 }
+        );
+    }
+
+    try {
+        const body = await request.json();
+        const submitBody = buildSubmitBody(body, session);
+        const validationResult = absenceSubmitSchema.safeParse(submitBody);
+        if (!validationResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "バリデーションエラー",
+                    details: formatValidationErrors(validationResult.error),
+                },
+                { status: 400 }
+            );
+        }
+
+        const data = await postToGAS("absences/update", validationResult.data);
+
+        if (data?.success === true) {
+            revalidateTag(CACHE_TAGS.absences, "max");
+        }
+
+        return NextResponse.json(data);
+    } catch (error) {
+        console.error("API route error:", error);
+        return NextResponse.json(
+            {
+                success: false,
+                error: error instanceof Error ? error.message : "Unknown error",
+            },
+            { status: 500 }
+        );
+    }
+}
+
+export async function DELETE(request: NextRequest) {
+    const originError = validateOrigin(request);
+    if (originError) {
+        return originError;
+    }
+
+    const contentTypeError = validateContentType(request);
+    if (contentTypeError) {
+        return contentTypeError;
+    }
+
+    const session = await auth();
+    if (!session?.user) {
+        return NextResponse.json(
+            { success: false, error: "Unauthorized" },
+            { status: 401 }
+        );
+    }
+    if (!GAS_API_URL) {
+        return NextResponse.json(
+            { success: false, error: "GAS API URL is not configured" },
+            { status: 500 }
+        );
+    }
+
+    try {
+        const body = await request.json();
+        const validationResult = absenceDeleteSchema.safeParse({
+            ...body,
+            studentNumber: session.studentId,
+        });
+        if (!validationResult.success) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "バリデーションエラー",
+                    details: formatValidationErrors(validationResult.error),
+                },
+                { status: 400 }
+            );
+        }
+
+        const data = await postToGAS("absences/delete", validationResult.data);
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
