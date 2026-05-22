@@ -97,14 +97,31 @@ const formatTypeWithTime = (data: AbsenceSubmitData) => {
     return data.type;
 };
 
+const getEventDateTimeLabel = (data: AbsenceSubmitData) =>
+    [data.eventDateLabel, data.eventTimeLabel].filter(Boolean).join(" ");
+
 const sendAbsenceDiscordNotification = async (
     data: AbsenceSubmitData,
     timestamp?: string
 ) => {
     const fields = [
+        {
+            name: "イベント",
+            value: data.eventTitle || data.eventId,
+            inline: false,
+        },
         { name: "氏名", value: data.name || "不明", inline: true },
         { name: "種別", value: formatTypeWithTime(data), inline: true },
     ];
+    const dateTimeLabel = getEventDateTimeLabel(data);
+
+    if (dateTimeLabel) {
+        fields.push({ name: "日時", value: dateTimeLabel, inline: true });
+    }
+
+    if (data.eventWhere) {
+        fields.push({ name: "場所", value: data.eventWhere, inline: true });
+    }
 
     if (data.type !== "出席" && data.reason) {
         fields.push({ name: "理由", value: data.reason, inline: false });

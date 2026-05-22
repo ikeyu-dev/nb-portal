@@ -303,6 +303,10 @@ export default function ScheduleCard({
                 },
                 body: JSON.stringify({
                     eventId,
+                    eventTitle: title,
+                    eventDateLabel: dateLabel,
+                    eventTimeLabel: timeLabel,
+                    eventWhere: where,
                     type: "出席",
                     reasonDetail: attendanceNote.trim() || undefined,
                 }),
@@ -353,6 +357,10 @@ export default function ScheduleCard({
                 },
                 body: JSON.stringify({
                     eventId,
+                    eventTitle: title,
+                    eventDateLabel: dateLabel,
+                    eventTimeLabel: timeLabel,
+                    eventWhere: where,
                     studentNumber: profile.studentNumber,
                     name: profile.name,
                     type: absenceForm.type,

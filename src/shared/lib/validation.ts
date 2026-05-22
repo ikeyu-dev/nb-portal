@@ -30,6 +30,10 @@ export const absenceSubmitSchema = z
         timeStepOut: z.string().max(10).optional(),
         timeReturn: z.string().max(10).optional(),
         timeLeavingEarly: z.string().max(10).optional(),
+        eventTitle: z.string().max(100).optional(),
+        eventDateLabel: z.string().max(50).optional(),
+        eventTimeLabel: z.string().max(50).optional(),
+        eventWhere: z.string().max(100).optional(),
     })
     .superRefine((data, ctx) => {
         if (data.type === "出席") return;
