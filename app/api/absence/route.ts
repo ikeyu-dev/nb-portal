@@ -100,6 +100,11 @@ const formatTypeWithTime = (data: AbsenceSubmitData) => {
 const getEventDateTimeLabel = (data: AbsenceSubmitData) =>
     [data.eventDateLabel, data.eventTimeLabel].filter(Boolean).join(" ");
 
+const getAbsenceNotificationTitle = (data: AbsenceSubmitData) =>
+    `${data.name || "不明"}：${
+        data.type === "出席" ? "出席申告" : `${data.type}連絡`
+    }`;
+
 const buildAbsenceDescription = (data: AbsenceSubmitData) => {
     const eventLines = [
         `**${data.eventTitle || data.eventId}**`,
@@ -121,9 +126,7 @@ const sendAbsenceDiscordNotification = async (
     const result = await sendDiscordWebhook({
         embeds: [
             {
-                title: `${data.name || "不明"}：${
-                    data.type === "出席" ? "出席申告" : "出欠連絡"
-                }`,
+                title: getAbsenceNotificationTitle(data),
                 description: buildAbsenceDescription(data),
                 color: getAbsenceColor(data.type),
                 ...(timestamp ? { footer: { text: timestamp } } : {}),
