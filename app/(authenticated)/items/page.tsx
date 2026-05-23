@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/src/features/help";
 import type { Item } from "@/src/shared/types/api";
 import {
@@ -319,20 +321,10 @@ export default function ItemsPage() {
                 className="text-center text-base-content/60 py-8"
             >
                 <div className="flex flex-col items-center gap-2">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-12 w-12 text-base-content/30"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                        />
-                    </svg>
+                    <FontAwesomeIcon
+                        icon={faBoxOpen}
+                        className="text-5xl text-base-content/30"
+                    />
                     登録されている機材がありません
                 </div>
             </td>
@@ -389,20 +381,10 @@ export default function ItemsPage() {
             >
                 <div className="flex items-center justify-between px-3 py-2 border-b border-base-300 shrink-0">
                     <div className="flex items-center gap-2">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5 text-primary"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                            />
-                        </svg>
+                        <FontAwesomeIcon
+                            icon={faBoxOpen}
+                            className="text-xl text-primary"
+                        />
                         <span className="font-medium text-lg">機材一覧</span>
                         <span className="badge badge-primary badge-sm">
                             {filteredItems.length}件
@@ -456,20 +438,10 @@ export default function ItemsPage() {
             {/* PC版 */}
             <div className="hidden lg:flex items-center justify-between mb-4 px-2 w-full">
                 <div className="flex items-center gap-2">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6 text-primary"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                        />
-                    </svg>
+                    <FontAwesomeIcon
+                        icon={faBoxOpen}
+                        className="text-2xl text-primary"
+                    />
                     <h2
                         className="font-normal text-base-content"
                         style={{ fontSize: "clamp(1.125rem, 3vw, 1.5rem)" }}

@@ -1,6 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faCalendarDays,
+    faLocationDot,
+} from "@fortawesome/free-solid-svg-icons";
 import {
     normalizeScheduleAttendanceMode,
     SCHEDULE_ATTENDANCE_MODE_LABELS,
@@ -495,20 +500,10 @@ export default function ScheduleCard({
                                         {(dateLabel || timeLabel) && (
                                             <div className="flex items-center gap-1">
                                                 {dateLabel && (
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-4 w-4 text-primary"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                        stroke="currentColor"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                        />
-                                                    </svg>
+                                                    <FontAwesomeIcon
+                                                        icon={faCalendarDays}
+                                                        className="text-base text-primary"
+                                                    />
                                                 )}
                                                 <span className="font-medium">
                                                     {[dateLabel, timeLabel]
@@ -519,26 +514,10 @@ export default function ScheduleCard({
                                         )}
                                         {where && (
                                             <div className="flex items-center gap-1">
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-4 w-4 text-primary"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                    />
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                    />
-                                                </svg>
+                                                <FontAwesomeIcon
+                                                    icon={faLocationDot}
+                                                    className="text-base text-primary"
+                                                />
                                                 <span className="font-medium">
                                                     {where}
                                                 </span>
@@ -934,20 +913,10 @@ export default function ScheduleCard({
                                         {(dateLabel || timeLabel) && (
                                             <div className="flex items-center gap-2">
                                                 {dateLabel && (
-                                                    <svg
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        className="h-5 w-5 text-primary"
-                                                        fill="none"
-                                                        viewBox="0 0 24 24"
-                                                        stroke="currentColor"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                        />
-                                                    </svg>
+                                                    <FontAwesomeIcon
+                                                        icon={faCalendarDays}
+                                                        className="text-xl text-primary"
+                                                    />
                                                 )}
                                                 <span className="font-medium">
                                                     {[dateLabel, timeLabel]
@@ -958,26 +927,10 @@ export default function ScheduleCard({
                                         )}
                                         {where && (
                                             <div className="flex items-center gap-2">
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-5 w-5 text-primary"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                    />
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                    />
-                                                </svg>
+                                                <FontAwesomeIcon
+                                                    icon={faLocationDot}
+                                                    className="text-xl text-primary"
+                                                />
                                                 <span className="font-medium">
                                                     {where}
                                                 </span>

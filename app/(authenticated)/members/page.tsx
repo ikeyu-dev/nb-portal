@@ -1,6 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faCircleCheck,
+    faMagnifyingGlass,
+    faPen,
+    faPlus,
+    faTrashCan,
+    faUsers,
+} from "@fortawesome/free-solid-svg-icons";
 import {
     MEMBER_PERMISSION_LABELS,
     MEMBER_PERMISSIONS,
@@ -619,14 +628,10 @@ export default function MembersPage() {
             <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 640 512"
-                            className="size-6 text-primary"
-                            fill="currentColor"
-                        >
-                            <path d="M224 256c70.7 0 128-57.3 128-128S294.7 0 224 0S96 57.3 96 128s57.3 128 128 128zm-45.7 48C79.8 304 0 383.8 0 482.3C0 498.7 13.3 512 29.7 512H322.8c-3.1-8.8-3.7-18.4-1.4-27.8l15-60.1c2.8-11.3 8.6-21.5 16.8-29.7l40.3-40.3c-32.1-31-75.7-50.1-123.9-50.1H178.3zm435.5-68.3c-15.6-15.6-40.9-15.6-56.6 0l-29.4 29.4l71 71l29.4-29.4c15.6-15.6 15.6-40.9 0-56.6l-14.4-14.4zM375.9 417c-4.1 4.1-7 9.2-8.4 14.9l-15 60.1c-1.4 5.5 .2 11.2 4.2 15.2s9.7 5.6 15.2 4.2l60.1-15c5.6-1.4 10.8-4.3 14.9-8.4L576.1 358.7l-71-71L375.9 417z" />
-                        </svg>
+                        <FontAwesomeIcon
+                            icon={faUsers}
+                            className="text-2xl text-primary"
+                        />
                         <div>
                             <h1 className="text-2xl font-bold">部員名簿</h1>
                         </div>
@@ -638,20 +643,10 @@ export default function MembersPage() {
                             onClick={() => setIsCheckedListModalOpen(true)}
                             disabled={isLoading || checkedMembers.length === 0}
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="size-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
-                                />
-                            </svg>
+                            <FontAwesomeIcon
+                                icon={faCircleCheck}
+                                className="text-lg"
+                            />
                             チェック済み
                             {checkedMembers.length > 0 && (
                                 <span className="badge badge-primary badge-sm">
@@ -665,20 +660,10 @@ export default function MembersPage() {
                             onClick={openCreateModal}
                             disabled={isLoading || headers.length === 0}
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="size-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 4.5v15m7.5-7.5h-15"
-                                />
-                            </svg>
+                            <FontAwesomeIcon
+                                icon={faPlus}
+                                className="text-lg"
+                            />
                             追加
                         </button>
                     </div>
@@ -703,20 +688,10 @@ export default function MembersPage() {
                                         検索
                                     </span>
                                     <div className="input input-bordered input-sm flex items-center gap-2 bg-base-100 sm:input-md">
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="size-4 opacity-60"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                            strokeWidth={2}
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"
-                                            />
-                                        </svg>
+                                        <FontAwesomeIcon
+                                            icon={faMagnifyingGlass}
+                                            className="text-lg opacity-60"
+                                        />
                                         <input
                                             type="search"
                                             className="grow"
@@ -892,20 +867,10 @@ export default function MembersPage() {
                                                     openEditModal(member);
                                                 }}
                                             >
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="size-4"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                    strokeWidth={2}
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"
-                                                    />
-                                                </svg>
+                                                <FontAwesomeIcon
+                                                    icon={faPen}
+                                                    className="text-lg"
+                                                />
                                             </button>
                                         </td>
                                     </tr>
@@ -919,20 +884,10 @@ export default function MembersPage() {
                                             className="text-center text-base-content/60 py-8"
                                         >
                                             <div className="flex flex-col items-center gap-2">
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-12 w-12 text-base-content/30"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={1.5}
-                                                        d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2.13a4 4 0 100-8 4 4 0 000 8zm6 4a3 3 0 10-2.83-4M6.83 12A3 3 0 104 16"
-                                                    />
-                                                </svg>
+                                                <FontAwesomeIcon
+                                                    icon={faUsers}
+                                                    className="text-5xl text-base-content/30"
+                                                />
                                                 該当する名簿データがありません
                                             </div>
                                         </td>
@@ -1180,20 +1135,10 @@ export default function MembersPage() {
                                 onClick={openDeleteModalFromEdit}
                                 disabled={isSubmitting}
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="size-4"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                    strokeWidth={2}
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673A2.25 2.25 0 0115.916 21H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
-                                    />
-                                </svg>
+                                <FontAwesomeIcon
+                                    icon={faTrashCan}
+                                    className="text-lg"
+                                />
                                 削除
                             </button>
                             <div className="flex gap-2">

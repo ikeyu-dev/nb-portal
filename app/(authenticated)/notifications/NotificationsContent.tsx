@@ -1,6 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faBell,
+    faInbox,
+    faPen,
+    faPlus,
+} from "@fortawesome/free-solid-svg-icons";
 import { PushNotificationToggle } from "@/src/features/push-notification";
 import { HelpButton } from "@/src/features/help";
 import {
@@ -152,20 +159,10 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
             <div className="max-w-4xl mx-auto">
                 {/* ヘッダー */}
                 <div className="flex items-center gap-3 mb-6">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6 text-primary"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                        />
-                    </svg>
+                    <FontAwesomeIcon
+                        icon={faBell}
+                        className="text-2xl text-primary"
+                    />
                     <h1
                         className="font-bold"
                         style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
@@ -188,20 +185,10 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
 
                 {notifications.length === 0 ? (
                     <div className="text-center py-12 text-base-content/60">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
+                        <FontAwesomeIcon
+                            icon={faInbox}
                             className="h-16 w-16 mx-auto mb-4 opacity-50"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                            />
-                        </svg>
+                        />
                         <p>お知らせはありません</p>
                     </div>
                 ) : (
@@ -224,35 +211,15 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                                         >
                                             {notification.actionType ===
                                             "created" ? (
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-5 w-5 text-primary"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M12 4v16m8-8H4"
-                                                    />
-                                                </svg>
+                                                <FontAwesomeIcon
+                                                    icon={faPlus}
+                                                    className="text-lg text-primary"
+                                                />
                                             ) : (
-                                                <svg
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    className="h-5 w-5 text-warning"
-                                                    fill="none"
-                                                    viewBox="0 0 24 24"
-                                                    stroke="currentColor"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                                    />
-                                                </svg>
+                                                <FontAwesomeIcon
+                                                    icon={faPen}
+                                                    className="text-lg text-warning"
+                                                />
                                             )}
                                         </div>
 
