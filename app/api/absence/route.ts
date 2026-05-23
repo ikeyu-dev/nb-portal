@@ -102,7 +102,7 @@ const getEventDateTimeLabel = (data: AbsenceSubmitData) =>
 
 const getAbsenceNotificationTitle = (data: AbsenceSubmitData) =>
     `${data.name || "不明"}：${
-        data.type === "出席" ? "出席申告" : `${data.type}連絡`
+        data.type === "出席" ? "出席連絡" : `${data.type}連絡`
     }`;
 
 const buildAbsenceDescription = (data: AbsenceSubmitData) => {
