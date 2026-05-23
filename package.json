@@ -11,6 +11,11 @@
     },
     "dependencies": {
         "@ducanh2912/next-pwa": "^10.2.9",
+        "@fortawesome/fontawesome-svg-core": "^7.2.0",
+        "@fortawesome/free-brands-svg-icons": "^7.2.0",
+        "@fortawesome/free-regular-svg-icons": "^7.2.0",
+        "@fortawesome/free-solid-svg-icons": "^7.2.0",
+        "@fortawesome/react-fontawesome": "^3.3.1",
         "@types/google-apps-script": "^2.0.8",
         "mermaid": "^11.12.2",
         "next": "16.1.1",

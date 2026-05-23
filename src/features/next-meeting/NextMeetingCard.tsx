@@ -1,6 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+    faCalendarDays,
+    faPaperPlane,
+    faPen,
+} from "@fortawesome/free-solid-svg-icons";
 import {
     NEXT_MEETING_MODE_LABELS,
     NEXT_MEETING_MODES,
@@ -154,20 +160,10 @@ export function NextMeetingCard({
         >
             <div className="card-body gap-4 p-5 pb-4">
                 <div className="flex items-center gap-2">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 text-primary"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        />
-                    </svg>
+                    <FontAwesomeIcon
+                        icon={faCalendarDays}
+                        className="text-xl text-primary"
+                    />
                     <h2
                         className="card-title"
                         style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}
@@ -202,20 +198,10 @@ export function NextMeetingCard({
                                     onClick={openEditor}
                                     disabled={isAnnouncing}
                                 >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        className="h-4 w-4"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                        />
-                                    </svg>
+                                    <FontAwesomeIcon
+                                        icon={faPen}
+                                        className="text-lg"
+                                    />
                                     編集
                                 </button>
                                 <button
@@ -227,26 +213,10 @@ export function NextMeetingCard({
                                     {isAnnouncing ? (
                                         <span className="loading loading-spinner loading-xs" />
                                     ) : (
-                                        <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-4 w-4"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M22 2L11 13"
-                                            />
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M22 2L15 22L11 13L2 9L22 2Z"
-                                            />
-                                        </svg>
+                                        <FontAwesomeIcon
+                                            icon={faPaperPlane}
+                                            className="text-lg"
+                                        />
                                     )}
                                     送信
                                 </button>

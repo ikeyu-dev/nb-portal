@@ -384,7 +384,7 @@ export function MeetingMemoForm() {
                         {formData.scheduleItems.map((item, index) => (
                             <div
                                 key={item.id}
-                                className="card bg-base-200 p-3"
+                                className="card p-3"
                             >
                                 <div className="flex items-start gap-2">
                                     <div className="flex-1 space-y-2">

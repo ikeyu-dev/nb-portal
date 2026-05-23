@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMoon, faSun } from "@fortawesome/free-solid-svg-icons";
 
 interface ThemeToggleProps {
     showLabel?: boolean;
@@ -9,6 +11,7 @@ interface ThemeToggleProps {
 export default function ThemeToggle({ showLabel = false }: ThemeToggleProps) {
     const [theme, setTheme] = useState<"light" | "dark">("light");
     const [mounted, setMounted] = useState(false);
+    const isDark = theme === "dark";
 
     useEffect(() => {
         setMounted(true);
@@ -29,6 +32,33 @@ export default function ThemeToggle({ showLabel = false }: ThemeToggleProps) {
         document.documentElement.setAttribute("data-theme", newTheme);
     };
 
+    const toggleControl = (
+        <button
+            type="button"
+            role="switch"
+            aria-checked={isDark}
+            aria-label="テーマを切り替え"
+            className={`relative h-7 w-14 rounded-full border transition-colors ${
+                isDark
+                    ? "border-base-content/60 bg-base-100"
+                    : "border-base-content/30 bg-base-200"
+            }`}
+            onClick={toggleTheme}
+            disabled={!mounted}
+        >
+            <span
+                className={`absolute top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-base-100 shadow-sm transition-transform ${
+                    isDark ? "translate-x-7" : "translate-x-1"
+                }`}
+            >
+                <FontAwesomeIcon
+                    icon={isDark ? faMoon : faSun}
+                    className="h-3.5 w-3.5 text-base-content"
+                />
+            </span>
+        </button>
+    );
+
     if (!mounted) {
         return (
             <div
@@ -36,39 +66,7 @@ export default function ThemeToggle({ showLabel = false }: ThemeToggleProps) {
                     showLabel ? "justify-between w-full" : "justify-center"
                 }`}
             >
-                <label className="toggle text-base-content">
-                    <input
-                        type="checkbox"
-                        disabled
-                        aria-label="change theme"
-                    />
-                    <svg
-                        aria-label="light mode"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            stroke="currentColor"
-                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                        />
-                    </svg>
-                    <svg
-                        aria-label="dark mode"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                </label>
+                {toggleControl}
             </div>
         );
     }
@@ -81,45 +79,10 @@ export default function ThemeToggle({ showLabel = false }: ThemeToggleProps) {
         >
             {showLabel && (
                 <span className="text-sm">
-                    Dark Mode: {theme === "dark" ? "ON" : "OFF"}
+                    ダークモード：{isDark ? "ON" : "OFF"}
                 </span>
             )}
-            <label className="toggle text-base-content">
-                <input
-                    type="checkbox"
-                    checked={theme === "dark"}
-                    onChange={toggleTheme}
-                    aria-label="change theme"
-                />
-                {/* Light mode icon (太陽) */}
-                <svg
-                    aria-label="light mode"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        stroke="currentColor"
-                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                    />
-                </svg>
-                {/* Dark mode icon (月) */}
-                <svg
-                    aria-label="dark mode"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                >
-                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                </svg>
-            </label>
+            {toggleControl}
         </div>
     );
 }
