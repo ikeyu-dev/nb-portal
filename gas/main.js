@@ -559,6 +559,98 @@ const sendToDiscord = (webhookURL, embeds, options = {}) => {
     }
 };
 
+const logDiscordNotification = (message) => {
+    console.log(message);
+    Logger.log(message);
+};
+
+const trySendToDiscord = (webhookURL, embeds, options = {}) => {
+    try {
+        logDiscordNotification("Discord notification started");
+        sendToDiscord(webhookURL, embeds, options);
+        logDiscordNotification("Discord notification succeeded");
+        return true;
+    } catch (error) {
+        logDiscordNotification(
+            `Discord notification skipped: ${error.toString()}`
+        );
+        return false;
+    }
+};
+
+const sendToDiscordViaApp = (embeds, options = {}) => {
+    const apiURL =
+        PropertiesService.getScriptProperties().getProperty(
+            "DISCORD_SEND_API_URL"
+        ) || "https://nb-portal.vercel.app/api/discord-send";
+    const apiSecret =
+        PropertiesService.getScriptProperties().getProperty("PUSH_API_SECRET");
+
+    if (!apiSecret) {
+        throw new Error("PUSH_API_SECRET is not configured");
+    }
+
+    const response = UrlFetchApp.fetch(apiURL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiSecret}`,
+        },
+        payload: JSON.stringify({
+            target: options.target || "attendance",
+            embeds: Array.isArray(embeds) ? embeds : [embeds],
+            content: options.content || "",
+        }),
+        muteHttpExceptions: true,
+    });
+
+    const responseCode = response.getResponseCode();
+    if (responseCode < 200 || responseCode >= 300) {
+        throw new Error(
+            `Discord app API failed with status ${responseCode}: ${response.getContentText()}`
+        );
+    }
+};
+
+/**
+ * Discord Webhookへの直接送信を確認する手動実行用関数
+ * Apps Scriptエディタから実行して、WEBHOOK_URL設定とDiscord到達性を確認する。
+ */
+function testSendDiscordWebhook() {
+    const webhookURL =
+        PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+    if (!webhookURL) {
+        throw new Error("WEBHOOK_URL is not configured");
+    }
+
+    const timestamp = Utilities.formatDate(
+        new Date(),
+        Session.getScriptTimeZone(),
+        "yyyy/MM/dd HH:mm:ss"
+    );
+    const embed = {
+        title: "Discord送信テスト",
+        color: 0x0ea5e9,
+        fields: [
+            {
+                name: "送信元",
+                value: "GAS direct test",
+                inline: true,
+            },
+            {
+                name: "送信日時",
+                value: timestamp,
+                inline: true,
+            },
+        ],
+        footer: { text: "testSendDiscordWebhook" },
+    };
+
+    logDiscordNotification("Discord test notification started");
+    sendToDiscord(webhookURL, embed);
+    logDiscordNotification("Discord test notification succeeded");
+}
+
 /**
  * フォーム送信者にメールで送信完了通知を送る
  * 送信先: 学籍番号@NIT_DOMAIN（スクリプトプロパティで設定）
@@ -601,12 +693,13 @@ const sendEmail = (formData) => {
  * @param {Object} e - フォーム送信イベントオブジェクト
  */
 function onSubmit(e) {
-    const webhookURL =
-        PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-
     const formData = getFormData(e);
     const embed = buildAbsenceEmbed(formData);
-    sendToDiscord(webhookURL, embed);
+    // 以前のGAS直送に戻す場合:
+    // const webhookURL =
+    //     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+    // sendToDiscord(webhookURL, embed);
+    sendToDiscordViaApp(embed);
     sendEmail(formData);
 }
 
@@ -619,12 +712,6 @@ function onSubmit(e) {
  * 手動実行または時間トリガーで毎日の活動開始前に実行想定
  */
 function sendTodayAbsences() {
-    const webhookURL =
-        PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-    if (!webhookURL) {
-        throw new Error("WEBHOOK_URL is not configured");
-    }
-
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const schedulesSheet = spreadsheet.getSheetByName("schedules");
     const absenceSheet = spreadsheet.getSheetByName("absence_data");
@@ -710,7 +797,11 @@ function sendTodayAbsences() {
         fields,
     };
 
-    sendToDiscord(webhookURL, embed);
+    // 以前のGAS直送に戻す場合:
+    // const webhookURL =
+    //     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+    // sendToDiscord(webhookURL, embed);
+    sendToDiscordViaApp(embed);
 }
 
 /**
@@ -730,15 +821,9 @@ const getNextMeetingUnsetMentionText = () =>
         "NEXT_MEETING_UNSET_ROLE_MENTION"
     ) || "@部長";
 
-const getNextMeetingWebhookURL = () =>
-    PropertiesService.getScriptProperties().getProperty(
-        "NEXT_MEETING_WEBHOOK_URL"
-    ) ||
-    PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
-
-const sendNextMeetingUnsetReminder = (webhookURL) => {
-    sendToDiscord(
-        webhookURL,
+const sendNextMeetingUnsetReminder = () => {
+    // 以前のGAS直送に戻す場合は、getNextMeetingWebhookURL() を復旧して sendToDiscord を使う。
+    sendToDiscordViaApp(
         {
             title: "次回部会が未設定です",
             description:
@@ -747,20 +832,16 @@ const sendNextMeetingUnsetReminder = (webhookURL) => {
         },
         {
             content: getNextMeetingUnsetMentionText(),
+            target: "meeting",
         }
     );
 };
 
 function sendNextMeetingMorningReminder() {
-    const webhookURL = getNextMeetingWebhookURL();
     const settings = getNextMeetingSettings();
 
-    if (!webhookURL) {
-        return;
-    }
-
     if (!settings) {
-        sendNextMeetingUnsetReminder(webhookURL);
+        sendNextMeetingUnsetReminder();
         return;
     }
 
@@ -775,23 +856,17 @@ function sendNextMeetingMorningReminder() {
                 ? "本日の部会は Discord 開催です。"
                 : "本日の部会は対面開催です。",
     });
-    sendToDiscord(webhookURL, embed, {
+    sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
+        target: "meeting",
     });
 }
 
 function sendNextMeetingReminderNow() {
-    const webhookURL = getNextMeetingWebhookURL();
     const settings = getNextMeetingSettings();
 
-    if (!webhookURL) {
-        throw new Error(
-            "NEXT_MEETING_WEBHOOK_URL or WEBHOOK_URL is not configured"
-        );
-    }
-
     if (!settings) {
-        sendNextMeetingUnsetReminder(webhookURL);
+        sendNextMeetingUnsetReminder();
         return;
     }
 
@@ -802,17 +877,16 @@ function sendNextMeetingReminderNow() {
                 ? "次回部会は Discord で行います。"
                 : "次回部会は対面で行います。",
     });
-    sendToDiscord(webhookURL, embed, {
+    sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
+        target: "meeting",
     });
 }
 
 function sendNextMeetingEveningReminder() {
-    const webhookURL = getNextMeetingWebhookURL();
     const settings = getNextMeetingSettings();
 
     if (
-        !webhookURL ||
         !settings ||
         settings.date !== getTodayString() ||
         settings.mode !== "DISCORD"
@@ -824,8 +898,9 @@ function sendNextMeetingEveningReminder() {
         title: "本日18:00 Discord部会リマインド",
         description: "このあとの部会は Discord 開催です。",
     });
-    sendToDiscord(webhookURL, embed, {
+    sendToDiscordViaApp(embed, {
         content: getNextMeetingMentionText(),
+        target: "meeting",
     });
 }
 
@@ -977,6 +1052,10 @@ function doPost(e) {
         switch (path) {
             case "absences":
                 return handlePostAbsence(postData);
+            case "absences/update":
+                return handleUpdateAbsence(postData);
+            case "absences/delete":
+                return handleDeleteAbsence(postData);
             case "schedules":
                 return handlePostSchedule(postData);
             case "schedules/update":
@@ -2366,6 +2445,155 @@ const handlePostSchedule = (postData) => {
 // 登録後、Discord通知とメール送信を実行
 // ============================================
 
+const ABSENCE_COLUMN_COUNT = 10;
+
+const normalizeStudentNumber = (value) => String(value || "").trim().toLowerCase();
+
+const buildAbsenceRowData = ({
+    timestamp,
+    eventId,
+    studentNumber,
+    name,
+    type,
+    reason,
+    reasonDetail,
+    timeLeavingEarly,
+    timeStepOut,
+    timeReturn,
+}) => [
+    timestamp,
+    eventId,
+    normalizeStudentNumber(studentNumber),
+    name,
+    type,
+    type === "出席" ? "" : reason,
+    reasonDetail || "",
+    timeLeavingEarly || "",
+    timeStepOut || "",
+    timeReturn || "",
+];
+
+const findAbsenceRowsByEventAndStudent = (sheet, eventId, studentNumber) => {
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return [];
+
+    const rows = sheet
+        .getRange(2, 1, lastRow - 1, ABSENCE_COLUMN_COUNT)
+        .getValues();
+    const normalizedEventId = String(eventId);
+    const normalizedStudentNumber = normalizeStudentNumber(studentNumber);
+
+    return rows
+        .map((row, index) => ({
+            rowNumber: index + 2,
+            row,
+        }))
+        .filter(({ row }) => {
+            const rowEventId = String(row[1]);
+            const rowStudentNumber = normalizeStudentNumber(row[2]);
+            return (
+                rowEventId === normalizedEventId &&
+                rowStudentNumber === normalizedStudentNumber
+            );
+        });
+};
+
+const upsertAbsenceRecord = (sheet, rowData) => {
+    const matches = findAbsenceRowsByEventAndStudent(
+        sheet,
+        rowData[1],
+        rowData[2]
+    );
+
+    if (matches.length === 0) {
+        const startRow = sheet.getLastRow() + 1;
+        sheet.getRange(startRow, 3).setNumberFormat("@");
+        sheet.getRange(startRow, 1, 1, ABSENCE_COLUMN_COUNT).setValues([rowData]);
+        return "created";
+    }
+
+    const target = matches[matches.length - 1];
+    sheet.getRange(target.rowNumber, 3).setNumberFormat("@");
+    sheet
+        .getRange(target.rowNumber, 1, 1, ABSENCE_COLUMN_COUNT)
+        .setValues([rowData]);
+
+    matches
+        .slice(0, -1)
+        .sort((a, b) => b.rowNumber - a.rowNumber)
+        .forEach(({ rowNumber }) => sheet.deleteRow(rowNumber));
+
+    return "updated";
+};
+
+const deleteAbsenceRecord = (sheet, eventId, studentNumber) => {
+    const matches = findAbsenceRowsByEventAndStudent(sheet, eventId, studentNumber);
+    if (matches.length === 0) return false;
+
+    matches
+        .sort((a, b) => b.rowNumber - a.rowNumber)
+        .forEach(({ rowNumber }) => sheet.deleteRow(rowNumber));
+
+    return true;
+};
+
+const validateAbsencePostData = ({
+    eventId,
+    studentNumber,
+    name,
+    type,
+    reason,
+}) =>
+    eventId &&
+    studentNumber &&
+    name &&
+    type &&
+    (type === "出席" || reason);
+
+const sendAbsenceCompletionEmail = ({
+    studentNumber,
+    name,
+    type,
+    reason,
+    reasonDetail,
+    timestamp,
+    timeLeavingEarly,
+    timeStepOut,
+    timeReturn,
+}) => {
+    const domain = PropertiesService.getScriptProperties().getProperty("NIT_DOMAIN");
+    if (!domain || !studentNumber) return;
+
+    const email = `${studentNumber}@${domain}`;
+    const isAttendance = type === "出席";
+    const subject = isAttendance
+        ? "出席申告フォーム送信完了通知"
+        : "欠席連絡フォーム送信完了通知";
+
+    let bodyText = `${name} さん\n\n`;
+    bodyText += `以下の内容でフォームが送信されました．\n\n`;
+    bodyText += `氏名: ${name}\n`;
+    bodyText += `種別: ${type}`;
+
+    if (type === "早退" && timeLeavingEarly) {
+        bodyText += `(${timeLeavingEarly})`;
+    } else if (type === "中抜け" && (timeStepOut || timeReturn)) {
+        bodyText += `(${timeStepOut || ""} ~ ${timeReturn || ""})`;
+    }
+
+    if (!isAttendance) {
+        bodyText += `\n理由: ${reason}\n`;
+    }
+    if (reasonDetail) {
+        bodyText += `詳細: ${reasonDetail}\n`;
+    }
+    bodyText += `\n送信日時: ${timestamp}\n`;
+
+    MailApp.sendEmail(email, subject, bodyText, {
+        name: isAttendance ? "出席申告システム" : "欠席連絡システム",
+    });
+};
+
 /**
  * 新規欠席データを登録し、Discord通知とメール送信を実行
  * @param {Object} postData - リクエストボディ
@@ -2375,7 +2603,6 @@ const handlePostAbsence = (postData) => {
     try {
         const {
             eventId,
-            studentNumber,
             name,
             type,
             reason,
@@ -2384,14 +2611,16 @@ const handlePostAbsence = (postData) => {
             timeReturn,
             timeLeavingEarly,
         } = postData;
+        const studentNumber = normalizeStudentNumber(postData.studentNumber);
 
-        // 必須フィールドの検証
         if (
-            !eventId ||
-            !studentNumber ||
-            !name ||
-            !type ||
-            (type !== "出席" && !reason)
+            !validateAbsencePostData({
+                eventId,
+                studentNumber,
+                name,
+                type,
+                reason,
+            })
         ) {
             return createErrorResponse("Missing required fields", 400);
         }
@@ -2411,85 +2640,127 @@ const handlePostAbsence = (postData) => {
             "yyyy/MM/dd HH:mm:ss"
         );
 
-        // 列順: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:詳細, H:早退時間, I:抜ける時間, J:戻る時間
-        const rowData = [
+        const rowData = buildAbsenceRowData({
             timestamp,
             eventId,
             studentNumber,
             name,
             type,
-            type === "出席" ? "" : reason,
-            reasonDetail || "",
-            timeLeavingEarly || "",
-            timeStepOut || "",
-            timeReturn || "",
-        ];
+            reason,
+            reasonDetail,
+            timeLeavingEarly,
+            timeStepOut,
+            timeReturn,
+        });
 
-        sheet.appendRow(rowData);
+        const lock = LockService.getScriptLock();
+        lock.waitLock(5000);
+        let operation;
+        try {
+            operation = upsertAbsenceRecord(sheet, rowData);
+        } finally {
+            lock.releaseLock();
+        }
         clearAbsenceCaches();
 
-        // Discord Webhookに通知を送信
-        const webhookURL =
-            PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+        // Discord通知はNext.js API側へ移行済み。
+        // GASからの直送に戻す場合は、このブロックを有効化する。
+        let discordNotified = false;
+        // const webhookURL =
+        //     PropertiesService.getScriptProperties().getProperty("WEBHOOK_URL");
+        // if (webhookURL) {
+        //     const embed = buildAbsenceEmbed({
+        //         name,
+        //         type,
+        //         reason: type === "出席" ? "" : reason,
+        //         reasonDetail,
+        //         timestamp,
+        //         timeLeavingEarly,
+        //         timeStepOut,
+        //         timeReturn,
+        //     });
+        //     discordNotified = trySendToDiscord(webhookURL, embed);
+        // } else {
+        //     logDiscordNotification(
+        //         "Discord notification skipped: WEBHOOK_URL is not configured"
+        //     );
+        // }
 
-        if (webhookURL) {
-            const embed = buildAbsenceEmbed({
-                name,
-                type,
-                reason: type === "出席" ? "" : reason,
-                reasonDetail,
-                timestamp,
-                timeLeavingEarly,
-                timeStepOut,
-                timeReturn,
-            });
-            sendToDiscord(webhookURL, embed);
-        }
-
-        // 送信者にメールで完了通知を送信
-        const domain =
-            PropertiesService.getScriptProperties().getProperty("NIT_DOMAIN");
-
-        if (domain && studentNumber) {
-            const email = `${studentNumber}@${domain}`;
-            const isAttendance = type === "出席";
-            const subject = isAttendance
-                ? "出席申告フォーム送信完了通知"
-                : "欠席連絡フォーム送信完了通知";
-
-            let bodyText = `${name} さん\n\n`;
-            bodyText += `以下の内容でフォームが送信されました．\n\n`;
-            bodyText += `氏名: ${name}\n`;
-            bodyText += `種別: ${type}`;
-
-            if (type === "早退" && timeLeavingEarly) {
-                bodyText += `(${timeLeavingEarly})`;
-            } else if (type === "中抜け" && (timeStepOut || timeReturn)) {
-                bodyText += `(${timeStepOut || ""} ~ ${timeReturn || ""})`;
-            }
-
-            if (!isAttendance) {
-                bodyText += `\n理由: ${reason}\n`;
-            }
-            if (reasonDetail) {
-                bodyText += `詳細: ${reasonDetail}\n`;
-            }
-            bodyText += `\n送信日時: ${timestamp}\n`;
-
-            MailApp.sendEmail(email, subject, bodyText, {
-                name: isAttendance ? "出席申告システム" : "欠席連絡システム",
-            });
-        }
+        sendAbsenceCompletionEmail({
+            studentNumber,
+            name,
+            type,
+            reason,
+            reasonDetail,
+            timestamp,
+            timeLeavingEarly,
+            timeStepOut,
+            timeReturn,
+        });
 
         return createResponse({
             success: true,
-            message: "Absence record created successfully",
+            message: "Absence record saved successfully",
             data: {
                 timestamp,
                 eventId,
                 studentNumber,
                 name,
                 type,
+                reason: type === "出席" ? "" : reason,
+                reasonDetail: reasonDetail || "",
+                timeLeavingEarly: timeLeavingEarly || "",
+                timeStepOut: timeStepOut || "",
+                timeReturn: timeReturn || "",
+                operation,
+                discordNotified,
+            },
+        });
+    } catch (error) {
+        return createErrorResponse(error.toString(), 500);
+    }
+};
+
+const handleUpdateAbsence = (postData) => handlePostAbsence(postData);
+
+const handleDeleteAbsence = (postData) => {
+    try {
+        const { eventId } = postData;
+        const studentNumber = normalizeStudentNumber(postData.studentNumber);
+        if (!eventId || !studentNumber) {
+            return createErrorResponse(
+                "Missing required fields (eventId, studentNumber)",
+                400
+            );
+        }
+
+        const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+        const sheet = spreadsheet.getSheetByName("absence_data");
+
+        if (!sheet) {
+            return createErrorResponse("Sheet 'absence_data' not found", 404);
+        }
+
+        const lock = LockService.getScriptLock();
+        lock.waitLock(5000);
+        let deleted;
+        try {
+            deleted = deleteAbsenceRecord(sheet, eventId, studentNumber);
+        } finally {
+            lock.releaseLock();
+        }
+        if (!deleted) {
+            return createErrorResponse("Absence record not found", 404);
+        }
+
+        clearAbsenceCaches();
+
+        return createResponse({
+            success: true,
+            message: "Absence record deleted successfully",
+            data: {
+                eventId,
+                studentNumber,
             },
         });
     } catch (error) {

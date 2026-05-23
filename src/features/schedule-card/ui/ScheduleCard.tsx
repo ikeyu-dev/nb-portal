@@ -10,6 +10,76 @@ import type {
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
 
+type AbsenceFormState = {
+    type: string;
+    reasonCategory: string;
+    reasonDetail: string;
+    timeStepOut: string;
+    timeReturn: string;
+    timeLeavingEarly: string;
+};
+
+type AbsenceRecordValues = {
+    timestamp: string;
+    eventId: string;
+    studentNumber: string;
+    name: string;
+    type: string;
+    reason: string;
+    reasonDetail: string;
+    timeLeavingEarly: string;
+    timeStepOut: string;
+    timeReturn: string;
+};
+
+const emptyAbsenceForm: AbsenceFormState = {
+    type: "",
+    reasonCategory: "",
+    reasonDetail: "",
+    timeStepOut: "",
+    timeReturn: "",
+    timeLeavingEarly: "",
+};
+
+const getAbsenceValues = (absence: Absence): AbsenceRecordValues => {
+    const values = Object.values(absence);
+    return {
+        timestamp: String(values[0] || ""),
+        eventId: String(values[1] || ""),
+        studentNumber: String(values[2] || ""),
+        name: String(values[3] || ""),
+        type: String(values[4] || ""),
+        reason: String(values[5] || ""),
+        reasonDetail: String(values[6] || ""),
+        timeLeavingEarly: String(values[7] || ""),
+        timeStepOut: String(values[8] || ""),
+        timeReturn: String(values[9] || ""),
+    };
+};
+
+const buildAbsenceRecord = (values: Partial<AbsenceRecordValues>): Absence => ({
+    タイムスタンプ: values.timestamp || "",
+    EVENT_ID: values.eventId || "",
+    学籍番号: values.studentNumber || "",
+    氏名: values.name || "",
+    種別: values.type || "",
+    理由: values.reason || "",
+    詳細: values.reasonDetail || "",
+    早退時間: values.timeLeavingEarly || "",
+    抜ける時間: values.timeStepOut || "",
+    戻る時間: values.timeReturn || "",
+});
+
+const dedupeAbsencesByStudent = (records: Absence[]) => {
+    const recordMap = new Map<string, Absence>();
+    records.forEach((record, index) => {
+        const values = getAbsenceValues(record);
+        const key = `${values.eventId}:${values.studentNumber.trim().toLowerCase() || index}`;
+        recordMap.set(key, record);
+    });
+    return Array.from(recordMap.values());
+};
+
 interface ScheduleCardProps {
     eventId: string;
     title: string;
@@ -49,8 +119,10 @@ export default function ScheduleCard({
     const [isAttendanceConfirmOpen, setIsAttendanceConfirmOpen] =
         useState(false);
     const [isAbsenceFormOpen, setIsAbsenceFormOpen] = useState(false);
+    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [isAttendanceSubmitting, setIsAttendanceSubmitting] = useState(false);
     const [isAbsenceSubmitting, setIsAbsenceSubmitting] = useState(false);
+    const [isDeletingResponse, setIsDeletingResponse] = useState(false);
     const [attendanceSubmitMessage, setAttendanceSubmitMessage] = useState<
         string | null
     >(null);
@@ -58,18 +130,13 @@ export default function ScheduleCard({
         string | null
     >(null);
     const [attendanceNote, setAttendanceNote] = useState("");
+    const [localAbsences, setLocalAbsences] = useState(absences);
     const [profile, setProfile] = useState({
         studentNumber: currentStudentNumber || "",
         name: currentDisplayName || "",
     });
-    const [absenceForm, setAbsenceForm] = useState({
-        type: "",
-        reasonCategory: "",
-        reasonDetail: "",
-        timeStepOut: "",
-        timeReturn: "",
-        timeLeavingEarly: "",
-    });
+    const [absenceForm, setAbsenceForm] =
+        useState<AbsenceFormState>(emptyAbsenceForm);
     const normalizedAttendanceMode =
         normalizeScheduleAttendanceMode(attendanceMode);
     const isAttendanceEvent = normalizedAttendanceMode === "ATTENDANCE";
@@ -83,6 +150,20 @@ export default function ScheduleCard({
     const attendanceDateTimeLabel = [dateLabel, timeLabel]
         .filter(Boolean)
         .join(" ");
+    const normalizedStudentNumber = profile.studentNumber.trim().toLowerCase();
+    const displayedAbsences = dedupeAbsencesByStudent(localAbsences);
+    const ownResponse =
+        normalizedStudentNumber
+            ? displayedAbsences
+                  .map(getAbsenceValues)
+                  .filter(
+                      (absence) =>
+                          absence.eventId === eventId &&
+                          absence.studentNumber.trim().toLowerCase() ===
+                              normalizedStudentNumber
+                  )
+                  .at(-1) || null
+            : null;
 
     useEffect(() => {
         if (currentStudentNumber || currentDisplayName) {
@@ -114,14 +195,58 @@ export default function ScheduleCard({
         void loadSession();
     }, [currentDisplayName, currentStudentNumber]);
 
+    useEffect(() => {
+        setLocalAbsences(absences);
+    }, [absences]);
+
     const handleClose = () => {
         setIsModalOpen(false);
         setIsAttendanceConfirmOpen(false);
         setIsAbsenceFormOpen(false);
+        setIsDeleteConfirmOpen(false);
         setAttendanceSubmitMessage(null);
         setAbsenceSubmitMessage(null);
         setAttendanceNote("");
         onClose?.();
+    };
+
+    const resetAbsenceForm = () => {
+        setAbsenceForm(emptyAbsenceForm);
+    };
+
+    const updateLocalResponse = (response: Partial<AbsenceRecordValues>) => {
+        const nextResponse = buildAbsenceRecord({
+            eventId,
+            studentNumber: profile.studentNumber,
+            name: profile.name,
+            ...response,
+        });
+        const nextValues = getAbsenceValues(nextResponse);
+
+        setLocalAbsences((currentAbsences) => [
+            ...currentAbsences.filter((absence) => {
+                const values = getAbsenceValues(absence);
+                return !(
+                    values.eventId === eventId &&
+                    values.studentNumber.trim().toLowerCase() ===
+                        nextValues.studentNumber.trim().toLowerCase()
+                );
+            }),
+            nextResponse,
+        ]);
+    };
+
+    const removeLocalResponse = () => {
+        setLocalAbsences((currentAbsences) =>
+            currentAbsences.filter((absence) => {
+                const values = getAbsenceValues(absence);
+                return !(
+                    values.eventId === eventId &&
+                    values.studentNumber.trim().toLowerCase() ===
+                        normalizedStudentNumber
+                );
+            })
+        );
     };
 
     const closeAttendanceConfirm = () => {
@@ -135,14 +260,35 @@ export default function ScheduleCard({
         if (isAbsenceSubmitting) return;
         setIsAbsenceFormOpen(false);
         setAbsenceSubmitMessage(null);
-        setAbsenceForm({
-            type: "",
-            reasonCategory: "",
-            reasonDetail: "",
-            timeStepOut: "",
-            timeReturn: "",
-            timeLeavingEarly: "",
-        });
+        resetAbsenceForm();
+    };
+
+    const closeDeleteConfirm = () => {
+        if (isDeletingResponse) return;
+        setIsDeleteConfirmOpen(false);
+    };
+
+    const openAttendanceForm = () => {
+        setAttendanceSubmitMessage(null);
+        setAttendanceNote(ownResponse?.reasonDetail || "");
+        setIsAttendanceConfirmOpen(true);
+    };
+
+    const openAbsenceForm = () => {
+        setAbsenceSubmitMessage(null);
+        setAbsenceForm(
+            ownResponse
+                ? {
+                      type: ownResponse.type,
+                      reasonCategory: ownResponse.reason,
+                      reasonDetail: ownResponse.reasonDetail,
+                      timeStepOut: ownResponse.timeStepOut,
+                      timeReturn: ownResponse.timeReturn,
+                      timeLeavingEarly: ownResponse.timeLeavingEarly,
+                  }
+                : emptyAbsenceForm
+        );
+        setIsAbsenceFormOpen(true);
     };
 
     const submitAttendance = async () => {
@@ -151,12 +297,16 @@ export default function ScheduleCard({
 
         try {
             const response = await fetch("/api/absence", {
-                method: "POST",
+                method: ownResponse ? "PUT" : "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                     eventId,
+                    eventTitle: title,
+                    eventDateLabel: dateLabel,
+                    eventTimeLabel: timeLabel,
+                    eventWhere: where,
                     type: "出席",
                     reasonDetail: attendanceNote.trim() || undefined,
                 }),
@@ -167,7 +317,20 @@ export default function ScheduleCard({
                 throw new Error(result?.error || "出席申告に失敗しました");
             }
 
-            setAttendanceSubmitMessage("出席申告を送信しました");
+            updateLocalResponse({
+                timestamp: result.data?.timestamp,
+                studentNumber: result.data?.studentNumber,
+                name: result.data?.name,
+                type: "出席",
+                reason: "",
+                reasonDetail: result.data?.reasonDetail || "",
+                timeLeavingEarly: "",
+                timeStepOut: "",
+                timeReturn: "",
+            });
+            setAttendanceSubmitMessage(
+                ownResponse ? "出席申告を更新しました" : "出席申告を送信しました"
+            );
             setIsAttendanceConfirmOpen(false);
             setAttendanceNote("");
         } catch (error) {
@@ -188,12 +351,16 @@ export default function ScheduleCard({
 
         try {
             const response = await fetch("/api/absence", {
-                method: "POST",
+                method: ownResponse ? "PUT" : "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
                     eventId,
+                    eventTitle: title,
+                    eventDateLabel: dateLabel,
+                    eventTimeLabel: timeLabel,
+                    eventWhere: where,
                     studentNumber: profile.studentNumber,
                     name: profile.name,
                     type: absenceForm.type,
@@ -211,16 +378,25 @@ export default function ScheduleCard({
                 throw new Error(result?.error || "欠席連絡に失敗しました");
             }
 
-            setAbsenceSubmitMessage("欠席連絡を送信しました");
-            setIsAbsenceFormOpen(false);
-            setAbsenceForm({
-                type: "",
-                reasonCategory: "",
-                reasonDetail: "",
-                timeStepOut: "",
-                timeReturn: "",
-                timeLeavingEarly: "",
+            updateLocalResponse({
+                timestamp: result.data?.timestamp,
+                studentNumber: result.data?.studentNumber,
+                name: result.data?.name,
+                type: result.data?.type || absenceForm.type,
+                reason: result.data?.reason || absenceForm.reasonCategory,
+                reasonDetail:
+                    result.data?.reasonDetail || absenceForm.reasonDetail || "",
+                timeStepOut: result.data?.timeStepOut || absenceForm.timeStepOut,
+                timeReturn: result.data?.timeReturn || absenceForm.timeReturn,
+                timeLeavingEarly:
+                    result.data?.timeLeavingEarly ||
+                    absenceForm.timeLeavingEarly,
             });
+            setAbsenceSubmitMessage(
+                ownResponse ? "欠席連絡を更新しました" : "欠席連絡を送信しました"
+            );
+            setIsAbsenceFormOpen(false);
+            resetAbsenceForm();
         } catch (error) {
             setAbsenceSubmitMessage(
                 error instanceof Error
@@ -229,6 +405,49 @@ export default function ScheduleCard({
             );
         } finally {
             setIsAbsenceSubmitting(false);
+        }
+    };
+
+    const deleteResponse = async () => {
+        if (!ownResponse || isDeletingResponse) return;
+
+        setIsDeletingResponse(true);
+        setAttendanceSubmitMessage(null);
+        setAbsenceSubmitMessage(null);
+
+        try {
+            const response = await fetch("/api/absence", {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ eventId }),
+            });
+            const result = await response.json();
+
+            if (!response.ok || result?.success !== true) {
+                throw new Error(result?.error || "出欠連絡の削除に失敗しました");
+            }
+
+            removeLocalResponse();
+            setIsDeleteConfirmOpen(false);
+            if (isAttendanceEvent) {
+                setAttendanceSubmitMessage("出席申告を削除しました");
+            } else {
+                setAbsenceSubmitMessage("欠席連絡を削除しました");
+            }
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "出欠連絡の削除に失敗しました";
+            if (isAttendanceEvent) {
+                setAttendanceSubmitMessage(message);
+            } else {
+                setAbsenceSubmitMessage(message);
+            }
+        } finally {
+            setIsDeletingResponse(false);
         }
     };
 
@@ -338,7 +557,7 @@ export default function ScheduleCard({
                 <dialog className="modal modal-open">
                     <div
                         className={`modal-box bg-base-100 ${
-                            isAttendanceConfirmOpen
+                            isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
                         }`}
@@ -355,6 +574,8 @@ export default function ScheduleCard({
                         >
                             {isAttendanceConfirmOpen
                                 ? "出席申告"
+                                : isDeleteConfirmOpen
+                                  ? "出欠連絡の削除"
                                 : isAbsenceFormOpen
                                   ? "欠席連絡"
                                   : title}
@@ -412,6 +633,38 @@ export default function ScheduleCard({
                                             <span className="loading loading-spinner loading-sm" />
                                         )}
                                         送信
+                                    </button>
+                                </div>
+                            </>
+                        ) : isDeleteConfirmOpen ? (
+                            <>
+                                <div className="space-y-3">
+                                    <p className="text-base font-medium">
+                                        自分の出欠連絡を削除しますか？
+                                    </p>
+                                    <p className="text-sm text-base-content/70">
+                                        この操作は取り消せません。
+                                    </p>
+                                </div>
+                                <div className="modal-action">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={closeDeleteConfirm}
+                                        disabled={isDeletingResponse}
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-error"
+                                        onClick={() => void deleteResponse()}
+                                        disabled={isDeletingResponse}
+                                    >
+                                        {isDeletingResponse && (
+                                            <span className="loading loading-spinner loading-sm" />
+                                        )}
+                                        削除
                                     </button>
                                 </div>
                             </>
@@ -765,38 +1018,96 @@ export default function ScheduleCard({
                                     >
                                         {responseSectionTitle}
                                     </h4>
-                                    {absences.length > 0 ? (
+                                    {displayedAbsences.length > 0 ? (
                                         <div className="space-y-2">
-                                            {absences.map((absence, index) => {
-                                                const values =
-                                                    Object.values(absence);
-                                                const name = String(
-                                                    values[3] || ""
-                                                );
-                                                const type = String(
-                                                    values[4] || ""
-                                                );
+                                            {displayedAbsences.map(
+                                                (absence, index) => {
+                                                    const values =
+                                                        getAbsenceValues(absence);
+                                                    const isOwnResponse =
+                                                        normalizedStudentNumber &&
+                                                        values.studentNumber
+                                                            .trim()
+                                                            .toLowerCase() ===
+                                                            normalizedStudentNumber;
 
-                                                return (
-                                                    <div
-                                                        key={index}
-                                                        className="p-3 bg-base-200/50 rounded-lg border border-base-300"
-                                                    >
+                                                    return (
                                                         <div
-                                                            className="font-medium text-base-content"
-                                                            style={{
-                                                                fontSize:
-                                                                    "clamp(0.875rem, 2vw, 1rem)",
-                                                            }}
+                                                            key={`${values.eventId}-${values.studentNumber}-${index}`}
+                                                            className="p-3 bg-base-200/50 rounded-lg border border-base-300"
                                                         >
-                                                            {name}{" "}
-                                                            <span className="badge badge-primary badge-sm ml-2">
-                                                                {type}
-                                                            </span>
+                                                            <div className="flex items-start justify-between gap-3">
+                                                                <div>
+                                                                    <div
+                                                                        className="font-medium text-base-content"
+                                                                        style={{
+                                                                            fontSize:
+                                                                                "clamp(0.875rem, 2vw, 1rem)",
+                                                                        }}
+                                                                    >
+                                                                        {
+                                                                            values.name
+                                                                        }{" "}
+                                                                        <span className="badge badge-primary badge-sm ml-2">
+                                                                            {
+                                                                                values.type
+                                                                            }
+                                                                        </span>
+                                                                        {isOwnResponse && (
+                                                                            <span className="badge badge-outline badge-sm ml-2">
+                                                                                自分
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {values.reasonDetail && (
+                                                                        <p className="mt-1 text-sm text-base-content/70 whitespace-pre-wrap break-words">
+                                                                            {
+                                                                                values.reasonDetail
+                                                                            }
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                {isOwnResponse && (
+                                                                    <div className="flex shrink-0 gap-2">
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-ghost btn-xs"
+                                                                            onClick={
+                                                                                isAttendanceEvent
+                                                                                    ? openAttendanceForm
+                                                                                    : openAbsenceForm
+                                                                            }
+                                                                            disabled={
+                                                                                isAttendanceSubmitting ||
+                                                                                isAbsenceSubmitting ||
+                                                                                isDeletingResponse
+                                                                            }
+                                                                        >
+                                                                            編集
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn btn-ghost btn-xs text-error"
+                                                                            onClick={() =>
+                                                                                setIsDeleteConfirmOpen(
+                                                                                    true
+                                                                                )
+                                                                            }
+                                                                            disabled={
+                                                                                isAttendanceSubmitting ||
+                                                                                isAbsenceSubmitting ||
+                                                                                isDeletingResponse
+                                                                            }
+                                                                        >
+                                                                            削除
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })}
+                                                    );
+                                                }
+                                            )}
                                         </div>
                                     ) : (
                                         <p
@@ -824,27 +1135,18 @@ export default function ScheduleCard({
                                         <button
                                             type="button"
                                             className="btn btn-primary"
-                                            onClick={() => {
-                                                setAttendanceSubmitMessage(
-                                                    null
-                                                );
-                                                setIsAttendanceConfirmOpen(
-                                                    true
-                                                );
-                                            }}
+                                            onClick={openAttendanceForm}
+                                            disabled={!!ownResponse}
                                         >
-                                            {actionLabel}
+                                            {ownResponse ? "申告済み" : actionLabel}
                                         </button>
                                     ) : (
                                         <button
                                             type="button"
                                             className="btn btn-primary"
-                                            onClick={() => {
-                                                setAbsenceSubmitMessage(null);
-                                                setIsAbsenceFormOpen(true);
-                                            }}
+                                            onClick={openAbsenceForm}
                                         >
-                                            {actionLabel}
+                                            {ownResponse ? "連絡を編集" : actionLabel}
                                         </button>
                                     )}
                                 </div>
