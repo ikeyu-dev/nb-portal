@@ -39,10 +39,8 @@ export function validateOrigin(request: NextRequest): NextResponse | null {
     // Originヘッダーがある場合、ホストと一致するか確認
     try {
         const originUrl = new URL(origin);
-        const expectedHost = host?.split(":")[0];
-        const originHost = originUrl.host.split(":")[0];
 
-        if (originHost !== expectedHost) {
+        if (originUrl.host !== host) {
             return NextResponse.json(
                 { error: "CSRF validation failed" },
                 { status: 403 }
@@ -79,4 +77,8 @@ export function validateContentType(request: NextRequest): NextResponse | null {
     }
 
     return null;
+}
+
+export function validateWriteRequest(request: NextRequest): NextResponse | null {
+    return validateOrigin(request) || validateContentType(request);
 }

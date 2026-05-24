@@ -14,6 +14,8 @@ export default function MermaidChart({ chart }: { chart: string }) {
         mermaid.initialize({
             startOnLoad: false,
             theme: "neutral",
+            securityLevel: "strict",
+            maxTextSize: 50000,
             flowchart: {
                 curve: "linear",
                 padding: 20,

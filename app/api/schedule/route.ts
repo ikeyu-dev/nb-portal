@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
 import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const GAS_API_URL = getGasApiUrl();
 
 // メールアドレスから学籍番号（最初の7文字）を抽出
 const extractStudentId = (email: string | null | undefined): string => {
@@ -14,6 +16,9 @@ const extractStudentId = (email: string | null | undefined): string => {
 
 // スケジュール新規作成
 export async function POST(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     // 認証チェック
     const session = await auth();
     if (!session?.user) {
@@ -73,6 +78,9 @@ export async function POST(request: NextRequest) {
 
 // スケジュール削除
 export async function DELETE(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     // 認証チェック
     const session = await auth();
     if (!session?.user) {
@@ -126,6 +134,9 @@ export async function DELETE(request: NextRequest) {
 
 // スケジュール更新
 export async function PUT(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     // 認証チェック
     const session = await auth();
     if (!session?.user) {

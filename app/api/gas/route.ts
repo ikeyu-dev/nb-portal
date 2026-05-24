@@ -6,7 +6,9 @@ import {
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+
+const GAS_API_URL = getGasApiUrl();
 const NO_STORE_HEADERS = {
     "Cache-Control": "no-store, max-age=0",
 };

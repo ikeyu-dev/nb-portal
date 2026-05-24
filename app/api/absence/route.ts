@@ -12,7 +12,9 @@ import {
 import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
 import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+
+const GAS_API_URL = getGasApiUrl();
 
 const buildSubmitBody = (
     body: Record<string, unknown>,

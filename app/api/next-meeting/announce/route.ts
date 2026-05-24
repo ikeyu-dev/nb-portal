@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth, resolveMemberProfile } from "@/src/auth";
 import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 import type { NextMeetingSettings } from "@/src/shared/types/api";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { validateOrigin } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const GAS_API_URL = getGasApiUrl();
 
 const normalizeAnnounceError = (error?: string) => {
     if (!error) return "次回部会連絡の送信に失敗しました";
@@ -86,7 +88,10 @@ const fetchNextMeeting = async () => {
     return (data?.data || null) as NextMeetingSettings | null;
 };
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+    const originError = validateOrigin(request);
+    if (originError) return originError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(

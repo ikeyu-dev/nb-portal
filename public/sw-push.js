@@ -1,5 +1,5 @@
 // プッシュ通知用のService Worker拡張
-// next-pwaが生成するsw.jsにインポートされる
+// 手動登録のsw.jsと同じ通知処理を提供する
 
 self.addEventListener("push", function (event) {
     if (!event.data) {

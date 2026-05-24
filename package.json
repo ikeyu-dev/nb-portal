@@ -10,15 +10,14 @@
         "lint": "eslint"
     },
     "dependencies": {
-        "@ducanh2912/next-pwa": "^10.2.9",
         "@fortawesome/fontawesome-svg-core": "^7.2.0",
         "@fortawesome/free-brands-svg-icons": "^7.2.0",
         "@fortawesome/free-regular-svg-icons": "^7.2.0",
         "@fortawesome/free-solid-svg-icons": "^7.2.0",
         "@fortawesome/react-fontawesome": "^3.3.1",
         "@types/google-apps-script": "^2.0.8",
-        "mermaid": "^11.12.2",
-        "next": "16.1.1",
+        "mermaid": "^11.15.0",
+        "next": "^16.2.6",
         "next-auth": "^5.0.0-beta.30",
         "react": "19.2.0",
         "react-dom": "19.2.0",
@@ -34,7 +33,7 @@
         "@types/web-push": "^3.6.4",
         "daisyui": "^5.5.8",
         "eslint": "^9",
-        "eslint-config-next": "16.1.1",
+        "eslint-config-next": "^16.2.6",
         "tailwindcss": "^4",
         "typescript": "^5"
     }

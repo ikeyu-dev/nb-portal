@@ -4,6 +4,7 @@ import {
     normalizeMemberPermission,
     type MemberPermission,
 } from "@/src/shared/types/api";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
 
 const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
 const MEMBER_PROFILE_REFRESH_MS = 60 * 1000;
@@ -66,7 +67,7 @@ export const resolveMemberProfile = async (
     permission: MemberPermission | null;
 }> => {
     try {
-        const apiUrl = process.env.NEXT_PUBLIC_GAS_API_URL;
+        const apiUrl = getGasApiUrl();
         if (!apiUrl) {
             return {
                 isMember: false,
