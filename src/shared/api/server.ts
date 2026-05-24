@@ -12,7 +12,9 @@ import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
 import { unstable_cache } from "next/cache";
 import { CACHE_SECONDS, CACHE_TAGS } from "../lib/cache-policy";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+
+const GAS_API_URL = getGasApiUrl();
 
 /**
  * 認証済みセッションを要求する

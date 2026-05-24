@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/auth";
 import { sendDiscordWebhook } from "@/src/shared/lib/discord";
+import { validateOrigin } from "@/src/shared/lib/csrf";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+    const originError = validateOrigin(request);
+    if (originError) return originError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(

@@ -2,8 +2,10 @@ import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/auth";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const GAS_API_URL = getGasApiUrl();
 
 const accessLogSchema = z.object({
     logs: z
@@ -40,6 +42,9 @@ const hashIpAddress = (ipAddress: string) => {
 };
 
 export async function POST(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(

@@ -6,8 +6,10 @@ import {
     formatValidationErrors,
     nextMeetingUpdateSchema,
 } from "@/src/shared/lib/validation";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const GAS_API_URL = getGasApiUrl();
 
 const extractStudentId = (email: string | null | undefined): string => {
     if (!email) return "";
@@ -16,6 +18,9 @@ const extractStudentId = (email: string | null | undefined): string => {
 };
 
 export async function POST(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(

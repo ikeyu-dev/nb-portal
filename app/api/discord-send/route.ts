@@ -16,6 +16,13 @@ const isValidEmbed = (value: unknown): value is DiscordEmbed =>
     !!value && typeof value === "object" && !Array.isArray(value);
 
 export async function POST(request: NextRequest) {
+    if (!PUSH_API_SECRET) {
+        return NextResponse.json(
+            { success: false, error: "Push API secret is not configured" },
+            { status: 500 }
+        );
+    }
+
     const authHeader = request.headers.get("authorization");
     const providedSecret = authHeader?.replace("Bearer ", "") || "";
 

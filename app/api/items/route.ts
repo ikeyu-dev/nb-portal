@@ -8,13 +8,18 @@ import {
     itemDeleteSchema,
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const GAS_API_URL = getGasApiUrl();
 
 /**
  * 機材登録API
  */
 export async function POST(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(
@@ -76,6 +81,9 @@ export async function POST(request: NextRequest) {
  * 機材更新API
  */
 export async function PUT(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(
@@ -137,6 +145,9 @@ export async function PUT(request: NextRequest) {
  * 機材削除API
  */
 export async function DELETE(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     const session = await auth();
     if (!session?.user) {
         return NextResponse.json(

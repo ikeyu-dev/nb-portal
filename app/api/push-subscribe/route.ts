@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/auth";
+import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = process.env.NEXT_PUBLIC_GAS_API_URL;
+const GAS_API_URL = getGasApiUrl();
+
+const extractStudentId = (email: string | null | undefined): string => {
+    if (!email) return "";
+    return email.split("@")[0].substring(0, 7).toLowerCase();
+};
 
 export async function POST(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     try {
         const session = await auth();
         if (!session?.user?.email) {
@@ -14,7 +24,9 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { subscription, studentId } = body;
+        const { subscription } = body;
+        const studentId =
+            session.studentId || extractStudentId(session.user.email);
 
         if (!subscription || !studentId) {
             return NextResponse.json(
@@ -55,6 +67,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+    const writeRequestError = validateWriteRequest(request);
+    if (writeRequestError) return writeRequestError;
+
     try {
         const session = await auth();
         if (!session?.user?.email) {
