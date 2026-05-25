@@ -20,6 +20,7 @@ import { ScheduleCard } from "@/features/schedule-card";
 import { DateDisplay } from "@/features/date-display";
 import { ProfileImageSaver } from "@/features/profile-image";
 import { NextMeetingCard } from "@/src/features/next-meeting";
+import { MobilePWAInstallBanner } from "@/src/features/pwa-install";
 import { auth } from "@/src/auth";
 
 const getScheduleAttendanceMode = (
@@ -129,6 +130,8 @@ export default async function HomePage() {
                         <span>{error}</span>
                     </div>
                 )}
+
+                <MobilePWAInstallBanner />
 
                 <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
                     <div className="card bg-base-100 shadow-xl border border-base-300 order-3 lg:order-3 lg:col-span-6">
