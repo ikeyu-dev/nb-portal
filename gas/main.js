@@ -262,6 +262,49 @@ const findNextMeetingSchedule = (sheet) => {
     return candidates[0] || null;
 };
 
+const findNextMeetingScheduleAfterToday = (sheet) => {
+    const lastRow = sheet.getLastRow();
+    if (lastRow < 2) return null;
+
+    const rows = sheet.getRange(2, 1, lastRow - 1, 17).getValues();
+    const today = getTodayParts();
+    const todayTimestamp = new Date(
+        today.year,
+        today.month - 1,
+        today.date
+    ).getTime();
+
+    const candidates = [];
+    rows.forEach((row, index) => {
+        const title = String(row[6] || "").trim();
+        if (!NEXT_MEETING_TITLES.includes(title)) return;
+
+        const year = Number(row[1]);
+        const month = Number(row[2]);
+        const date = Number(row[3]);
+        if (!year || !month || !date) return;
+
+        const timestamp = new Date(year, month - 1, date).getTime();
+        if (timestamp <= todayTimestamp) return;
+
+        candidates.push({
+            rowNumber: index + 2,
+            row,
+            timestamp,
+            timeHH: Number(row[4]) || 0,
+            timeMM: Number(row[5]) || 0,
+        });
+    });
+
+    candidates.sort((a, b) => {
+        if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+        if (a.timeHH !== b.timeHH) return a.timeHH - b.timeHH;
+        return a.timeMM - b.timeMM;
+    });
+
+    return candidates[0] || null;
+};
+
 const getNextMeetingSettings = () => {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = spreadsheet.getSheetByName("schedules");
@@ -838,10 +881,13 @@ const sendNextMeetingUnsetReminder = () => {
 };
 
 function sendNextMeetingMorningReminder() {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName("schedules");
+    if (!sheet) return;
+
     const settings = getNextMeetingSettings();
 
     if (!settings) {
-        sendNextMeetingUnsetReminder();
         return;
     }
 
@@ -860,6 +906,10 @@ function sendNextMeetingMorningReminder() {
         content: getNextMeetingMentionText(),
         target: "meeting",
     });
+
+    if (!findNextMeetingScheduleAfterToday(sheet)) {
+        sendNextMeetingUnsetReminder();
+    }
 }
 
 function sendNextMeetingReminderNow() {
@@ -904,14 +954,18 @@ function sendNextMeetingEveningReminder() {
     });
 }
 
-function setupNextMeetingReminderTriggers() {
-    const handlerNames = [
-        "sendNextMeetingMorningReminder",
-        "sendNextMeetingEveningReminder",
-    ];
+const NEXT_MEETING_REMINDER_HANDLER_NAMES = [
+    "sendNextMeetingMorningReminder",
+    "sendNextMeetingEveningReminder",
+];
 
+function setupNextMeetingReminderTriggers() {
     ScriptApp.getProjectTriggers().forEach((trigger) => {
-        if (handlerNames.includes(trigger.getHandlerFunction())) {
+        if (
+            NEXT_MEETING_REMINDER_HANDLER_NAMES.includes(
+                trigger.getHandlerFunction()
+            )
+        ) {
             ScriptApp.deleteTrigger(trigger);
         }
     });
