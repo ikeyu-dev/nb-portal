@@ -19,8 +19,8 @@ const dockItems = [
     { href: "/calendar", label: "Calendar", icon: faCalendarDays },
     { href: "/items", label: "Items", icon: faMicrophone },
     { href: "/members", label: "Members", icon: faUsers },
-    { href: "/notifications", label: "News", icon: faBell },
     { href: "/tasks", label: "Tasks", icon: faListCheck },
+    { href: "/notifications", label: "News", icon: faBell },
     { href: "/memo", label: "Memo", icon: faNoteSticky },
     { href: "/more", label: "More", icon: faEllipsis },
 ];
