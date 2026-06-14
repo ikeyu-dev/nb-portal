@@ -7,8 +7,8 @@ import {
     faBell,
     faCalendarDays,
     faEllipsis,
-    faFileLines,
     faHouse,
+    faListCheck,
     faMicrophone,
     faNoteSticky,
     faUsers,
@@ -20,7 +20,7 @@ const dockItems = [
     { href: "/items", label: "Items", icon: faMicrophone },
     { href: "/members", label: "Members", icon: faUsers },
     { href: "/notifications", label: "News", icon: faBell },
-    { href: "/documents", label: "Docs", icon: faFileLines },
+    { href: "/tasks", label: "Tasks", icon: faListCheck },
     { href: "/memo", label: "Memo", icon: faNoteSticky },
     { href: "/more", label: "More", icon: faEllipsis },
 ];
