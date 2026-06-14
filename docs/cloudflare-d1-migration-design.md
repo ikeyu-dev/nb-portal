@@ -2,12 +2,13 @@
 
 ## Status
 
-This is a design note for moving selected backend storage from Google Apps Script
-and Sheets to Cloudflare Workers + D1.
+This document records the Cloudflare Workers + D1 backend design now used by
+the portal.
 
 `items` is intentionally excluded from the first migration because the item
-registration model is expected to change. Keep the current GAS-backed item
-workflow until the new item schema is decided.
+registration model is expected to change. The current Worker API returns an
+empty item list for reads and `501` for item writes until the new item schema is
+decided.
 
 ## Goals
 
@@ -15,11 +16,10 @@ workflow until the new item schema is decided.
 - Keep the existing Next.js UI and route handlers mostly unchanged.
 - Preserve the current API response shape during migration.
 - Avoid a full hosting migration from Vercel/Next.js to Cloudflare at this step.
-- Keep rollback simple by switching individual resources back to GAS.
 
 ## Non-Goals
 
-- Do not migrate `items` in the first D1 phase.
+- Do not migrate `items` until the new item registration model is decided.
 - Do not rewrite the frontend data model as part of the database migration.
 - Do not move the whole Next.js app to Cloudflare Pages/Workers yet.
 - Do not introduce Prisma until the D1 schema and Worker API are stable.
@@ -51,11 +51,11 @@ Cloudflare D1
   next_meeting_settings
   access_logs
   push_subscriptions
+  cron_executions
 ```
 
-The Worker should expose an API compatible with the current GAS paths. The
-Next.js app can then replace `GAS_API_URL` with a backend abstraction such as
-`DATA_BACKEND=gas|d1` and `D1_BACKEND_URL`.
+The Worker exposes the same logical `path` API that the Next.js app already
+used, but the app now calls it through `/api/backend` and `D1_BACKEND_URL`.
 
 ## Why Worker + D1 API
 
@@ -64,8 +64,8 @@ currently a Next.js app, likely deployed outside Cloudflare Workers, the safest
 approach is to put a small Worker API in front of D1 and keep Next.js as the
 authenticated frontend/backend-for-frontend layer.
 
-This avoids coupling the whole app deployment to Cloudflare while still moving
-the database away from GAS.
+This avoids coupling the whole app deployment to Cloudflare while keeping D1
+access inside Cloudflare Worker bindings.
 
 ## Prisma Decision
 
@@ -108,15 +108,15 @@ References:
 - `absences`
 - `next_meeting_settings`
 - `access_logs`, if logs should become queryable
-- `push_subscriptions`, if push delivery state should move out of GAS
+- `push_subscriptions`
+- `cron_executions`
 
 ### Deferred
 
 - `items`
 
-Keep `items` on GAS for now. The future design should be written after the new
-registration fields, item identifiers, categories, ownership model, and status
-workflow are known.
+The future design should be written after the new registration fields, item
+identifiers, categories, ownership model, and status workflow are known.
 
 ## Proposed Schema
 
@@ -204,7 +204,7 @@ matching its `WHERE` clause.
 
 ## API Compatibility
 
-The Worker should accept the same logical paths currently used by GAS:
+The Worker accepts these logical paths:
 
 - `GET /?path=members`
 - `GET /?path=schedules`
@@ -255,89 +255,51 @@ Recommended Worker protection:
 
 Permission logic can move into the Worker later if other clients need to call it.
 
-## Cloudflare Project Setup
+## Cloudflare Resources
 
-Create the Cloudflare resources before application wiring, but after this design
-is accepted.
-
-Recommended order:
-
-1. Create a Cloudflare Worker project.
-2. Create separate D1 databases for development and production.
-3. Add D1 bindings in `wrangler.toml`.
-4. Add SQL migrations under the Worker project.
-5. Implement `/health` and one read-only endpoint first.
-6. Import a copy of GAS data into the development D1 database.
-7. Point local Next.js at the Worker development URL.
-8. Migrate one domain at a time.
-
-Example resource names:
+Current resource names:
 
 ```txt
-Worker: nb-portal-api
+Worker dev: nb-portal-api
+Worker production: nb-portal-api-production
 D1 dev: nb_portal_dev
-D1 prod: nb_portal_prod
+D1 production: nb_portal_prod
 Binding: DB
 ```
 
-## Migration Plan
+Initial setup order:
 
-### Phase 1: Foundation
+1. Create a Cloudflare Worker project.
+2. Create separate D1 databases for development and production.
+3. Add D1 bindings in `wrangler.jsonc`.
+4. Add SQL migrations under the Worker project.
+5. Implement `/health` and one read-only endpoint first.
+6. Import a copy of exported spreadsheet data into the development D1 database.
+7. Point local Next.js at the Worker development URL.
+8. Migrate one domain at a time.
 
-- Add Worker project.
-- Add D1 migrations.
-- Add API secret.
-- Add health check.
-- Add a small DB access layer using prepared SQL statements.
+## Completed Migration
 
-### Phase 2: Read-Only Mirror
+- `members`, `schedules`, `absences`, `next_meeting_settings`, notifications,
+  access logs, and push subscriptions are served by the Worker/D1 backend.
+- Student numbers are stored as `TEXT` to avoid spreadsheet exponent parsing
+  problems such as `125E000`.
+- The Next.js app uses `D1_BACKEND_URL` and calls `/api/backend`.
+- Scheduled absence and next meeting notifications run on Cloudflare Cron
+  Triggers. Completed cron executions are recorded in `cron_executions` to avoid
+  duplicate Discord notifications.
+- `items` stays intentionally disabled in the D1 API until the new item model is
+  designed.
 
-- Export GAS data.
-- Import to D1 development database.
-- Implement read endpoints.
-- Compare GAS and D1 responses for:
-  - `members`
-  - `schedules`
-  - `absences`
-  - `next-meeting`
-  - `dashboard-data`
+## Production Cron
 
-### Phase 3: Controlled Writes
+Cloudflare Cron uses UTC:
 
-- Move `members` writes first.
-- Move `next-meeting` writes next.
-- Move `schedules` writes after calendar and dashboard checks.
-- Move `absences` last because it affects notifications and event attendance.
+- `0 22 * * *`: 07:00 JST daily absence summary and morning next meeting check.
+- `0 9 * * *`: 18:00 JST Discord next meeting reminder.
 
-### Phase 4: Cutover
-
-- Switch `DATA_BACKEND=d1` in production.
-- Monitor D1 row reads, row writes, errors, and Worker logs.
-- Keep GAS data and rollback path available during the first production window.
-
-## Rollback
-
-The Next.js data layer should support switching each resource back to GAS while
-the Worker stabilizes.
-
-Recommended environment shape:
-
-```txt
-DATA_BACKEND=gas | d1
-D1_BACKEND_URL=https://...
-D1_BACKEND_API_KEY=...
-GAS_API_URL=https://...
-```
-
-If possible, make the switch per resource:
-
-```txt
-MEMBERS_BACKEND=d1
-SCHEDULES_BACKEND=gas
-ABSENCES_BACKEND=gas
-NEXT_MEETING_BACKEND=d1
-ITEMS_BACKEND=gas
-```
+The Worker posts notification embeds to the Next.js `/api/discord-send` endpoint
+with `PUSH_API_SECRET`.
 
 ## Open Questions
 

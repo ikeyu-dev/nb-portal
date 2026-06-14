@@ -52,7 +52,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
             }
 
             try {
-                const res = await fetch("/api/gas?path=notifications&limit=50", {
+                const res = await fetch("/api/backend?path=notifications&limit=50", {
                     cache: "no-store",
                 });
                 const data = (await res.json()) as ApiResponse<Notification[]>;

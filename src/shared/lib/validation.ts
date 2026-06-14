@@ -66,7 +66,7 @@ export type AbsenceDeleteData = z.infer<typeof absenceDeleteSchema>;
 /**
  * Backend APIパスのバリデーションスキーマ
  */
-export const gasApiPathSchema = z.enum([
+export const backendApiPathSchema = z.enum([
     "schedules",
     "items",
     "members",
@@ -78,7 +78,7 @@ export const gasApiPathSchema = z.enum([
     "notifications",
 ]);
 
-export type GasApiPath = z.infer<typeof gasApiPathSchema>;
+export type BackendApiPath = z.infer<typeof backendApiPathSchema>;
 
 /**
  * クエリパラメータのバリデーション（一般的な制約）

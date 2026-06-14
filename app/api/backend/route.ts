@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/auth";
 import {
-    gasApiPathSchema,
+    backendApiPathSchema,
     queryParamSchema,
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
@@ -18,7 +18,6 @@ const NO_STORE_HEADERS = {
  * クライアント側からの直接呼び出しを防ぎ、セッション認証と入力バリデーションを行う
  */
 export async function GET(request: NextRequest) {
-    // セッション認証
     const session = await auth();
     if (!session) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +31,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // クエリパラメータを取得
         const { searchParams } = new URL(request.url);
         const path = searchParams.get("path");
 
@@ -43,8 +41,7 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // パスのバリデーション
-        const pathValidation = gasApiPathSchema.safeParse(path);
+        const pathValidation = backendApiPathSchema.safeParse(path);
         if (!pathValidation.success) {
             return NextResponse.json(
                 { error: "Invalid path" },
@@ -52,7 +49,6 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // クエリパラメータのバリデーション
         const queryParams = {
             eventId: searchParams.get("eventId") || undefined,
             date: searchParams.get("date") || undefined,
@@ -69,11 +65,9 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Backend APIにリクエストを転送
         const backendUrl = new URL(BACKEND_API_URL);
         backendUrl.searchParams.set("path", path);
 
-        // 追加のクエリパラメータを転送
         searchParams.forEach((value, key) => {
             if (key !== "path") {
                 backendUrl.searchParams.set(key, value);

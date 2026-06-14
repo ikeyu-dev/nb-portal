@@ -7,6 +7,27 @@ type ApiResponse<T> = {
 	timestamp?: string;
 };
 
+type RuntimeEnv = Env & {
+	PUSH_API_SECRET?: string;
+	APP_DISCORD_SEND_URL?: string;
+	NEXT_MEETING_ROLE_MENTION?: string;
+	NEXT_MEETING_UNSET_ROLE_MENTION?: string;
+};
+
+type DiscordEmbed = {
+	title?: string;
+	description?: string;
+	color?: number;
+	fields?: Array<{
+		name: string;
+		value: string;
+		inline?: boolean;
+	}>;
+	footer?: {
+		text: string;
+	};
+};
+
 type MemberRow = {
 	student_number: string;
 	name: string;
@@ -52,6 +73,19 @@ type NextMeetingRow = {
 	time: string;
 	mode: string;
 	updated_by: string | null;
+	updated_at: string | null;
+};
+
+type DailyAbsenceSummaryRow = {
+	name: string;
+	type: string;
+	time_leaving_early: string | null;
+	time_step_out: string | null;
+	time_return: string | null;
+};
+
+type CronExecutionRow = {
+	status: "running" | "completed" | "failed";
 	updated_at: string | null;
 };
 
@@ -794,6 +828,376 @@ const saveAccessLogs = async (request: Request, env: Env) => {
 	return ok(null, { count: statements.length });
 };
 
+const getJstDateParts = (date = new Date()) => {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Tokyo",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const value = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((part) => part.type === type)?.value || "";
+
+	return {
+		date: `${value("year")}-${value("month")}-${value("day")}`,
+		dateLabel: `${value("year")}/${value("month")}/${value("day")}`,
+		hour: value("hour"),
+		minute: value("minute"),
+	};
+};
+
+const formatDateTime = (value: string | null) => {
+	if (!value) return "";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value;
+
+	return date.toLocaleString("ja-JP", {
+		timeZone: "Asia/Tokyo",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+};
+
+const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
+	const date = new Date(`${dateString}T00:00:00`);
+	const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+	return `${dateString.replace(/-/g, "/")}(${weekdays[date.getDay()]}) ${timeString}`;
+};
+
+const formatAbsenceTypeWithTime = (row: DailyAbsenceSummaryRow) => {
+	if (row.type === "早退" && row.time_leaving_early) {
+		return `${row.type}（${row.time_leaving_early}）`;
+	}
+
+	if (row.type === "中抜け" && (row.time_step_out || row.time_return)) {
+		return `${row.type}（${row.time_step_out || ""} ~ ${
+			row.time_return || ""
+		}）`;
+	}
+
+	return row.type;
+};
+
+const sendDiscordViaApp = async (
+	env: RuntimeEnv,
+	{
+		target = "attendance",
+		embeds,
+		content,
+	}: {
+		target?: "attendance" | "meeting";
+		embeds: DiscordEmbed[];
+		content?: string;
+	}
+) => {
+	const url = env.APP_DISCORD_SEND_URL || "https://nb-portal.vercel.app/api/discord-send";
+	if (!env.PUSH_API_SECRET) {
+		throw new Error("PUSH_API_SECRET is not configured");
+	}
+
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${env.PUSH_API_SECRET}`,
+		},
+		body: JSON.stringify({
+			target,
+			embeds,
+			content,
+		}),
+	});
+
+	if (!response.ok) {
+		const body = await response.text();
+		throw new Error(`Discord send failed: ${response.status} ${body.slice(0, 200)}`);
+	}
+};
+
+const buildNextMeetingReminderEmbed = (
+	settings: NextMeetingRow,
+	{
+		title = "次回部会のお知らせ",
+		description = "次回の部会予定です。",
+	}: {
+		title?: string;
+		description?: string;
+	} = {}
+): DiscordEmbed => {
+	const updatedAtLabel = settings.updated_at
+		? formatDateTime(settings.updated_at)
+		: null;
+	const footerText = [
+		updatedAtLabel ? `更新 ${updatedAtLabel}` : null,
+		settings.updated_by || null,
+	]
+		.filter(Boolean)
+		.join(" / ");
+
+	return {
+		title,
+		description,
+		color: settings.mode === "DISCORD" ? 0x5865f2 : 0x2ecc71,
+		fields: [
+			{
+				name: "日時",
+				value: formatNextMeetingDateLabel(settings.date, settings.time),
+				inline: false,
+			},
+		],
+		...(footerText ? { footer: { text: footerText } } : {}),
+	};
+};
+
+const getNextMeetingRow = (env: Env) =>
+	env.DB.prepare(
+		`SELECT event_id, date, time, mode, updated_by, updated_at
+		FROM next_meeting_settings WHERE id = 1`
+	).first<NextMeetingRow>();
+
+const hasFutureSchedule = async (env: Env, today: string) => {
+	const row = await env.DB.prepare(
+		"SELECT id FROM schedules WHERE date > ? ORDER BY date LIMIT 1"
+	)
+		.bind(today)
+		.first<{ id: string }>();
+	return Boolean(row);
+};
+
+const sendNextMeetingUnsetReminder = async (env: RuntimeEnv) => {
+	await sendDiscordViaApp(env, {
+		target: "meeting",
+		content: env.NEXT_MEETING_UNSET_ROLE_MENTION || "@部長",
+		embeds: [
+			{
+				title: "次回部会が未設定です",
+				description:
+					"本日7:00時点で次回部会が設定されていません。ポータルから次回部会を設定してください。",
+				color: 0xf1c40f,
+			},
+		],
+	});
+};
+
+const sendNextMeetingMorningReminder = async (env: RuntimeEnv) => {
+	const today = getJstDateParts().date;
+	const settings = await getNextMeetingRow(env);
+	if (!settings || settings.date !== today) return;
+
+	await sendDiscordViaApp(env, {
+		target: "meeting",
+		content: env.NEXT_MEETING_ROLE_MENTION || "@部員",
+		embeds: [
+			buildNextMeetingReminderEmbed(settings, {
+				title: "本日の部会リマインド",
+				description:
+					settings.mode === "DISCORD"
+						? "本日の部会は Discord 開催です。"
+						: "本日の部会は対面開催です。",
+			}),
+		],
+	});
+
+	if (!(await hasFutureSchedule(env, today))) {
+		await sendNextMeetingUnsetReminder(env);
+	}
+};
+
+const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
+	const today = getJstDateParts().date;
+	const settings = await getNextMeetingRow(env);
+	if (!settings || settings.date !== today || settings.mode !== "DISCORD") {
+		return;
+	}
+
+	await sendDiscordViaApp(env, {
+		target: "meeting",
+		content: env.NEXT_MEETING_ROLE_MENTION || "@部員",
+		embeds: [
+			buildNextMeetingReminderEmbed(settings, {
+				title: "本日18:00 Discord部会リマインド",
+				description: "このあとの部会は Discord 開催です。",
+			}),
+		],
+	});
+};
+
+const sendTodayAbsences = async (env: RuntimeEnv) => {
+	const { date, dateLabel } = getJstDateParts();
+	const todayScheduleCount = await env.DB.prepare(
+		"SELECT COUNT(*) AS count FROM schedules WHERE date = ?"
+	)
+		.bind(date)
+		.first<{ count: number }>();
+	const rows = await env.DB.prepare(
+		`SELECT
+			a.name,
+			a.type,
+			a.time_leaving_early,
+			a.time_step_out,
+			a.time_return
+		FROM absences a
+		INNER JOIN schedules s ON s.id = a.event_id
+		WHERE s.date = ?
+			AND a.type IN ('欠席', '遅刻', '早退', '中抜け')
+		ORDER BY a.submitted_at`
+	)
+		.bind(date)
+		.all<DailyAbsenceSummaryRow>();
+
+	const fields =
+		rows.results && rows.results.length > 0
+			? rows.results.map((row) => ({
+					name: row.name || "不明",
+					value: formatAbsenceTypeWithTime(row),
+					inline: true,
+				}))
+			: [
+					{
+						name: "情報",
+						value:
+							(todayScheduleCount?.count || 0) === 0
+								? "本日の予定はありません"
+								: "本日の欠席者はいません",
+						inline: false,
+					},
+				];
+
+	await sendDiscordViaApp(env, {
+		target: "attendance",
+		embeds: [
+			{
+				title: `${dateLabel} 欠席者一覧`,
+				color: 0x5865f2,
+				fields,
+			},
+		],
+	});
+};
+
+const getCronExecutionId = (controller: ScheduledController) =>
+	`${controller.cron}:${controller.scheduledTime}`;
+
+const isStaleCronExecution = (updatedAt: string | null) => {
+	if (!updatedAt) return false;
+	const updatedAtTime = new Date(updatedAt).getTime();
+	if (Number.isNaN(updatedAtTime)) return false;
+	return Date.now() - updatedAtTime > 30 * 60 * 1000;
+};
+
+const claimCronExecution = async (
+	controller: ScheduledController,
+	env: RuntimeEnv
+) => {
+	const id = getCronExecutionId(controller);
+	const existing = await env.DB.prepare(
+		"SELECT status, updated_at FROM cron_executions WHERE id = ?"
+	)
+		.bind(id)
+		.first<CronExecutionRow>();
+
+	if (existing?.status === "completed") return false;
+	if (existing?.status === "running" && !isStaleCronExecution(existing.updated_at)) {
+		return false;
+	}
+
+	const scheduledTime = new Date(controller.scheduledTime).toISOString();
+	if (existing) {
+		await env.DB.prepare(
+			`UPDATE cron_executions
+			SET status = 'running',
+				started_at = CURRENT_TIMESTAMP,
+				completed_at = NULL,
+				error = NULL,
+				updated_at = CURRENT_TIMESTAMP
+			WHERE id = ?`
+		)
+			.bind(id)
+			.run();
+		return true;
+	}
+
+	await env.DB.prepare(
+		`INSERT INTO cron_executions (id, cron, scheduled_time, status)
+		VALUES (?, ?, ?, 'running')`
+	)
+		.bind(id, controller.cron, scheduledTime)
+		.run();
+	return true;
+};
+
+const markCronExecutionCompleted = async (
+	controller: ScheduledController,
+	env: RuntimeEnv
+) => {
+	await env.DB.prepare(
+		`UPDATE cron_executions
+		SET status = 'completed',
+			completed_at = CURRENT_TIMESTAMP,
+			error = NULL,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?`
+	)
+		.bind(getCronExecutionId(controller))
+		.run();
+};
+
+const markCronExecutionFailed = async (
+	controller: ScheduledController,
+	env: RuntimeEnv,
+	caught: unknown
+) => {
+	const message = caught instanceof Error ? caught.message : String(caught);
+	await env.DB.prepare(
+		`UPDATE cron_executions
+		SET status = 'failed',
+			error = ?,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = ?`
+	)
+		.bind(message.slice(0, 1000), getCronExecutionId(controller))
+		.run();
+};
+
+const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEnv) => {
+	if (controller.cron === "0 22 * * *") {
+		await Promise.all([
+			sendTodayAbsences(env),
+			sendNextMeetingMorningReminder(env),
+		]);
+		return;
+	}
+
+	if (controller.cron === "0 9 * * *") {
+		await sendNextMeetingEveningReminder(env);
+	}
+};
+
+const runScheduledWithState = async (
+	controller: ScheduledController,
+	env: RuntimeEnv
+) => {
+	const claimed = await claimCronExecution(controller, env);
+	if (!claimed) {
+		controller.noRetry();
+		return;
+	}
+
+	try {
+		await runScheduledTasks(controller, env);
+		await markCronExecutionCompleted(controller, env);
+	} catch (caught) {
+		await markCronExecutionFailed(controller, env, caught);
+		throw caught;
+	}
+};
+
 const health = async (env: Env) => {
 	await env.DB.prepare("SELECT 1").first();
 
@@ -886,5 +1290,17 @@ export default {
 			console.error("Worker API error", caught);
 			return error(caught instanceof Error ? caught.message : "Internal error");
 		}
+	},
+	async scheduled(controller, env, ctx): Promise<void> {
+		ctx.waitUntil(
+			runScheduledWithState(controller, env as RuntimeEnv).catch((caught) => {
+				console.error("Scheduled task failed", {
+					cron: controller.cron,
+					scheduledTime: controller.scheduledTime,
+					error: caught instanceof Error ? caught.message : String(caught),
+				});
+				throw caught;
+			})
+		);
 	},
 } satisfies ExportedHandler<Env>;
