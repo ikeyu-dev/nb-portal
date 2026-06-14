@@ -48,6 +48,7 @@ type ScheduleRow = {
 	location: string | null;
 	description: string | null;
 	attendance_mode: string;
+	is_past: number;
 	created_by: string | null;
 	created_at: string;
 	updated_by: string | null;
@@ -177,6 +178,29 @@ const buildTime = (hour: unknown, minute: unknown) => {
 	return `${h.padStart(2, "0")}:${(m || "0").padStart(2, "0")}`;
 };
 
+const getJstDateParts = (date = new Date()) => {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Tokyo",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+		hour: "2-digit",
+		minute: "2-digit",
+		hourCycle: "h23",
+	}).formatToParts(date);
+	const value = (type: Intl.DateTimeFormatPartTypes) =>
+		parts.find((part) => part.type === type)?.value || "";
+
+	return {
+		date: `${value("year")}-${value("month")}-${value("day")}`,
+		dateLabel: `${value("year")}/${value("month")}/${value("day")}`,
+		hour: value("hour"),
+		minute: value("minute"),
+	};
+};
+
+const toScheduleIsPast = (date: string) => (date < getJstDateParts().date ? 1 : 0);
+
 const toMemberResponse = (row: MemberRow, rowNumber: number) => ({
 	rowNumber,
 	values: [
@@ -217,6 +241,7 @@ const toScheduleResponse = (row: ScheduleRow) => {
 		ATTENDANCE_MODE: row.attendance_mode || "ABSENCE",
 		END_TIME_HH: endTime.hour,
 		END_TIME_MM: endTime.minute,
+		IS_PAST: row.is_past === 1,
 	};
 };
 
@@ -391,7 +416,7 @@ const verifyMember = async (url: URL, env: Env) => {
 const getSchedules = async (env: Env) => {
 	const rows = await env.DB.prepare(
 		`SELECT id, title, date, start_time, end_time, location, description,
-			attendance_mode, created_by, created_at, updated_by, updated_at
+			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		FROM schedules
 		ORDER BY date, start_time, id`
 	).all<ScheduleRow>();
@@ -412,9 +437,9 @@ const createSchedule = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, start_time, end_time, location, description,
-			attendance_mode, created_by, created_at, updated_by, updated_at
+			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
 	)
 		.bind(
 			eventId,
@@ -425,6 +450,7 @@ const createSchedule = async (request: Request, env: Env) => {
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
+			toScheduleIsPast(date),
 			String(body.createdBy ?? "").trim(),
 			String(body.createdBy ?? "").trim()
 		)
@@ -458,7 +484,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`UPDATE schedules SET
 			title = ?, date = ?, start_time = ?, end_time = ?, location = ?,
-			description = ?, attendance_mode = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+			description = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 	)
 		.bind(
@@ -469,6 +495,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
+			toScheduleIsPast(date),
 			String(body.updatedBy ?? "").trim(),
 			eventId
 		)
@@ -659,7 +686,7 @@ const getDashboardData = async (env: Env) => {
 		env.DB.prepare("SELECT * FROM absences ORDER BY submitted_at").all<AbsenceRow>(),
 		env.DB.prepare(
 			`SELECT id, title, date, start_time, end_time, location, description,
-				attendance_mode, created_by, created_at, updated_by, updated_at
+				attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 			FROM schedules
 			ORDER BY date, start_time, id`
 		).all<ScheduleRow>(),
@@ -826,27 +853,6 @@ const saveAccessLogs = async (request: Request, env: Env) => {
 		await env.DB.batch(statements);
 	}
 	return ok(null, { count: statements.length });
-};
-
-const getJstDateParts = (date = new Date()) => {
-	const parts = new Intl.DateTimeFormat("en-CA", {
-		timeZone: "Asia/Tokyo",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		hourCycle: "h23",
-	}).formatToParts(date);
-	const value = (type: Intl.DateTimeFormatPartTypes) =>
-		parts.find((part) => part.type === type)?.value || "";
-
-	return {
-		date: `${value("year")}-${value("month")}-${value("day")}`,
-		dateLabel: `${value("year")}/${value("month")}/${value("day")}`,
-		hour: value("hour"),
-		minute: value("minute"),
-	};
 };
 
 const formatDateTime = (value: string | null) => {
@@ -1165,7 +1171,27 @@ const markCronExecutionFailed = async (
 		.run();
 };
 
+const updateSchedulePastState = async (env: RuntimeEnv) => {
+	const today = getJstDateParts().date;
+	await env.DB.prepare(
+		`UPDATE schedules
+		SET is_past = CASE WHEN date < ? THEN 1 ELSE 0 END,
+			updated_at = CASE
+				WHEN is_past != CASE WHEN date < ? THEN 1 ELSE 0 END
+				THEN CURRENT_TIMESTAMP
+				ELSE updated_at
+			END`
+	)
+		.bind(today, today)
+		.run();
+};
+
 const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEnv) => {
+	if (controller.cron === "0 15 * * *") {
+		await updateSchedulePastState(env);
+		return;
+	}
+
 	if (controller.cron === "0 22 * * *") {
 		await Promise.all([
 			sendTodayAbsences(env),

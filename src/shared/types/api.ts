@@ -113,6 +113,7 @@ export interface Item {
 // Schedules型（スプレッドシートのヘッダーに応じて調整してください）
 export interface Schedule {
     [key: string]: string | number | boolean | Date;
+    IS_PAST: boolean;
 }
 
 // Absences型（スプレッドシートのヘッダーに応じて調整してください）
