@@ -5,6 +5,7 @@ export const CACHE_TAGS = {
     absences: "absences",
     notifications: "notifications",
     nextMeeting: "next-meeting",
+    tasks: "tasks",
 } as const;
 
 export const CACHE_SECONDS = {
@@ -23,5 +24,6 @@ export const CLIENT_CACHE_KEYS = {
     items: "nb-portal-items-cache",
     members: "nb-portal-members-cache-v2",
     notifications: "nb-portal-notifications-cache",
+    tasks: "nb-portal-tasks-cache",
     meetingMemoDraft: "nb-portal-meeting-memo-draft",
 } as const;

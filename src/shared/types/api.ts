@@ -105,6 +105,36 @@ export interface DashboardData {
     nextMeeting: NextMeetingSettings | null;
 }
 
+export const TASK_STATUSES = ["TODO", "IN_PROGRESS", "DONE"] as const;
+
+export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+    TODO: "未着手",
+    IN_PROGRESS: "進行中",
+    DONE: "完了",
+};
+
+export interface TaskAssignee {
+    studentNumber: string;
+    name: string;
+    nickname?: string | null;
+    displayName: string;
+}
+
+export interface Task {
+    id: string;
+    title: string;
+    description: string;
+    status: TaskStatus;
+    dueDate?: string | null;
+    createdBy?: string | null;
+    updatedBy?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    assignees: TaskAssignee[];
+}
+
 // Items型（スプレッドシートのヘッダーに応じて調整してください）
 export interface Item {
     [key: string]: string | number | boolean | Date;
