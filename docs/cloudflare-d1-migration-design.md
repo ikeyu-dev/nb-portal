@@ -299,8 +299,9 @@ Initial setup order:
 Cloudflare Cron uses UTC:
 
 - `0 15 * * *`: 00:00 JST schedule past-state refresh.
-- `0 22 * * *`: 07:00 JST daily absence summary and morning next meeting check.
-- `0 9 * * *`: 18:00 JST Discord next meeting reminder.
+- `50 23 * * *`: 08:50 JST daily absence summary and in-person next meeting reminder.
+- `30 3 * * *`: 12:30 JST in-person next meeting reminder.
+- `0 9 * * *`: 18:00 JST Discord-only next meeting reminder.
 
 The Worker posts notification embeds to the Next.js `/api/discord-send` endpoint
 with `PUSH_API_SECRET`.

@@ -984,33 +984,41 @@ const sendNextMeetingUnsetReminder = async (env: RuntimeEnv) => {
 			{
 				title: "次回部会が未設定です",
 				description:
-					"本日7:00時点で次回部会が設定されていません。ポータルから次回部会を設定してください。",
+					"本日の部会後の次回部会が設定されていません。ポータルから次回部会を設定してください。",
 				color: 0xf1c40f,
 			},
 		],
 	});
 };
 
-const sendNextMeetingMorningReminder = async (env: RuntimeEnv) => {
+const sendNextMeetingInPersonReminder = async (
+	env: RuntimeEnv,
+	{
+		title,
+		checkFutureSchedule = false,
+	}: {
+		title: string;
+		checkFutureSchedule?: boolean;
+	}
+) => {
 	const today = getJstDateParts().date;
 	const settings = await getNextMeetingRow(env);
-	if (!settings || settings.date !== today) return;
+	if (!settings || settings.date !== today || settings.mode !== "IN_PERSON") {
+		return;
+	}
 
 	await sendDiscordViaApp(env, {
 		target: "meeting",
 		content: env.NEXT_MEETING_ROLE_MENTION || "@部員",
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
-				title: "本日の部会リマインド",
-				description:
-					settings.mode === "DISCORD"
-						? "本日の部会は Discord 開催です。"
-						: "本日の部会は対面開催です。",
+				title,
+				description: "本日の部会は対面開催です。",
 			}),
 		],
 	});
 
-	if (!(await hasFutureSchedule(env, today))) {
+	if (checkFutureSchedule && !(await hasFutureSchedule(env, today))) {
 		await sendNextMeetingUnsetReminder(env);
 	}
 };
@@ -1032,6 +1040,10 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 			}),
 		],
 	});
+
+	if (!(await hasFutureSchedule(env, today))) {
+		await sendNextMeetingUnsetReminder(env);
+	}
 };
 
 const sendTodayAbsences = async (env: RuntimeEnv) => {
@@ -1192,11 +1204,21 @@ const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEn
 		return;
 	}
 
-	if (controller.cron === "0 22 * * *") {
+	if (controller.cron === "50 23 * * *") {
 		await Promise.all([
 			sendTodayAbsences(env),
-			sendNextMeetingMorningReminder(env),
+			sendNextMeetingInPersonReminder(env, {
+				title: "本日8:50 対面部会リマインド",
+				checkFutureSchedule: true,
+			}),
 		]);
+		return;
+	}
+
+	if (controller.cron === "30 3 * * *") {
+		await sendNextMeetingInPersonReminder(env, {
+			title: "本日12:30 対面部会リマインド",
+		});
 		return;
 	}
 
