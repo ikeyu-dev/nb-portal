@@ -646,6 +646,50 @@ const getNextMeeting = async (env: Env) => {
 
 const updateNextMeeting = async (request: Request, env: Env) => {
 	const body = await getBody(request);
+	const existing = await env.DB.prepare(
+		"SELECT event_id FROM next_meeting_settings WHERE id = 1"
+	).first<{ event_id: string | null }>();
+	const date = String(body.date ?? "").trim();
+	const time = String(body.time ?? "").trim();
+	const mode = String(body.mode ?? "IN_PERSON").trim() || "IN_PERSON";
+	const updatedBy = String(body.updatedBy ?? "").trim();
+	const eventId =
+		String(body.eventId ?? "").trim() ||
+		existing?.event_id ||
+		`MEETING-${Date.now().toString(36).toUpperCase()}`;
+
+	if (!date) return error("Next meeting date is required", 400);
+	if (!time) return error("Next meeting time is required", 400);
+
+	await env.DB.prepare(
+		`INSERT INTO schedules (
+			id, title, date, start_time, end_time, location, description,
+			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+		)
+		VALUES (?, '部会', ?, ?, NULL, ?, '次回部会', 'ABSENCE', ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(id) DO UPDATE SET
+			title = excluded.title,
+			date = excluded.date,
+			start_time = excluded.start_time,
+			end_time = excluded.end_time,
+			location = excluded.location,
+			description = excluded.description,
+			attendance_mode = excluded.attendance_mode,
+			is_past = excluded.is_past,
+			updated_by = excluded.updated_by,
+			updated_at = CURRENT_TIMESTAMP`
+	)
+		.bind(
+			eventId,
+			date,
+			time,
+			mode === "DISCORD" ? "Discord" : "対面",
+			toScheduleIsPast(date),
+			updatedBy,
+			updatedBy
+		)
+		.run();
+
 	await env.DB.prepare(
 		`INSERT INTO next_meeting_settings (id, event_id, date, time, mode, updated_by, updated_at)
 		VALUES (1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -658,11 +702,11 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			updated_at = CURRENT_TIMESTAMP`
 	)
 		.bind(
-			String(body.eventId ?? "").trim() || null,
-			String(body.date ?? "").trim(),
-			String(body.time ?? "").trim(),
-			String(body.mode ?? "IN_PERSON").trim(),
-			String(body.updatedBy ?? "").trim()
+			eventId,
+			date,
+			time,
+			mode,
+			updatedBy
 		)
 		.run();
 
