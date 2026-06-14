@@ -75,7 +75,7 @@ export default function ItemsPage() {
         }
 
         try {
-            const res = await fetch("/api/gas?path=items", {
+            const res = await fetch("/api/backend?path=items", {
                 cache: "no-store",
             });
             const data = (await res.json()) as ApiResponse<Item[]>;

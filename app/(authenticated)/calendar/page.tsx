@@ -197,8 +197,8 @@ export default function CalendarPage() {
             try {
                 // キャッシュを表示していても、裏で必ず最新データを取得する
                 const [schedulesRes, absencesRes] = await Promise.all([
-                    fetch("/api/gas?path=schedules", { cache: "no-store" }),
-                    fetch("/api/gas?path=absences", { cache: "no-store" }),
+                    fetch("/api/backend?path=schedules", { cache: "no-store" }),
+                    fetch("/api/backend?path=absences", { cache: "no-store" }),
                 ]);
                 const schedulesData =
                     (await schedulesRes.json()) as ApiResponse<Schedule[]>;

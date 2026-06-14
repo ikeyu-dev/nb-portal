@@ -8,12 +8,12 @@ export const CACHE_TAGS = {
 } as const;
 
 export const CACHE_SECONDS = {
-    gasData: 5 * 60,
+    backendData: 5 * 60,
     dashboardData: 60,
 } as const;
 
 export const CACHE_TTL_MS = {
-    pageData: CACHE_SECONDS.gasData * 1000,
+    pageData: CACHE_SECONDS.backendData * 1000,
     stalePageData: 24 * 60 * 60 * 1000,
     meetingMemoDraft: 10 * 60 * 1000,
 } as const;

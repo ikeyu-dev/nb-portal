@@ -8,7 +8,7 @@ import type {
     DashboardData,
 } from "../types/api";
 import { auth } from "@/src/auth";
-import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
+import { backendApiPathSchema, type BackendApiPath } from "../lib/validation";
 import { unstable_cache } from "next/cache";
 import { CACHE_SECONDS, CACHE_TAGS } from "../lib/cache-policy";
 
@@ -33,7 +33,7 @@ async function requireAuthenticatedSession() {
  * Server Componentsで使用する
  */
 async function fetchFromBackendServer<T>(
-    path: GasApiPath,
+    path: BackendApiPath,
     params?: Record<string, string>
 ): Promise<ApiResponse<T>> {
     if (!BACKEND_API_URL) {
@@ -41,7 +41,7 @@ async function fetchFromBackendServer<T>(
     }
 
     // パスのバリデーション
-    const pathValidation = gasApiPathSchema.safeParse(path);
+    const pathValidation = backendApiPathSchema.safeParse(path);
     if (!pathValidation.success) {
         throw new Error("Invalid path");
     }
@@ -78,20 +78,20 @@ async function fetchFromBackendServer<T>(
 
 const getItemsCached = unstable_cache(
     async () => fetchFromBackendServer<Item[]>("items"),
-    ["gas-items"],
-    { tags: [CACHE_TAGS.items], revalidate: CACHE_SECONDS.gasData }
+    ["backend-items"],
+    { tags: [CACHE_TAGS.items], revalidate: CACHE_SECONDS.backendData }
 );
 
 const getSchedulesCached = unstable_cache(
     async () => fetchFromBackendServer<Schedule[]>("schedules"),
-    ["gas-schedules"],
-    { tags: [CACHE_TAGS.schedules], revalidate: CACHE_SECONDS.gasData }
+    ["backend-schedules"],
+    { tags: [CACHE_TAGS.schedules], revalidate: CACHE_SECONDS.backendData }
 );
 
 const getMembersCached = unstable_cache(
     async () => fetchFromBackendServer<MembersData>("members"),
-    ["gas-members"],
-    { tags: [CACHE_TAGS.members], revalidate: CACHE_SECONDS.gasData }
+    ["backend-members"],
+    { tags: [CACHE_TAGS.members], revalidate: CACHE_SECONDS.backendData }
 );
 
 const getAbsencesCached = unstable_cache(
@@ -100,26 +100,26 @@ const getAbsencesCached = unstable_cache(
             "absences",
             date ? { date } : undefined
         ),
-    ["gas-absences"],
-    { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.gasData }
+    ["backend-absences"],
+    { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.backendData }
 );
 
 const getEventAbsencesCached = unstable_cache(
     async (eventId: string) =>
         fetchFromBackendServer<Absence[]>("event-absences", { eventId }),
-    ["gas-event-absences"],
-    { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.gasData }
+    ["backend-event-absences"],
+    { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.backendData }
 );
 
 const getNextMeetingCached = unstable_cache(
     async () => fetchFromBackendServer<NextMeetingSettings | null>("next-meeting"),
-    ["gas-next-meeting"],
-    { tags: [CACHE_TAGS.nextMeeting], revalidate: CACHE_SECONDS.gasData }
+    ["backend-next-meeting"],
+    { tags: [CACHE_TAGS.nextMeeting], revalidate: CACHE_SECONDS.backendData }
 );
 
 const getDashboardDataCached = unstable_cache(
     async () => fetchFromBackendServer<DashboardData>("dashboard-data"),
-    ["gas-dashboard-data"],
+    ["backend-dashboard-data"],
     {
         tags: [
             CACHE_TAGS.absences,

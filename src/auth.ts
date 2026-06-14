@@ -166,7 +166,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 token.memberProfileSyncedAt = Date.now();
             }
 
-            // GSSを直接編集した権限・表示名もログイン中のセッションへ反映する。
+            // D1側で更新された権限・表示名もログイン中のセッションへ反映する。
             const lastSyncedAt =
                 typeof token.memberProfileSyncedAt === "number"
                     ? token.memberProfileSyncedAt

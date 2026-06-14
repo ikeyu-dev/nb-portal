@@ -264,7 +264,7 @@ export default function MembersPage() {
         }
 
         try {
-            const response = await fetch("/api/gas?path=members", {
+            const response = await fetch("/api/backend?path=members", {
                 cache: "no-store",
             });
             const data = (await response.json()) as {

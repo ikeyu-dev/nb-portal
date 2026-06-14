@@ -14,6 +14,11 @@
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
+	"vars": {
+		"APP_DISCORD_SEND_URL": "https://nb-portal.vercel.app/api/discord-send",
+		"NEXT_MEETING_ROLE_MENTION": "@部員",
+		"NEXT_MEETING_UNSET_ROLE_MENTION": "@部長"
+	},
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -24,6 +29,17 @@
 	"env": {
 		"production": {
 			"name": "nb-portal-api-production",
+			"triggers": {
+				"crons": [
+					"0 22 * * *",
+					"0 9 * * *"
+				]
+			},
+			"vars": {
+				"APP_DISCORD_SEND_URL": "https://nb-portal.vercel.app/api/discord-send",
+				"NEXT_MEETING_ROLE_MENTION": "@部員",
+				"NEXT_MEETING_UNSET_ROLE_MENTION": "@部長"
+			},
 			"d1_databases": [
 				{
 					"binding": "DB",

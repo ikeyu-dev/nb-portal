@@ -25,7 +25,7 @@ async function fetchFromBackend<T>(
         });
     }
 
-    const url = `/api/gas?${searchParams.toString()}`;
+    const url = `/api/backend?${searchParams.toString()}`;
 
     try {
         const response = await fetch(url, {
