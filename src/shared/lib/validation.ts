@@ -73,6 +73,7 @@ export const backendApiPathSchema = z.enum([
     "absences",
     "event-absences",
     "next-meeting",
+    "tasks",
     "dashboard-data",
     "health",
     "notifications",
@@ -183,6 +184,41 @@ export const nextMeetingUpdateSchema = z.object({
 });
 
 export type NextMeetingUpdateData = z.infer<typeof nextMeetingUpdateSchema>;
+
+export const taskStatusSchema = z.enum(["TODO", "IN_PROGRESS", "DONE"], {
+    error: "ステータスが不正です",
+});
+
+export const taskUpsertSchema = z.object({
+    id: z.string().max(100).optional(),
+    title: z.string().min(1, "タイトルは必須です").max(100, "タイトルが長すぎます"),
+    description: z.string().max(1000, "説明が長すぎます").optional().default(""),
+    status: taskStatusSchema.optional().default("TODO"),
+    dueDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "期限はYYYY-MM-DD形式です")
+        .optional()
+        .or(z.literal("")),
+    assigneeStudentNumbers: z
+        .array(
+            z
+                .string()
+                .min(1, "担当者の学籍番号が空です")
+                .max(20, "担当者の学籍番号が長すぎます")
+                .regex(/^[A-Za-z0-9-]+$/, "担当者の学籍番号形式が不正です")
+        )
+        .max(30, "担当者が多すぎます")
+        .optional()
+        .default([]),
+});
+
+export type TaskUpsertData = z.infer<typeof taskUpsertSchema>;
+
+export const taskDeleteSchema = z.object({
+    id: z.string().min(1, "タスクIDは必須です").max(100, "タスクIDが長すぎます"),
+});
+
+export type TaskDeleteData = z.infer<typeof taskDeleteSchema>;
 
 /**
  * バリデーションエラーを整形して返す

@@ -110,6 +110,27 @@ type NotificationRow = {
 	updated_by_name: string | null;
 };
 
+type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+
+type TaskRow = {
+	id: string;
+	title: string;
+	description: string | null;
+	status: TaskStatus;
+	due_date: string | null;
+	created_by: string | null;
+	updated_by: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+type TaskAssigneeRow = {
+	task_id: string;
+	student_number: string;
+	name: string | null;
+	nickname: string | null;
+};
+
 const memberHeaders = [
 	"StudentNumber",
 	"Name",
@@ -256,6 +277,30 @@ const toAbsenceResponse = (row: AbsenceRow) => ({
 	TimeLeavingEarly: row.time_leaving_early || "",
 	TimeStepOut: row.time_step_out || "",
 	TimeReturn: row.time_return || "",
+});
+
+const toTaskResponse = (row: TaskRow, assignees: TaskAssigneeRow[]) => ({
+	id: row.id,
+	title: row.title,
+	description: row.description || "",
+	status: row.status,
+	dueDate: row.due_date,
+	createdBy: row.created_by,
+	updatedBy: row.updated_by,
+	createdAt: row.created_at,
+	updatedAt: row.updated_at,
+	assignees: assignees
+		.filter((assignee) => assignee.task_id === row.id)
+		.map((assignee) => {
+			const nickname = assignee.nickname || "";
+			const name = assignee.name || assignee.student_number;
+			return {
+				studentNumber: assignee.student_number,
+				name,
+				nickname: nickname || null,
+				displayName: nickname && nickname !== "---" ? nickname : name,
+			};
+		}),
 });
 
 const getBody = async (request: Request) => {
@@ -812,6 +857,117 @@ const getNotifications = async (url: URL, env: Env) => {
 	return ok(notifications.slice(0, limit), { count: notifications.length });
 };
 
+const getTasks = async (env: Env) => {
+	const [tasks, assignees] = await Promise.all([
+		env.DB.prepare(
+			`SELECT id, title, description, status, due_date, created_by, updated_by, created_at, updated_at
+			FROM tasks
+			ORDER BY
+				CASE status WHEN 'TODO' THEN 1 WHEN 'IN_PROGRESS' THEN 2 ELSE 3 END,
+				COALESCE(due_date, '9999-12-31'),
+				created_at DESC`
+		).all<TaskRow>(),
+		env.DB.prepare(
+			`SELECT ta.task_id, ta.student_number, m.name, m.nickname
+			FROM task_assignees ta
+			LEFT JOIN members m ON lower(m.student_number) = lower(ta.student_number)
+			ORDER BY ta.assigned_at`
+		).all<TaskAssigneeRow>(),
+	]);
+
+	const assigneeRows = assignees.results || [];
+	return ok((tasks.results || []).map((task) => toTaskResponse(task, assigneeRows)), {
+		count: tasks.results?.length || 0,
+	});
+};
+
+const normalizeTaskStatus = (value: unknown): TaskStatus => {
+	const normalized = String(value ?? "TODO").trim().toUpperCase();
+	if (normalized === "IN_PROGRESS" || normalized === "DONE") return normalized;
+	return "TODO";
+};
+
+const replaceTaskAssignees = async (
+	env: Env,
+	taskId: string,
+	assigneeStudentNumbers: unknown
+) => {
+	const uniqueStudentNumbers = Array.from(
+		new Set(
+			(Array.isArray(assigneeStudentNumbers) ? assigneeStudentNumbers : [])
+				.map((value) => normalizeStudentId(value))
+				.filter(Boolean)
+		)
+	);
+
+	const statements = [
+		env.DB.prepare("DELETE FROM task_assignees WHERE task_id = ?").bind(taskId),
+		...uniqueStudentNumbers.map((studentNumber) =>
+			env.DB.prepare(
+				`INSERT INTO task_assignees (task_id, student_number, assigned_at)
+				VALUES (?, ?, CURRENT_TIMESTAMP)`
+			)
+				.bind(taskId, studentNumber)
+		),
+	];
+
+	await env.DB.batch(statements);
+};
+
+const upsertTask = async (request: Request, env: Env) => {
+	const body = await getBody(request);
+	const taskId =
+		String(body.id ?? "").trim() ||
+		`TASK-${Date.now().toString(36).toUpperCase()}`;
+	const title = String(body.title ?? "").trim();
+	if (!title) return error("Task title is required", 400);
+
+	const dueDate = String(body.dueDate ?? "").trim() || null;
+	const actor = String(body.updatedBy ?? body.createdBy ?? "").trim();
+
+	await env.DB.prepare(
+		`INSERT INTO tasks (
+			id, title, description, status, due_date, created_by, updated_by, created_at, updated_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		ON CONFLICT(id) DO UPDATE SET
+			title = excluded.title,
+			description = excluded.description,
+			status = excluded.status,
+			due_date = excluded.due_date,
+			updated_by = excluded.updated_by,
+			updated_at = CURRENT_TIMESTAMP`
+	)
+		.bind(
+			taskId,
+			title,
+			String(body.description ?? "").trim(),
+			normalizeTaskStatus(body.status),
+			dueDate,
+			actor,
+			actor
+		)
+		.run();
+
+	await replaceTaskAssignees(env, taskId, body.assigneeStudentNumbers);
+
+	const tasks = await getTasks(env);
+	return tasks;
+};
+
+const deleteTask = async (request: Request, env: Env) => {
+	const body = await getBody(request);
+	const taskId = String(body.id ?? "").trim();
+	if (!taskId) return error("Task id is required", 400);
+
+	await env.DB.batch([
+		env.DB.prepare("DELETE FROM task_assignees WHERE task_id = ?").bind(taskId),
+		env.DB.prepare("DELETE FROM tasks WHERE id = ?").bind(taskId),
+	]);
+
+	return ok(null, { message: "Task deleted" });
+};
+
 const savePushSubscription = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const subscription = body.subscription as
@@ -1321,6 +1477,8 @@ const routeGet = (url: URL, env: Env) => {
 			return getDashboardData(env);
 		case "notifications":
 			return getNotifications(url, env);
+		case "tasks":
+			return getTasks(env);
 		case "push-subscriptions":
 			return getPushSubscriptions(env);
 		case "items":
@@ -1353,6 +1511,11 @@ const routePost = (request: Request, url: URL, env: Env) => {
 			return deleteAbsence(request, env);
 		case "next-meeting":
 			return updateNextMeeting(request, env);
+		case "tasks":
+		case "tasks/update":
+			return upsertTask(request, env);
+		case "tasks/delete":
+			return deleteTask(request, env);
 		case "push-subscribe":
 			return savePushSubscription(request, env);
 		case "push-unsubscribe":
