@@ -33,7 +33,10 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const body = await request.json().catch(() => null);
+    const body = (await request.json().catch(() => null)) as Record<
+        string,
+        unknown
+    > | null;
     const target = body?.target === "meeting" ? "meeting" : "attendance";
     const embeds = Array.isArray(body?.embeds) ? body.embeds : [];
     const content = typeof body?.content === "string" ? body.content : "";

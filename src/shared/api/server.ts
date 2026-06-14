@@ -12,9 +12,9 @@ import { gasApiPathSchema, type GasApiPath } from "../lib/validation";
 import { unstable_cache } from "next/cache";
 import { CACHE_SECONDS, CACHE_TAGS } from "../lib/cache-policy";
 
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 /**
  * 認証済みセッションを要求する
@@ -29,15 +29,15 @@ async function requireAuthenticatedSession() {
 }
 
 /**
- * サーバーサイドからGAS APIを直接呼び出す
+ * サーバーサイドからD1 backend APIを直接呼び出す
  * Server Componentsで使用する
  */
-async function fetchFromGASServer<T>(
+async function fetchFromBackendServer<T>(
     path: GasApiPath,
     params?: Record<string, string>
 ): Promise<ApiResponse<T>> {
-    if (!GAS_API_URL) {
-        throw new Error("GAS API URL not configured");
+    if (!BACKEND_API_URL) {
+        throw new Error("Backend API URL not configured");
     }
 
     // パスのバリデーション
@@ -46,20 +46,21 @@ async function fetchFromGASServer<T>(
         throw new Error("Invalid path");
     }
 
-    const gasUrl = new URL(GAS_API_URL);
-    gasUrl.searchParams.set("path", path);
+    const backendUrl = new URL(BACKEND_API_URL);
+    backendUrl.searchParams.set("path", path);
 
     if (params) {
         Object.entries(params).forEach(([key, value]) => {
-            gasUrl.searchParams.set(key, value);
+            backendUrl.searchParams.set(key, value);
         });
     }
 
     try {
-        const response = await fetch(gasUrl.toString(), {
+        const response = await fetch(backendUrl.toString(), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
         });
 
@@ -67,35 +68,35 @@ async function fetchFromGASServer<T>(
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as ApiResponse<T>;
         return data;
     } catch (error) {
-        console.error("GAS API server fetch error:", error);
+        console.error("Backend API server fetch error:", error);
         throw error;
     }
 }
 
 const getItemsCached = unstable_cache(
-    async () => fetchFromGASServer<Item[]>("items"),
+    async () => fetchFromBackendServer<Item[]>("items"),
     ["gas-items"],
     { tags: [CACHE_TAGS.items], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getSchedulesCached = unstable_cache(
-    async () => fetchFromGASServer<Schedule[]>("schedules"),
+    async () => fetchFromBackendServer<Schedule[]>("schedules"),
     ["gas-schedules"],
     { tags: [CACHE_TAGS.schedules], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getMembersCached = unstable_cache(
-    async () => fetchFromGASServer<MembersData>("members"),
+    async () => fetchFromBackendServer<MembersData>("members"),
     ["gas-members"],
     { tags: [CACHE_TAGS.members], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getAbsencesCached = unstable_cache(
     async (date?: string) =>
-        fetchFromGASServer<Absence[]>(
+        fetchFromBackendServer<Absence[]>(
             "absences",
             date ? { date } : undefined
         ),
@@ -105,19 +106,19 @@ const getAbsencesCached = unstable_cache(
 
 const getEventAbsencesCached = unstable_cache(
     async (eventId: string) =>
-        fetchFromGASServer<Absence[]>("event-absences", { eventId }),
+        fetchFromBackendServer<Absence[]>("event-absences", { eventId }),
     ["gas-event-absences"],
     { tags: [CACHE_TAGS.absences], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getNextMeetingCached = unstable_cache(
-    async () => fetchFromGASServer<NextMeetingSettings | null>("next-meeting"),
+    async () => fetchFromBackendServer<NextMeetingSettings | null>("next-meeting"),
     ["gas-next-meeting"],
     { tags: [CACHE_TAGS.nextMeeting], revalidate: CACHE_SECONDS.gasData }
 );
 
 const getDashboardDataCached = unstable_cache(
-    async () => fetchFromGASServer<DashboardData>("dashboard-data"),
+    async () => fetchFromBackendServer<DashboardData>("dashboard-data"),
     ["gas-dashboard-data"],
     {
         tags: [

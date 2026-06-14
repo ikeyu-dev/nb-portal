@@ -15,6 +15,7 @@ import {
     MEMBER_PERMISSIONS,
 } from "@/src/shared/types/api";
 import type {
+    ApiResponse,
     MemberRow,
     MembersData,
     SheetCellValue,
@@ -521,7 +522,10 @@ export default function MembersPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ values }),
             });
-            const data = await response.json();
+            const data = (await response.json()) as ApiResponse<null> & {
+                rowNumber?: number;
+                values?: SheetCellValue[];
+            };
 
             if (!data.success) {
                 setModalError(data.error || "名簿の追加に失敗しました");
@@ -562,7 +566,7 @@ export default function MembersPage() {
                     values,
                 }),
             });
-            const data = await response.json();
+            const data = (await response.json()) as ApiResponse<null>;
 
             if (!data.success) {
                 setModalError(data.error || "名簿の更新に失敗しました");
@@ -596,7 +600,7 @@ export default function MembersPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ rowNumber: deletingMember.rowNumber }),
             });
-            const data = await response.json();
+            const data = (await response.json()) as ApiResponse<null>;
 
             if (!data.success) {
                 setModalError(data.error || "名簿の削除に失敗しました");

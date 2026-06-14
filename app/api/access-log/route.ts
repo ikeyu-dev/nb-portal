@@ -2,10 +2,10 @@ import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/src/auth";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 const accessLogSchema = z.object({
     logs: z
@@ -53,9 +53,9 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    const url = new URL(GAS_API_URL);
+    const url = new URL(BACKEND_API_URL);
     url.searchParams.set("path", "access-logs");
 
     const now = new Date().toISOString();
@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify({
                 logs: validation.data.logs.map((log) => ({
@@ -101,7 +102,10 @@ export async function POST(request: NextRequest) {
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
         return NextResponse.json(data, {
             headers: {
                 "Cache-Control": "no-store, max-age=0",

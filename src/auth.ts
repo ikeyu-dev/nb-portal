@@ -4,7 +4,7 @@ import {
     normalizeMemberPermission,
     type MemberPermission,
 } from "@/src/shared/types/api";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 
 const tenantId = process.env.AUTH_MICROSOFT_ENTRA_ID_TENANT_ID;
 const MEMBER_PROFILE_REFRESH_MS = 60 * 1000;
@@ -67,7 +67,7 @@ export const resolveMemberProfile = async (
     permission: MemberPermission | null;
 }> => {
     try {
-        const apiUrl = getGasApiUrl();
+        const apiUrl = getBackendApiUrl();
         if (!apiUrl) {
             return {
                 isMember: false,
@@ -80,14 +80,20 @@ export const resolveMemberProfile = async (
 
         const res = await fetch(
             `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`,
-            { cache: "no-store" }
+            { cache: "no-store", headers: getBackendApiHeaders() }
         );
-        const data = await res.json();
+        const data = (await res.json()) as {
+            success?: boolean;
+            isMember?: boolean;
+            name?: string;
+            nickname?: string;
+            permission?: string;
+        };
         const name = data.name || null;
         const nickname = data.nickname || null;
         const permission = normalizeMemberPermission(data.permission);
         return {
-            isMember: data.success && data.isMember === true,
+            isMember: data.success === true && data.isMember === true,
             name,
             nickname,
             displayName: getDisplayName(nickname, name),

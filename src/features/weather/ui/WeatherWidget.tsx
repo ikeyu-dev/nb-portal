@@ -262,7 +262,17 @@ export default function WeatherWidget() {
         fetch(
             `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&timezone=Asia/Tokyo`
         )
-            .then((res) => res.json())
+            .then(
+                (res) =>
+                    res.json() as Promise<{
+                        current: {
+                            temperature_2m: number;
+                            weather_code: number;
+                            wind_speed_10m: number;
+                            relative_humidity_2m: number;
+                        };
+                    }>
+            )
             .then((data) => {
                 setWeather({
                     temperature: Math.round(data.current.temperature_2m),

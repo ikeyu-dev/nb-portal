@@ -6,10 +6,10 @@ import {
     formatValidationErrors,
     nextMeetingUpdateSchema,
 } from "@/src/shared/lib/validation";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 const extractStudentId = (email: string | null | undefined): string => {
     if (!email) return "";
@@ -42,9 +42,9 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
@@ -70,13 +70,14 @@ export async function POST(request: NextRequest) {
             session.displayName ||
             session.memberName ||
             "unknown";
-        const url = new URL(GAS_API_URL);
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "next-meeting");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify({
                 ...validation.data,
@@ -84,7 +85,11 @@ export async function POST(request: NextRequest) {
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            data?: Record<string, unknown>;
+            error?: string;
+        };
         if (data?.success === true) {
             if (data.data && typeof data.data === "object") {
                 data.data.updatedByName =
