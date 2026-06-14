@@ -7,10 +7,21 @@ GAS の時間主導型トリガーは使わない。Cloudflare Worker `nb-portal
 
 本番環境の cron:
 
+- `0 15 * * *`: 00:00 JST
 - `0 22 * * *`: 07:00 JST
 - `0 9 * * *`: 18:00 JST
 
 Cloudflare の cron は UTC 指定のため、JST から 9 時間引いた時刻で設定する。
+
+## 00:00 JST の処理
+
+`schedules` の `is_past` を更新する。
+
+- `date < 今日(JST)`: `is_past = 1`
+- `date >= 今日(JST)`: `is_past = 0`
+
+予定作成・更新時にも同じ判定を行うため、cron 実行前でも API レスポンスの
+`IS_PAST` は現在日付に基づいた値になる。
 
 ## 07:00 JST の処理
 

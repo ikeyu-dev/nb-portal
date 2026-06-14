@@ -115,6 +115,14 @@ const buildTime = (hour, minute) => {
 	return `${(h || "0").padStart(2, "0")}:${(m || "0").padStart(2, "0")}`;
 };
 
+const buildTodayJst = () =>
+	new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Tokyo",
+		year: "numeric",
+		month: "2-digit",
+		day: "2-digit",
+	}).format(new Date());
+
 const statements = [
 	"PRAGMA foreign_keys = OFF;",
 	"DELETE FROM push_subscriptions;",
@@ -122,6 +130,8 @@ const statements = [
 	"DELETE FROM schedules;",
 	"DELETE FROM members;",
 ];
+
+const todayJst = buildTodayJst();
 
 for (const member of readCsv(files.members)) {
 	const studentNumber = member.StudentNumber;
@@ -149,9 +159,9 @@ for (const schedule of readCsv(files.schedules)) {
 	const eventId = schedule.EVENT_ID;
 	if (!eventId) continue;
 
-	statements.push(`INSERT INTO schedules (
+statements.push(`INSERT INTO schedules (
   id, title, date, start_time, end_time, location, description, attendance_mode,
-  created_by, created_at, updated_by, updated_at
+  is_past, created_by, created_at, updated_by, updated_at
 ) VALUES (
   ${sqlString(eventId)},
   ${sqlString(schedule.TITLE)},
@@ -161,6 +171,7 @@ for (const schedule of readCsv(files.schedules)) {
   ${sqlNullableString(schedule.WHERE)},
   ${sqlNullableString(schedule.DETAIL)},
   ${sqlString(schedule.ATTENDANCE_MODE || "ABSENCE")},
+  ${buildDate(schedule.YYYY, schedule.MM, schedule.DD) < todayJst ? "1" : "0"},
   ${sqlNullableString(schedule.CREATED_BY)},
   ${sqlString(parseSpreadsheetDateTime(schedule.CREATED_AT) || new Date().toISOString())},
   ${sqlNullableString(schedule.UPDATED_BY)},

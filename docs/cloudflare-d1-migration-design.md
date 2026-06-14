@@ -147,6 +147,7 @@ CREATE TABLE schedules (
   location TEXT,
   description TEXT,
   attendance_mode TEXT NOT NULL DEFAULT 'ABSENCE',
+  is_past INTEGER NOT NULL DEFAULT 0,
   created_by TEXT,
   updated_by TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -288,6 +289,8 @@ Initial setup order:
 - Scheduled absence and next meeting notifications run on Cloudflare Cron
   Triggers. Completed cron executions are recorded in `cron_executions` to avoid
   duplicate Discord notifications.
+- Schedule past state is stored in `schedules.is_past` and refreshed every day
+  at 00:00 JST.
 - `items` stays intentionally disabled in the D1 API until the new item model is
   designed.
 
@@ -295,6 +298,7 @@ Initial setup order:
 
 Cloudflare Cron uses UTC:
 
+- `0 15 * * *`: 00:00 JST schedule past-state refresh.
 - `0 22 * * *`: 07:00 JST daily absence summary and morning next meeting check.
 - `0 9 * * *`: 18:00 JST Discord next meeting reminder.
 

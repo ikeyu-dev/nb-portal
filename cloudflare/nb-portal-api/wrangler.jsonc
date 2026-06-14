@@ -31,6 +31,7 @@
 			"name": "nb-portal-api-production",
 			"triggers": {
 				"crons": [
+					"0 15 * * *",
 					"0 22 * * *",
 					"0 9 * * *"
 				]
