@@ -19,6 +19,7 @@ import {
     CACHE_TTL_MS,
     CLIENT_CACHE_KEYS,
 } from "@/src/shared/lib/cache-policy";
+import type { ApiResponse } from "@/src/shared/types/api";
 
 interface Notification {
     eventId: string;
@@ -54,7 +55,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                 const res = await fetch("/api/gas?path=notifications&limit=50", {
                     cache: "no-store",
                 });
-                const data = await res.json();
+                const data = (await res.json()) as ApiResponse<Notification[]>;
                 if (data.success) {
                     const nextNotifications = data.data || [];
                     setNotifications(nextNotifications);

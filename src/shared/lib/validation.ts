@@ -64,7 +64,7 @@ export const absenceDeleteSchema = z.object({
 export type AbsenceDeleteData = z.infer<typeof absenceDeleteSchema>;
 
 /**
- * GAS APIパスのバリデーションスキーマ
+ * Backend APIパスのバリデーションスキーマ
  */
 export const gasApiPathSchema = z.enum([
     "schedules",

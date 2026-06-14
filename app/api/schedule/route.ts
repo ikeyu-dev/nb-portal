@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { auth } from "@/src/auth";
 import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 // メールアドレスから学籍番号（最初の7文字）を抽出
 const extractStudentId = (email: string | null | undefined): string => {
@@ -27,27 +27,28 @@ export async function POST(request: NextRequest) {
             { status: 401 }
         );
     }
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as Record<string, unknown>;
 
         // ログインユーザーの学籍番号を作成者として追加
         const createdBy = extractStudentId(session.user.email);
 
-        // GAS APIに転送
-        const url = new URL(GAS_API_URL);
+        // Backend APIに転送
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "schedules");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify({
                 ...body,
@@ -55,7 +56,10 @@ export async function POST(request: NextRequest) {
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.schedules, "max");
@@ -89,29 +93,33 @@ export async function DELETE(request: NextRequest) {
             { status: 401 }
         );
     }
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as Record<string, unknown>;
 
-        // GAS APIに転送
-        const url = new URL(GAS_API_URL);
+        // Backend APIに転送
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "schedules/delete");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify(body),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.schedules, "max");
@@ -145,27 +153,28 @@ export async function PUT(request: NextRequest) {
             { status: 401 }
         );
     }
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as Record<string, unknown>;
 
         // ログインユーザーの学籍番号を更新者として追加
         const updatedBy = extractStudentId(session.user.email);
 
-        // GAS APIに転送
-        const url = new URL(GAS_API_URL);
+        // Backend APIに転送
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "schedules/update");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify({
                 ...body,
@@ -173,7 +182,10 @@ export async function PUT(request: NextRequest) {
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.schedules, "max");

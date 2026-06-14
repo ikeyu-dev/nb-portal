@@ -12,9 +12,9 @@ import {
 import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
 import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 const buildSubmitBody = (
     body: Record<string, unknown>,
@@ -35,18 +35,19 @@ const buildSubmitBody = (
     };
 };
 
-const postToGAS = async (path: string, body: unknown) => {
-    if (!GAS_API_URL) {
-        throw new Error("GAS API URL is not configured");
+const postToBackend = async (path: string, body: unknown) => {
+    if (!BACKEND_API_URL) {
+        throw new Error("Backend API URL is not configured");
     }
 
-    const url = new URL(GAS_API_URL);
+    const url = new URL(BACKEND_API_URL);
     url.searchParams.append("path", path);
 
     const response = await fetch(url.toString(), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
+            ...getBackendApiHeaders(),
         },
         body: JSON.stringify(body),
     });
@@ -57,18 +58,18 @@ const postToGAS = async (path: string, body: unknown) => {
         if (!response.ok) {
             return {
                 success: false,
-                error: data?.error || `GAS API error: ${response.status}`,
+                error: data?.error || `Backend API error: ${response.status}`,
             };
         }
         return data;
     } catch {
-        console.error("GAS API returned non-JSON response:", {
+        console.error("Backend API returned non-JSON response:", {
             status: response.status,
             body: responseText.slice(0, 500),
         });
         return {
             success: false,
-            error: `GAS API returned non-JSON response: ${response.status}`,
+            error: `Backend API returned non-JSON response: ${response.status}`,
         };
     }
 };
@@ -180,15 +181,15 @@ export async function POST(request: NextRequest) {
             { status: 401 }
         );
     }
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as Record<string, unknown>;
         const submitBody = buildSubmitBody(body, session);
 
         // 入力バリデーション
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
         }
 
         const validatedData = validationResult.data;
-        const data = await postToGAS("absences", validatedData);
+        const data = await postToBackend("absences", validatedData);
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
@@ -249,15 +250,15 @@ export async function PUT(request: NextRequest) {
             { status: 401 }
         );
     }
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as Record<string, unknown>;
         const submitBody = buildSubmitBody(body, session);
         const validationResult = absenceSubmitSchema.safeParse(submitBody);
         if (!validationResult.success) {
@@ -271,7 +272,7 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        const data = await postToGAS("absences/update", validationResult.data);
+        const data = await postToBackend("absences/update", validationResult.data);
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
@@ -315,15 +316,15 @@ export async function DELETE(request: NextRequest) {
             { status: 401 }
         );
     }
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
 
     try {
-        const body = await request.json();
+        const body = (await request.json()) as Record<string, unknown>;
         const validationResult = absenceDeleteSchema.safeParse({
             ...body,
             studentNumber: session.studentId,
@@ -339,7 +340,7 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const data = await postToGAS("absences/delete", validationResult.data);
+        const data = await postToBackend("absences/delete", validationResult.data);
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");

@@ -1,206 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidateTag } from "next/cache";
-import { auth } from "@/src/auth";
-import { CACHE_TAGS } from "@/src/shared/lib/cache-policy";
-import {
-    itemCreateSchema,
-    itemUpdateSchema,
-    itemDeleteSchema,
-    formatValidationErrors,
-} from "@/src/shared/lib/validation";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
-import { validateWriteRequest } from "@/src/shared/lib/csrf";
+import { NextResponse } from "next/server";
 
-const GAS_API_URL = getGasApiUrl();
+const notMigrated = () =>
+    NextResponse.json(
+        {
+            success: false,
+            error: "Items are not migrated to D1 yet",
+        },
+        { status: 501 }
+    );
 
 /**
- * 機材登録API
+ * Items are intentionally excluded from the first D1 migration because the
+ * registration model is expected to change.
  */
-export async function POST(request: NextRequest) {
-    const writeRequestError = validateWriteRequest(request);
-    if (writeRequestError) return writeRequestError;
-
-    const session = await auth();
-    if (!session?.user) {
-        return NextResponse.json(
-            { success: false, error: "Unauthorized" },
-            { status: 401 }
-        );
-    }
-    if (!GAS_API_URL) {
-        return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
-            { status: 500 }
-        );
-    }
-
-    try {
-        const body = await request.json();
-
-        const validation = itemCreateSchema.safeParse(body);
-        if (!validation.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: "バリデーションエラー",
-                    details: formatValidationErrors(validation.error),
-                },
-                { status: 400 }
-            );
-        }
-
-        const url = new URL(GAS_API_URL);
-        url.searchParams.append("path", "items");
-
-        const response = await fetch(url.toString(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(validation.data),
-        });
-
-        const data = await response.json();
-        if (data?.success === true) {
-            revalidateTag(CACHE_TAGS.items, "max");
-        }
-        return NextResponse.json(data);
-    } catch (error) {
-        console.error("API route error:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error",
-            },
-            { status: 500 }
-        );
-    }
+export async function POST() {
+    return notMigrated();
 }
 
-/**
- * 機材更新API
- */
-export async function PUT(request: NextRequest) {
-    const writeRequestError = validateWriteRequest(request);
-    if (writeRequestError) return writeRequestError;
-
-    const session = await auth();
-    if (!session?.user) {
-        return NextResponse.json(
-            { success: false, error: "Unauthorized" },
-            { status: 401 }
-        );
-    }
-    if (!GAS_API_URL) {
-        return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
-            { status: 500 }
-        );
-    }
-
-    try {
-        const body = await request.json();
-
-        const validation = itemUpdateSchema.safeParse(body);
-        if (!validation.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: "バリデーションエラー",
-                    details: formatValidationErrors(validation.error),
-                },
-                { status: 400 }
-            );
-        }
-
-        const url = new URL(GAS_API_URL);
-        url.searchParams.append("path", "items/update");
-
-        const response = await fetch(url.toString(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(validation.data),
-        });
-
-        const data = await response.json();
-        if (data?.success === true) {
-            revalidateTag(CACHE_TAGS.items, "max");
-        }
-        return NextResponse.json(data);
-    } catch (error) {
-        console.error("API route error:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error",
-            },
-            { status: 500 }
-        );
-    }
+export async function PUT() {
+    return notMigrated();
 }
 
-/**
- * 機材削除API
- */
-export async function DELETE(request: NextRequest) {
-    const writeRequestError = validateWriteRequest(request);
-    if (writeRequestError) return writeRequestError;
-
-    const session = await auth();
-    if (!session?.user) {
-        return NextResponse.json(
-            { success: false, error: "Unauthorized" },
-            { status: 401 }
-        );
-    }
-    if (!GAS_API_URL) {
-        return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
-            { status: 500 }
-        );
-    }
-
-    try {
-        const body = await request.json();
-
-        const validation = itemDeleteSchema.safeParse(body);
-        if (!validation.success) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    error: "バリデーションエラー",
-                    details: formatValidationErrors(validation.error),
-                },
-                { status: 400 }
-            );
-        }
-
-        const url = new URL(GAS_API_URL);
-        url.searchParams.append("path", "items/delete");
-
-        const response = await fetch(url.toString(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(validation.data),
-        });
-
-        const data = await response.json();
-        if (data?.success === true) {
-            revalidateTag(CACHE_TAGS.items, "max");
-        }
-        return NextResponse.json(data);
-    } catch (error) {
-        console.error("API route error:", error);
-        return NextResponse.json(
-            {
-                success: false,
-                error: error instanceof Error ? error.message : "Unknown error",
-            },
-            { status: 500 }
-        );
-    }
+export async function DELETE() {
+    return notMigrated();
 }

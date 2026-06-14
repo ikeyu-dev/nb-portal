@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
         "out/**",
         "build/**",
         "next-env.d.ts",
+        "cloudflare/nb-portal-api/worker-configuration.d.ts",
+        "cloudflare/nb-portal-api/test/env.d.ts",
     ]),
 ]);
 

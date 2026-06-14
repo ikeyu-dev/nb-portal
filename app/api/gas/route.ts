@@ -6,15 +6,15 @@ import {
     formatValidationErrors,
 } from "@/src/shared/lib/validation";
 
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 const NO_STORE_HEADERS = {
     "Cache-Control": "no-store, max-age=0",
 };
 
 /**
- * GAS APIへのプロキシエンドポイント
+ * D1 backend APIへのプロキシエンドポイント
  * クライアント側からの直接呼び出しを防ぎ、セッション認証と入力バリデーションを行う
  */
 export async function GET(request: NextRequest) {
@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { error: "GAS API URL not configured" },
+            { error: "Backend API URL not configured" },
             { status: 500 }
         );
     }
@@ -69,21 +69,22 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // GAS APIにリクエストを転送
-        const gasUrl = new URL(GAS_API_URL);
-        gasUrl.searchParams.set("path", path);
+        // Backend APIにリクエストを転送
+        const backendUrl = new URL(BACKEND_API_URL);
+        backendUrl.searchParams.set("path", path);
 
         // 追加のクエリパラメータを転送
         searchParams.forEach((value, key) => {
             if (key !== "path") {
-                gasUrl.searchParams.set(key, value);
+                backendUrl.searchParams.set(key, value);
             }
         });
 
-        const response = await fetch(gasUrl.toString(), {
+        const response = await fetch(backendUrl.toString(), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             cache: "no-store",
         });
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest) {
         const data = await response.json();
         return NextResponse.json(data, { headers: NO_STORE_HEADERS });
     } catch (error) {
-        console.error("GAS API proxy error:", error);
+        console.error("Backend API proxy error:", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

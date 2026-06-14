@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 import crypto from "crypto";
 
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY!;
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT!;
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // APIシークレットの検証（GASからの呼び出し用）
+        // APIシークレットの検証
         const authHeader = request.headers.get("authorization");
         const providedSecret = authHeader?.replace("Bearer ", "") || "";
 
@@ -58,7 +58,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as {
+            title?: string;
+            body?: string;
+            url?: string;
+            tag?: string;
+        };
         const { title, body: messageBody, url, tag } = body;
 
         if (!title) {
@@ -68,11 +73,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // GASから購読者一覧を取得
+        // Backendから購読者一覧を取得
         const subscriptionsResponse = await fetch(
-            `${GAS_API_URL}?path=push-subscriptions`
+            `${BACKEND_API_URL}?path=push-subscriptions`,
+            { headers: getBackendApiHeaders() }
         );
-        const subscriptionsData = await subscriptionsResponse.json();
+        const subscriptionsData = (await subscriptionsResponse.json()) as {
+            success?: boolean;
+            data?: PushSubscription[];
+            error?: string;
+        };
 
         if (!subscriptionsData.success || !subscriptionsData.data) {
             return NextResponse.json(
@@ -120,10 +130,11 @@ export async function POST(request: NextRequest) {
                         error.statusCode === 410
                     ) {
                         // 無効な購読を削除
-                        await fetch(`${GAS_API_URL}?path=push-unsubscribe`, {
+                        await fetch(`${BACKEND_API_URL}?path=push-unsubscribe`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
+                                ...getBackendApiHeaders(),
                             },
                             body: JSON.stringify({
                                 endpoint: sub.endpoint,

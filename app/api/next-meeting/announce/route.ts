@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth, resolveMemberProfile } from "@/src/auth";
 import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 import type { NextMeetingSettings } from "@/src/shared/types/api";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateOrigin } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 const normalizeAnnounceError = (error?: string) => {
     if (!error) return "次回部会連絡の送信に失敗しました";
@@ -68,18 +68,23 @@ const buildNextMeetingReminderEmbed = (settings: NextMeetingSettings) => {
 };
 
 const fetchNextMeeting = async () => {
-    if (!GAS_API_URL) {
-        throw new Error("GAS API URL is not configured");
+    if (!BACKEND_API_URL) {
+        throw new Error("Backend API URL is not configured");
     }
 
-    const url = new URL(GAS_API_URL);
+    const url = new URL(BACKEND_API_URL);
     url.searchParams.append("path", "next-meeting");
 
     const response = await fetch(url.toString(), {
         method: "GET",
         cache: "no-store",
+        headers: getBackendApiHeaders(),
     });
-    const data = await response.json();
+    const data = (await response.json()) as {
+        success?: boolean;
+        data?: unknown;
+        error?: string;
+    };
 
     if (!response.ok || data?.success === false) {
         throw new Error(normalizeAnnounceError(data?.error));
@@ -113,9 +118,9 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }

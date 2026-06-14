@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/src/features/help";
-import type { Item } from "@/src/shared/types/api";
+import type { ApiResponse, Item } from "@/src/shared/types/api";
 import {
     clearClientCache,
     getClientCacheEntry,
@@ -78,7 +78,7 @@ export default function ItemsPage() {
             const res = await fetch("/api/gas?path=items", {
                 cache: "no-store",
             });
-            const data = await res.json();
+            const data = (await res.json()) as ApiResponse<Item[]>;
             if (data.success) {
                 const fetchedItems = data.data || [];
                 setItems(fetchedItems);
@@ -148,7 +148,7 @@ export default function ItemsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(createForm),
             });
-            const data = await res.json();
+            const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
                 setIsCreateModalOpen(false);
@@ -183,7 +183,7 @@ export default function ItemsPage() {
                     name: editForm.name,
                 }),
             });
-            const data = await res.json();
+            const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
                 setIsEditModalOpen(false);
@@ -213,7 +213,7 @@ export default function ItemsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ itemId: selectedItem.itemId }),
             });
-            const data = await res.json();
+            const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
                 setIsDeleteModalOpen(false);

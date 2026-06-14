@@ -11,6 +11,7 @@ import {
     SCHEDULE_ATTENDANCE_MODE_LABELS,
 } from "@/src/shared/types/api";
 import type {
+    ApiResponse,
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
@@ -36,6 +37,17 @@ type AbsenceRecordValues = {
     timeStepOut: string;
     timeReturn: string;
 };
+
+type SessionResponse = {
+    studentId?: string;
+    displayName?: string;
+    memberName?: string;
+    user?: {
+        name?: string | null;
+    };
+};
+
+type AbsenceMutationData = Partial<AbsenceRecordValues>;
 
 const emptyAbsenceForm: AbsenceFormState = {
     type: "",
@@ -183,7 +195,7 @@ export default function ScheduleCard({
             try {
                 const response = await fetch("/api/auth/session");
                 if (!response.ok) return;
-                const session = await response.json();
+                const session = (await response.json()) as SessionResponse;
                 setProfile({
                     studentNumber: session?.studentId || "",
                     name:
@@ -316,7 +328,8 @@ export default function ScheduleCard({
                     reasonDetail: attendanceNote.trim() || undefined,
                 }),
             });
-            const result = await response.json();
+            const result =
+                (await response.json()) as ApiResponse<AbsenceMutationData>;
 
             if (!response.ok || result?.success !== true) {
                 throw new Error(result?.error || "出席申告に失敗しました");
@@ -377,7 +390,8 @@ export default function ScheduleCard({
                         absenceForm.timeLeavingEarly || undefined,
                 }),
             });
-            const result = await response.json();
+            const result =
+                (await response.json()) as ApiResponse<AbsenceMutationData>;
 
             if (!response.ok || result?.success !== true) {
                 throw new Error(result?.error || "欠席連絡に失敗しました");
@@ -428,7 +442,7 @@ export default function ScheduleCard({
                 },
                 body: JSON.stringify({ eventId }),
             });
-            const result = await response.json();
+            const result = (await response.json()) as ApiResponse<null>;
 
             if (!response.ok || result?.success !== true) {
                 throw new Error(result?.error || "出欠連絡の削除に失敗しました");

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/auth";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 const extractStudentId = (email: string | null | undefined): string => {
     if (!email) return "";
@@ -23,7 +23,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as {
+            subscription?: unknown;
+        };
         const { subscription } = body;
         const studentId =
             session.studentId || extractStudentId(session.user.email);
@@ -35,11 +37,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // GASに購読情報を登録
-        const response = await fetch(`${GAS_API_URL}?path=push-subscribe`, {
+        // Backendに購読情報を登録
+        const response = await fetch(`${BACKEND_API_URL}?path=push-subscribe`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify({
                 subscription,
@@ -47,7 +50,10 @@ export async function POST(request: NextRequest) {
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
 
         if (data.success) {
             return NextResponse.json({ success: true });
@@ -79,7 +85,9 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const body = await request.json();
+        const body = (await request.json()) as {
+            endpoint?: string;
+        };
         const { endpoint } = body;
 
         if (!endpoint) {
@@ -89,18 +97,22 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        // GASから購読情報を削除
-        const response = await fetch(`${GAS_API_URL}?path=push-unsubscribe`, {
+        // Backendから購読情報を削除
+        const response = await fetch(`${BACKEND_API_URL}?path=push-unsubscribe`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify({
                 endpoint,
             }),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
 
         if (data.success) {
             return NextResponse.json({ success: true });

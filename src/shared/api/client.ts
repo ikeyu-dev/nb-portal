@@ -9,10 +9,10 @@ import type {
 } from "../types/api";
 
 /**
- * GAS APIへのリクエストをNext.js API Routes経由で行う
- * セキュリティのため、クライアント側から直接GAS APIを呼び出さない
+ * Backend APIへのリクエストをNext.js API Routes経由で行う
+ * セキュリティのため、クライアント側から直接Backend APIを呼び出さない
  */
-async function fetchFromGAS<T>(
+async function fetchFromBackend<T>(
     path: string,
     params?: Record<string, string>
 ): Promise<ApiResponse<T>> {
@@ -40,7 +40,7 @@ async function fetchFromGAS<T>(
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as ApiResponse<T>;
         return data;
     } catch (error) {
         console.error("API fetch error:", error);
@@ -50,17 +50,17 @@ async function fetchFromGAS<T>(
 
 // Items取得API
 export async function getItems(): Promise<ApiResponse<Item[]>> {
-    return fetchFromGAS<Item[]>("items");
+    return fetchFromBackend<Item[]>("items");
 }
 
 // Schedules取得API
 export async function getSchedules(): Promise<ApiResponse<Schedule[]>> {
-    return fetchFromGAS<Schedule[]>("schedules");
+    return fetchFromBackend<Schedule[]>("schedules");
 }
 
 // Members取得API
 export async function getMembers(): Promise<ApiResponse<MembersData>> {
-    return fetchFromGAS<MembersData>("members");
+    return fetchFromBackend<MembersData>("members");
 }
 
 // Absences取得API
@@ -68,27 +68,27 @@ export async function getAbsences(
     date?: string
 ): Promise<ApiResponse<Absence[]>> {
     const params = date ? { date } : undefined;
-    return fetchFromGAS<Absence[]>("absences", params);
+    return fetchFromBackend<Absence[]>("absences", params);
 }
 
 // 特定イベントの欠席者取得API
 export async function getEventAbsences(
     eventId: string
 ): Promise<ApiResponse<Absence[]>> {
-    return fetchFromGAS<Absence[]>("event-absences", { eventId });
+    return fetchFromBackend<Absence[]>("event-absences", { eventId });
 }
 
 // Health check API
 export async function checkHealth(): Promise<
     ApiResponse<{ message: string; timestamp: string }>
 > {
-    return fetchFromGAS("health");
+    return fetchFromBackend("health");
 }
 
 export async function getNextMeeting(): Promise<
     ApiResponse<NextMeetingSettings | null>
 > {
-    return fetchFromGAS<NextMeetingSettings | null>("next-meeting");
+    return fetchFromBackend<NextMeetingSettings | null>("next-meeting");
 }
 
 export async function updateNextMeeting(data: {
@@ -173,7 +173,13 @@ export async function submitAbsence(data: AbsenceSubmitData): Promise<
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const result = await response.json();
+        const result = (await response.json()) as ApiResponse<{
+            timestamp: string;
+            eventId: string;
+            studentNumber: string;
+            name: string;
+            type: string;
+        }>;
         return result;
     } catch (error) {
         console.error("API submit error:", error);

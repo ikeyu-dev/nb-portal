@@ -8,10 +8,10 @@ import {
     memberDeleteSchema,
     memberUpdateSchema,
 } from "@/src/shared/lib/validation";
-import { getGasApiUrl } from "@/src/shared/lib/server-env";
+import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
 
-const GAS_API_URL = getGasApiUrl();
+const BACKEND_API_URL = getBackendApiUrl();
 
 /**
  * 名簿追加API
@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
@@ -50,18 +50,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const url = new URL(GAS_API_URL);
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "members");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify(validation.data),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.members, "max");
         }
@@ -94,9 +98,9 @@ export async function PUT(request: NextRequest) {
         );
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
@@ -116,18 +120,22 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        const url = new URL(GAS_API_URL);
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "members/update");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify(validation.data),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.members, "max");
         }
@@ -160,9 +168,9 @@ export async function DELETE(request: NextRequest) {
         );
     }
 
-    if (!GAS_API_URL) {
+    if (!BACKEND_API_URL) {
         return NextResponse.json(
-            { success: false, error: "GAS API URL is not configured" },
+            { success: false, error: "Backend API URL is not configured" },
             { status: 500 }
         );
     }
@@ -182,18 +190,22 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        const url = new URL(GAS_API_URL);
+        const url = new URL(BACKEND_API_URL);
         url.searchParams.append("path", "members/delete");
 
         const response = await fetch(url.toString(), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                ...getBackendApiHeaders(),
             },
             body: JSON.stringify(validation.data),
         });
 
-        const data = await response.json();
+        const data = (await response.json()) as {
+            success?: boolean;
+            error?: string;
+        };
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.members, "max");
         }

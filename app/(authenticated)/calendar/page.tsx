@@ -7,6 +7,7 @@ import {
     SCHEDULE_ATTENDANCE_MODE_LABELS,
 } from "@/src/shared/types/api";
 import type {
+    ApiResponse,
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
@@ -42,6 +43,25 @@ const getColorHex = (colorId: string | undefined): string => {
 interface Schedule {
     [key: string]: string | number | boolean | Date;
 }
+
+type ScheduleMutationData = {
+    eventId: string;
+    year: string | number;
+    month: string | number;
+    date: string | number;
+    timeHH?: string | number;
+    timeMM?: string | number;
+    endTimeHH?: string | number;
+    endTimeMM?: string | number;
+    title: string;
+    where: string;
+    detail: string;
+    endYear?: string | number;
+    endMonth?: string | number;
+    endDate?: string | number;
+    color?: string;
+    attendanceMode?: string;
+};
 
 interface SelectedDateInfo {
     date: Date;
@@ -180,8 +200,10 @@ export default function CalendarPage() {
                     fetch("/api/gas?path=schedules", { cache: "no-store" }),
                     fetch("/api/gas?path=absences", { cache: "no-store" }),
                 ]);
-                const schedulesData = await schedulesRes.json();
-                const absencesData = await absencesRes.json();
+                const schedulesData =
+                    (await schedulesRes.json()) as ApiResponse<Schedule[]>;
+                const absencesData =
+                    (await absencesRes.json()) as ApiResponse<Absence[]>;
 
                 if (isCancelled) return;
 
@@ -441,27 +463,29 @@ export default function CalendarPage() {
                 }),
             });
 
-            const data = await response.json();
+            const data =
+                (await response.json()) as ApiResponse<ScheduleMutationData>;
 
-            if (data.success) {
+            if (data.success && data.data) {
+                const scheduleData = data.data;
                 // 新しいスケジュールをローカル状態に追加
                 const newSchedule: Schedule = {
-                    EVENT_ID: data.data.eventId,
-                    YYYY: data.data.year,
-                    MM: data.data.month,
-                    DD: data.data.date,
-                    TIME_HH: data.data.timeHH || "",
-                    TIME_MM: data.data.timeMM || "",
-                    TITLE: data.data.title,
-                    WHERE: data.data.where,
-                    DETAIL: data.data.detail,
-                    END_YYYY: data.data.endYear || "",
-                    END_MM: data.data.endMonth || "",
-                    END_DD: data.data.endDate || "",
-                    COLOR: data.data.color || "primary",
-                    ATTENDANCE_MODE: data.data.attendanceMode || "ABSENCE",
-                    END_TIME_HH: data.data.endTimeHH || "",
-                    END_TIME_MM: data.data.endTimeMM || "",
+                    EVENT_ID: scheduleData.eventId,
+                    YYYY: scheduleData.year,
+                    MM: scheduleData.month,
+                    DD: scheduleData.date,
+                    TIME_HH: scheduleData.timeHH || "",
+                    TIME_MM: scheduleData.timeMM || "",
+                    TITLE: scheduleData.title,
+                    WHERE: scheduleData.where,
+                    DETAIL: scheduleData.detail,
+                    END_YYYY: scheduleData.endYear || "",
+                    END_MM: scheduleData.endMonth || "",
+                    END_DD: scheduleData.endDate || "",
+                    COLOR: scheduleData.color || "primary",
+                    ATTENDANCE_MODE: scheduleData.attendanceMode || "ABSENCE",
+                    END_TIME_HH: scheduleData.endTimeHH || "",
+                    END_TIME_MM: scheduleData.endTimeMM || "",
                 };
                 setSchedules((prev) => {
                     const next = [...prev, newSchedule];
@@ -618,9 +642,9 @@ export default function CalendarPage() {
                 body: JSON.stringify({ eventId }),
             });
 
-            const data = await response.json();
+            const data = (await response.json()) as ApiResponse<null>;
 
-            if (data.success) {
+            if (data.success && data.data) {
                 // ローカル状態から削除
                 setSchedules((prev) => {
                     const next = prev.filter((schedule) => {
@@ -687,9 +711,11 @@ export default function CalendarPage() {
                 }),
             });
 
-            const data = await response.json();
+            const data =
+                (await response.json()) as ApiResponse<ScheduleMutationData>;
 
-            if (data.success) {
+            if (data.success && data.data) {
+                const scheduleData = data.data;
                 // ローカル状態を更新
                 setSchedules((prev) => {
                     const next = prev.map((schedule) => {
@@ -697,22 +723,22 @@ export default function CalendarPage() {
                         if (String(scheduleValues[0]) === eventId) {
                             return {
                                 ...schedule,
-                                YYYY: data.data.year,
-                                MM: data.data.month,
-                                DD: data.data.date,
-                                TITLE: data.data.title,
-                                WHERE: data.data.where,
-                                DETAIL: data.data.detail,
-                                TIME_HH: data.data.timeHH || "",
-                                TIME_MM: data.data.timeMM || "",
-                                END_TIME_HH: data.data.endTimeHH || "",
-                                END_TIME_MM: data.data.endTimeMM || "",
-                                END_YYYY: data.data.endYear || "",
-                                END_MM: data.data.endMonth || "",
-                                END_DD: data.data.endDate || "",
-                                COLOR: data.data.color || "primary",
+                                YYYY: scheduleData.year,
+                                MM: scheduleData.month,
+                                DD: scheduleData.date,
+                                TITLE: scheduleData.title,
+                                WHERE: scheduleData.where,
+                                DETAIL: scheduleData.detail,
+                                TIME_HH: scheduleData.timeHH || "",
+                                TIME_MM: scheduleData.timeMM || "",
+                                END_TIME_HH: scheduleData.endTimeHH || "",
+                                END_TIME_MM: scheduleData.endTimeMM || "",
+                                END_YYYY: scheduleData.endYear || "",
+                                END_MM: scheduleData.endMonth || "",
+                                END_DD: scheduleData.endDate || "",
+                                COLOR: scheduleData.color || "primary",
                                 ATTENDANCE_MODE:
-                                    data.data.attendanceMode || "ABSENCE",
+                                    scheduleData.attendanceMode || "ABSENCE",
                             };
                         }
                         return schedule;
