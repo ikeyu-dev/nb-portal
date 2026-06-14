@@ -1,8 +1,11 @@
 import { faListCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { auth } from "@/src/auth";
 import TasksClient from "./TasksClient";
 
-export default function TasksPage() {
+export default async function TasksPage() {
+    const session = await auth();
+
     return (
         <div className="p-4 lg:p-6 w-full">
             <div className="max-w-7xl mx-auto space-y-6">
@@ -18,7 +21,7 @@ export default function TasksPage() {
                         タスク管理
                     </h1>
                 </div>
-                <TasksClient />
+                <TasksClient currentStudentId={session?.studentId || null} />
             </div>
         </div>
     );

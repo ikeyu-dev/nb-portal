@@ -31,6 +31,10 @@ type TaskFormState = {
     assigneeStudentNumbers: string[];
 };
 
+type TasksClientProps = {
+    currentStudentId: string | null;
+};
+
 const emptyForm: TaskFormState = {
     title: "",
     description: "",
@@ -46,6 +50,9 @@ const statusBadgeClass: Record<TaskStatus, string> = {
 };
 
 const statusOrder: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
+
+const normalizeStudentNumber = (value: string | null | undefined) =>
+    String(value ?? "").trim().toLowerCase();
 
 const formatDate = (value?: string | null) => {
     if (!value) return "期限なし";
@@ -69,12 +76,13 @@ const resolveMembers = (data: MembersData | undefined): MemberOption[] => {
         .filter((member) => member.studentNumber && member.displayName);
 };
 
-export default function TasksClient() {
+export default function TasksClient({ currentStudentId }: TasksClientProps) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [members, setMembers] = useState<MemberOption[]>([]);
     const [form, setForm] = useState<TaskFormState>(emptyForm);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -87,6 +95,11 @@ export default function TasksClient() {
             percent: total === 0 ? 0 : Math.round((done / total) * 100),
         };
     }, [tasks]);
+
+    const currentStudentNumber = useMemo(
+        () => normalizeStudentNumber(currentStudentId),
+        [currentStudentId]
+    );
 
     const groupedTasks = useMemo(
         () =>
@@ -138,6 +151,18 @@ export default function TasksClient() {
         setSuccessMessage(null);
     };
 
+    const openCreateTaskModal = () => {
+        setForm(emptyForm);
+        setError(null);
+        setSuccessMessage(null);
+        setIsTaskModalOpen(true);
+    };
+
+    const closeTaskModal = () => {
+        setIsTaskModalOpen(false);
+        resetForm();
+    };
+
     const toggleAssignee = (studentNumber: string) => {
         setForm((current) => {
             const exists = current.assigneeStudentNumbers.includes(studentNumber);
@@ -171,6 +196,7 @@ export default function TasksClient() {
 
             setTasks(data.data || []);
             setSuccessMessage(form.id ? "タスクを更新しました" : "タスクを追加しました");
+            setIsTaskModalOpen(false);
             resetForm();
         } catch (caught) {
             setError(
@@ -196,6 +222,7 @@ export default function TasksClient() {
         });
         setSuccessMessage(null);
         setError(null);
+        setIsTaskModalOpen(true);
     };
 
     const updateTaskStatus = async (task: Task, status: TaskStatus) => {
@@ -247,158 +274,24 @@ export default function TasksClient() {
     }
 
     return (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(320px,420px)_1fr]">
-            <section className="card bg-base-100 shadow-xl border border-base-300">
-                <form className="card-body gap-4" onSubmit={submitTask}>
-                    <div className="flex items-center gap-2">
-                        <FontAwesomeIcon
-                            icon={faCirclePlus}
-                            className="text-lg text-primary"
-                        />
-                        <h2 className="card-title text-base">
-                            {form.id ? "タスクを編集" : "タスクを追加"}
-                        </h2>
-                    </div>
-
-                    <label className="form-control">
-                        <span className="label-text text-sm">タイトル</span>
-                        <input
-                            className="input input-bordered w-full"
-                            value={form.title}
-                            onChange={(event) =>
-                                setForm((current) => ({
-                                    ...current,
-                                    title: event.target.value,
-                                }))
-                            }
-                            required
-                            maxLength={100}
-                        />
-                    </label>
-
-                    <label className="form-control">
-                        <span className="label-text text-sm">説明</span>
-                        <textarea
-                            className="textarea textarea-bordered min-h-24 w-full"
-                            value={form.description}
-                            onChange={(event) =>
-                                setForm((current) => ({
-                                    ...current,
-                                    description: event.target.value,
-                                }))
-                            }
-                            maxLength={1000}
-                        />
-                    </label>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <label className="form-control">
-                            <span className="label-text text-sm">状態</span>
-                            <select
-                                className="select select-bordered w-full"
-                                value={form.status}
-                                onChange={(event) =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        status: event.target.value as TaskStatus,
-                                    }))
-                                }
-                            >
-                                {statusOrder.map((status) => (
-                                    <option key={status} value={status}>
-                                        {TASK_STATUS_LABELS[status]}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-
-                        <label className="form-control">
-                            <span className="label-text text-sm">期限</span>
-                            <input
-                                type="date"
-                                className="input input-bordered w-full"
-                                value={form.dueDate}
-                                onChange={(event) =>
-                                    setForm((current) => ({
-                                        ...current,
-                                        dueDate: event.target.value,
-                                    }))
-                                }
-                            />
-                        </label>
-                    </div>
-
-                    <div className="rounded-lg border border-base-300 p-3">
-                        <div className="mb-3 flex items-center gap-2 text-sm font-medium">
-                            <FontAwesomeIcon icon={faUsers} />
-                            担当者
-                        </div>
-                        <div className="max-h-56 overflow-y-auto pr-1 grid grid-cols-1 gap-2">
-                            {members.map((member) => (
-                                <label
-                                    key={member.studentNumber}
-                                    className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-base-200"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        className="checkbox checkbox-primary checkbox-sm"
-                                        checked={form.assigneeStudentNumbers.includes(
-                                            member.studentNumber
-                                        )}
-                                        onChange={() =>
-                                            toggleAssignee(member.studentNumber)
-                                        }
-                                    />
-                                    <span className="min-w-0 truncate text-sm">
-                                        {member.displayName}
-                                    </span>
-                                    <span className="ml-auto shrink-0 font-mono text-xs text-base-content/50">
-                                        {member.studentNumber}
-                                    </span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    {error && <div className="alert alert-error">{error}</div>}
-                    {successMessage && (
-                        <div className="alert alert-success">{successMessage}</div>
-                    )}
-
-                    <div className="card-actions justify-end">
-                        {form.id && (
-                            <button
-                                type="button"
-                                className="btn btn-ghost"
-                                onClick={resetForm}
-                                disabled={isSubmitting}
-                            >
-                                クリア
-                            </button>
-                        )}
-                        <button
-                            type="submit"
-                            className="btn btn-primary gap-2"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
-                                <span className="loading loading-spinner loading-sm" />
-                            ) : (
-                                <FontAwesomeIcon icon={faCheck} />
-                            )}
-                            保存
-                        </button>
-                    </div>
-                </form>
-            </section>
-
+        <>
             <section className="card bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body gap-5">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <h2 className="card-title text-base">進捗状況</h2>
-                        <span className="badge badge-primary badge-outline">
-                            {progress.done}/{progress.total} 完了
-                        </span>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <h2 className="card-title text-base">進捗状況</h2>
+                            <span className="badge badge-primary badge-outline">
+                                {progress.done}/{progress.total} 完了
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-primary btn-sm gap-2"
+                            onClick={openCreateTaskModal}
+                        >
+                            <FontAwesomeIcon icon={faCirclePlus} />
+                            タスクを追加
+                        </button>
                     </div>
                     <progress
                         className="progress progress-primary w-full"
@@ -435,6 +328,31 @@ export default function TasksClient() {
                                                         <h3 className="font-semibold leading-snug">
                                                             {task.title}
                                                         </h3>
+                                                        {task.assignees.length > 0 && (
+                                                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                                                                {task.assignees.map(
+                                                                    (assignee) => (
+                                                                        <span
+                                                                            key={
+                                                                                assignee.studentNumber
+                                                                            }
+                                                                            className={`badge badge-sm ${
+                                                                                normalizeStudentNumber(
+                                                                                    assignee.studentNumber
+                                                                                ) ===
+                                                                                currentStudentNumber
+                                                                                    ? "badge-primary"
+                                                                                    : "badge-outline"
+                                                                            }`}
+                                                                        >
+                                                                            {
+                                                                                assignee.displayName
+                                                                            }
+                                                                        </span>
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                        )}
                                                         {task.description && (
                                                             <p className="mt-2 whitespace-pre-wrap text-sm text-base-content/70">
                                                                 {task.description}
@@ -471,25 +389,8 @@ export default function TasksClient() {
                                                     </div>
                                                 </div>
 
-                                                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-base-content/60">
-                                                    <span>
-                                                        期限:{" "}
-                                                        {formatDate(task.dueDate)}
-                                                    </span>
-                                                    {task.assignees.map(
-                                                        (assignee) => (
-                                                            <span
-                                                                key={
-                                                                    assignee.studentNumber
-                                                                }
-                                                                className="badge badge-outline badge-sm"
-                                                            >
-                                                                {
-                                                                    assignee.displayName
-                                                                }
-                                                            </span>
-                                                        )
-                                                    )}
+                                                <div className="mt-3 text-xs text-base-content/60">
+                                                    期限: {formatDate(task.dueDate)}
                                                 </div>
 
                                                 <div className="mt-3 grid grid-cols-3 gap-1">
@@ -527,6 +428,171 @@ export default function TasksClient() {
                     )}
                 </div>
             </section>
-        </div>
+
+            {isTaskModalOpen && (
+                <dialog className="modal modal-open modal-middle">
+                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto">
+                        <form className="space-y-4" onSubmit={submitTask}>
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon
+                                    icon={faCirclePlus}
+                                    className="text-lg text-primary"
+                                />
+                                <h2 className="font-bold text-lg">
+                                    {form.id ? "タスクを編集" : "タスクを追加"}
+                                </h2>
+                            </div>
+
+                            <label className="form-control">
+                                <span className="label-text text-sm">
+                                    タイトル
+                                </span>
+                                <input
+                                    className="input input-bordered w-full"
+                                    value={form.title}
+                                    onChange={(event) =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            title: event.target.value,
+                                        }))
+                                    }
+                                    required
+                                    maxLength={100}
+                                    autoFocus
+                                />
+                            </label>
+
+                            <label className="form-control">
+                                <span className="label-text text-sm">説明</span>
+                                <textarea
+                                    className="textarea textarea-bordered min-h-24 w-full"
+                                    value={form.description}
+                                    onChange={(event) =>
+                                        setForm((current) => ({
+                                            ...current,
+                                            description: event.target.value,
+                                        }))
+                                    }
+                                    maxLength={1000}
+                                />
+                            </label>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <label className="form-control">
+                                    <span className="label-text text-sm">
+                                        状態
+                                    </span>
+                                    <select
+                                        className="select select-bordered w-full"
+                                        value={form.status}
+                                        onChange={(event) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                status: event.target
+                                                    .value as TaskStatus,
+                                            }))
+                                        }
+                                    >
+                                        {statusOrder.map((status) => (
+                                            <option key={status} value={status}>
+                                                {TASK_STATUS_LABELS[status]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+
+                                <label className="form-control">
+                                    <span className="label-text text-sm">
+                                        期限
+                                    </span>
+                                    <input
+                                        type="date"
+                                        className="input input-bordered w-full"
+                                        value={form.dueDate}
+                                        onChange={(event) =>
+                                            setForm((current) => ({
+                                                ...current,
+                                                dueDate: event.target.value,
+                                            }))
+                                        }
+                                    />
+                                </label>
+                            </div>
+
+                            <div className="rounded-lg border border-base-300 p-3">
+                                <div className="mb-3 flex items-center gap-2 text-sm font-medium">
+                                    <FontAwesomeIcon icon={faUsers} />
+                                    担当者
+                                </div>
+                                <div className="max-h-56 overflow-y-auto pr-1 grid grid-cols-1 gap-2">
+                                    {members.map((member) => (
+                                        <label
+                                            key={member.studentNumber}
+                                            className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-base-200"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                className="checkbox checkbox-primary checkbox-sm"
+                                                checked={form.assigneeStudentNumbers.includes(
+                                                    member.studentNumber
+                                                )}
+                                                onChange={() =>
+                                                    toggleAssignee(
+                                                        member.studentNumber
+                                                    )
+                                                }
+                                            />
+                                            <span className="min-w-0 truncate text-sm">
+                                                {member.displayName}
+                                            </span>
+                                            <span className="ml-auto shrink-0 font-mono text-xs text-base-content/50">
+                                                {member.studentNumber}
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {error && (
+                                <div className="alert alert-error">{error}</div>
+                            )}
+                            {successMessage && (
+                                <div className="alert alert-success">
+                                    {successMessage}
+                                </div>
+                            )}
+
+                            <div className="modal-action">
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost"
+                                    onClick={closeTaskModal}
+                                    disabled={isSubmitting}
+                                >
+                                    キャンセル
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-primary gap-2"
+                                    disabled={isSubmitting}
+                                >
+                                    {isSubmitting ? (
+                                        <span className="loading loading-spinner loading-sm" />
+                                    ) : (
+                                        <FontAwesomeIcon icon={faCheck} />
+                                    )}
+                                    保存
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button type="button" onClick={closeTaskModal}>
+                            閉じる
+                        </button>
+                    </form>
+                </dialog>
+            )}
+        </>
     );
 }
