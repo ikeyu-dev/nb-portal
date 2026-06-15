@@ -222,6 +222,9 @@ const getJstDateParts = (date = new Date()) => {
 
 const toScheduleIsPast = (date: string) => (date < getJstDateParts().date ? 1 : 0);
 
+const generatePrefixedId = (prefix: string) =>
+	`${prefix}-${crypto.randomUUID().toUpperCase()}`;
+
 const toMemberResponse = (row: MemberRow, rowNumber: number) => ({
 	rowNumber,
 	values: [
@@ -475,7 +478,7 @@ const createSchedule = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const eventId =
 		String(body.eventId ?? "").trim() ||
-		`E-${Date.now().toString(36).toUpperCase()}`;
+		generatePrefixedId("E");
 	const date = buildDate(body.year, body.month, body.date);
 	if (!date) return error("Schedule date is required", 400);
 
@@ -701,7 +704,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 	const eventId =
 		String(body.eventId ?? "").trim() ||
 		existing?.event_id ||
-		`MEETING-${Date.now().toString(36).toUpperCase()}`;
+		generatePrefixedId("MEETING");
 
 	if (!date) return error("Next meeting date is required", 400);
 	if (!time) return error("Next meeting time is required", 400);
@@ -918,7 +921,7 @@ const upsertTask = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const taskId =
 		String(body.id ?? "").trim() ||
-		`TASK-${Date.now().toString(36).toUpperCase()}`;
+		generatePrefixedId("TASK");
 	const title = String(body.title ?? "").trim();
 	if (!title) return error("Task title is required", 400);
 
