@@ -1161,15 +1161,28 @@ const buildNextMeetingReminderEmbed = (
 	};
 };
 
-const getNextMeetingRow = (env: Env) =>
+const getTodayNextMeetingRow = (
+	env: Env,
+	today: string,
+	mode: "IN_PERSON" | "DISCORD"
+) =>
 	env.DB.prepare(
-		`SELECT event_id, date, time, mode, updated_by, updated_at
-		FROM next_meeting_settings WHERE id = 1`
-	).first<NextMeetingRow>();
+		`SELECT n.event_id, n.date, n.time, n.mode, n.updated_by, n.updated_at
+		FROM next_meeting_settings n
+		INNER JOIN schedules s ON s.id = n.event_id
+		WHERE n.id = 1
+			AND n.date = ?
+			AND n.mode = ?
+			AND s.date = ?
+			AND s.title = '部会'
+		LIMIT 1`
+	)
+		.bind(today, mode, today)
+		.first<NextMeetingRow>();
 
-const hasFutureSchedule = async (env: Env, today: string) => {
+const hasFutureMeetingSchedule = async (env: Env, today: string) => {
 	const row = await env.DB.prepare(
-		"SELECT id FROM schedules WHERE date > ? ORDER BY date LIMIT 1"
+		"SELECT id FROM schedules WHERE date > ? AND title = '部会' ORDER BY date LIMIT 1"
 	)
 		.bind(today)
 		.first<{ id: string }>();
@@ -1202,8 +1215,8 @@ const sendNextMeetingInPersonReminder = async (
 	}
 ) => {
 	const today = getJstDateParts().date;
-	const settings = await getNextMeetingRow(env);
-	if (!settings || settings.date !== today || settings.mode !== "IN_PERSON") {
+	const settings = await getTodayNextMeetingRow(env, today, "IN_PERSON");
+	if (!settings) {
 		return;
 	}
 
@@ -1218,15 +1231,15 @@ const sendNextMeetingInPersonReminder = async (
 		],
 	});
 
-	if (checkFutureSchedule && !(await hasFutureSchedule(env, today))) {
+	if (checkFutureSchedule && !(await hasFutureMeetingSchedule(env, today))) {
 		await sendNextMeetingUnsetReminder(env);
 	}
 };
 
 const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 	const today = getJstDateParts().date;
-	const settings = await getNextMeetingRow(env);
-	if (!settings || settings.date !== today || settings.mode !== "DISCORD") {
+	const settings = await getTodayNextMeetingRow(env, today, "DISCORD");
+	if (!settings) {
 		return;
 	}
 
@@ -1241,7 +1254,7 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 		],
 	});
 
-	if (!(await hasFutureSchedule(env, today))) {
+	if (!(await hasFutureMeetingSchedule(env, today))) {
 		await sendNextMeetingUnsetReminder(env);
 	}
 };
@@ -1253,6 +1266,10 @@ const sendTodayAbsences = async (env: RuntimeEnv) => {
 	)
 		.bind(date)
 		.first<{ count: number }>();
+	if ((todayScheduleCount?.count || 0) === 0) {
+		return;
+	}
+
 	const rows = await env.DB.prepare(
 		`SELECT
 			a.name,
@@ -1279,10 +1296,7 @@ const sendTodayAbsences = async (env: RuntimeEnv) => {
 			: [
 					{
 						name: "情報",
-						value:
-							(todayScheduleCount?.count || 0) === 0
-								? "本日の予定はありません"
-								: "本日の欠席者はいません",
+						value: "本日の欠席者はいません",
 						inline: false,
 					},
 				];

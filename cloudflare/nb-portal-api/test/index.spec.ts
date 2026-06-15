@@ -41,6 +41,18 @@ describe("Hello World worker", () => {
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`
 		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS cron_executions (
+				id TEXT PRIMARY KEY,
+				cron TEXT NOT NULL,
+				scheduled_time TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'running',
+				started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				completed_at TEXT,
+				error TEXT,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`
+		).run();
 	});
 
 	it("responds with health status (unit style)", async () => {
@@ -109,5 +121,53 @@ describe("Hello World worker", () => {
 			TIME_MM: "0",
 			WHERE: "Discord",
 		});
+	});
+
+	it("skips scheduled Discord sends when there is no event today", async () => {
+		const ctx = createExecutionContext();
+		await worker.scheduled(
+			{
+				cron: "50 23 * * *",
+				scheduledTime: Date.now(),
+				noRetry: () => {},
+			} as ScheduledController,
+			env,
+			ctx
+		);
+		await waitOnExecutionContext(ctx);
+	});
+
+	it("skips meeting reminder when next meeting settings have no schedule row", async () => {
+		const today = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "Asia/Tokyo",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(new Date());
+		await env.DB.prepare(
+			`INSERT INTO next_meeting_settings (id, event_id, date, time, mode, updated_by, updated_at)
+			VALUES (1, 'missing-event', ?, '18:00', 'DISCORD', 'test', CURRENT_TIMESTAMP)
+			ON CONFLICT(id) DO UPDATE SET
+				event_id = excluded.event_id,
+				date = excluded.date,
+				time = excluded.time,
+				mode = excluded.mode,
+				updated_by = excluded.updated_by,
+				updated_at = CURRENT_TIMESTAMP`
+		)
+			.bind(today)
+			.run();
+
+		const ctx = createExecutionContext();
+		await worker.scheduled(
+			{
+				cron: "0 9 * * *",
+				scheduledTime: Date.now(),
+				noRetry: () => {},
+			} as ScheduledController,
+			env,
+			ctx
+		);
+		await waitOnExecutionContext(ctx);
 	});
 });
