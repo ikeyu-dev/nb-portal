@@ -8,6 +8,7 @@ import {
 } from "@/src/shared/lib/validation";
 import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
+import { sendPushNotification } from "@/src/shared/lib/push-notification-server";
 
 const BACKEND_API_URL = getBackendApiUrl();
 
@@ -15,6 +16,11 @@ const extractStudentId = (email: string | null | undefined): string => {
     if (!email) return "";
     const localPart = email.split("@")[0];
     return localPart.substring(0, 7).toLowerCase();
+};
+
+const formatNextMeetingPushBody = (date: string, time: string, mode: string) => {
+    const place = mode === "DISCORD" ? "Discord" : "対面";
+    return `${date.replaceAll("-", "/")} ${time} ${place}`;
 };
 
 export async function POST(request: NextRequest) {
@@ -98,6 +104,16 @@ export async function POST(request: NextRequest) {
             revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.schedules, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
+            await sendPushNotification(request.nextUrl.origin, {
+                title: "次回部会が登録されました",
+                body: formatNextMeetingPushBody(
+                    validation.data.date,
+                    validation.data.time,
+                    validation.data.mode
+                ),
+                url: "/home",
+                tag: "nb-portal-next-meeting",
+            });
         }
 
         return NextResponse.json(data);
