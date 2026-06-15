@@ -48,6 +48,7 @@ type ScheduleRow = {
 	end_time: string | null;
 	location: string | null;
 	description: string | null;
+	color: string | null;
 	attendance_mode: string;
 	is_past: number;
 	created_by: string | null;
@@ -260,7 +261,7 @@ const toScheduleResponse = (row: ScheduleRow) => {
 		END_YYYY: endDate.year,
 		END_MM: endDate.month,
 		END_DD: endDate.day,
-		COLOR: "primary",
+		COLOR: row.color || "primary",
 		CREATED_BY: row.created_by || "",
 		CREATED_AT: row.created_at || "",
 		UPDATED_BY: row.updated_by || "",
@@ -467,7 +468,7 @@ const verifyMember = async (url: URL, env: Env) => {
 const getSchedules = async (env: Env) => {
 	const rows = await env.DB.prepare(
 		`SELECT id, title, date, end_date, start_time, end_time, location, description,
-			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		FROM schedules
 		ORDER BY date, start_time, id`
 	).all<ScheduleRow>();
@@ -489,9 +490,9 @@ const createSchedule = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, end_date, start_time, end_time, location, description,
-			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
 	)
 		.bind(
 			eventId,
@@ -502,6 +503,7 @@ const createSchedule = async (request: Request, env: Env) => {
 			buildTime(body.endTimeHH, body.endTimeMM),
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
+			String(body.color ?? "primary").trim() || "primary",
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
 			toScheduleIsPast(date, endDate),
 			String(body.createdBy ?? "").trim(),
@@ -541,7 +543,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`UPDATE schedules SET
 			title = ?, date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?,
-			description = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+			description = ?, color = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 	)
 		.bind(
@@ -552,6 +554,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 			buildTime(body.endTimeHH, body.endTimeMM),
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
+			String(body.color ?? "primary").trim() || "primary",
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
 			toScheduleIsPast(date, endDate),
 			String(body.updatedBy ?? "").trim(),
@@ -722,9 +725,9 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, end_date, start_time, end_time, location, description,
-			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'ABSENCE', ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'primary', 'ABSENCE', ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			date = excluded.date,
@@ -733,6 +736,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			end_time = excluded.end_time,
 			location = excluded.location,
 			description = excluded.description,
+			color = excluded.color,
 			attendance_mode = excluded.attendance_mode,
 			is_past = excluded.is_past,
 			updated_by = excluded.updated_by,

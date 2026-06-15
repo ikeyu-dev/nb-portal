@@ -1,0 +1,1 @@
+ALTER TABLE schedules ADD COLUMN color TEXT NOT NULL DEFAULT 'primary';
