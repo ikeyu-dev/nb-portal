@@ -82,7 +82,9 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
     const [form, setForm] = useState<TaskFormState>(emptyForm);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+    const [deleteTargetTask, setDeleteTargetTask] = useState<Task | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -161,6 +163,17 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
     const closeTaskModal = () => {
         setIsTaskModalOpen(false);
         resetForm();
+    };
+
+    const openDeleteTaskModal = (task: Task) => {
+        setDeleteTargetTask(task);
+        setError(null);
+        setSuccessMessage(null);
+    };
+
+    const closeDeleteTaskModal = () => {
+        if (isDeleting) return;
+        setDeleteTargetTask(null);
     };
 
     const toggleAssignee = (studentNumber: string) => {
@@ -249,19 +262,36 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
         }
     };
 
-    const deleteTask = async (taskId: string) => {
-        if (!window.confirm("このタスクを削除しますか？")) return;
+    const deleteTask = async () => {
+        if (!deleteTargetTask) return;
         setError(null);
-        const response = await fetch("/api/tasks", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: taskId }),
-        });
-        const data = (await response.json()) as ApiResponse<null>;
-        if (data.success) {
-            setTasks((current) => current.filter((task) => task.id !== taskId));
-        } else {
-            setError(data.error || "タスク削除に失敗しました");
+        setSuccessMessage(null);
+        setIsDeleting(true);
+
+        try {
+            const response = await fetch("/api/tasks", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: deleteTargetTask.id }),
+            });
+            const data = (await response.json()) as ApiResponse<null>;
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || "タスク削除に失敗しました");
+            }
+
+            setTasks((current) =>
+                current.filter((task) => task.id !== deleteTargetTask.id)
+            );
+            setDeleteTargetTask(null);
+            setSuccessMessage("タスクを削除しました");
+        } catch (caught) {
+            setError(
+                caught instanceof Error
+                    ? caught.message
+                    : "タスク削除に失敗しました"
+            );
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -376,8 +406,8 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                                             type="button"
                                                             className="btn btn-ghost btn-xs text-error"
                                                             onClick={() =>
-                                                                void deleteTask(
-                                                                    task.id
+                                                                openDeleteTaskModal(
+                                                                    task
                                                                 )
                                                             }
                                                             aria-label="削除"
@@ -588,6 +618,64 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                     </div>
                     <form method="dialog" className="modal-backdrop">
                         <button type="button" onClick={closeTaskModal}>
+                            閉じる
+                        </button>
+                    </form>
+                </dialog>
+            )}
+
+            {deleteTargetTask && (
+                <dialog className="modal modal-open modal-middle">
+                    <div className="modal-box">
+                        <div className="flex items-center gap-2">
+                            <FontAwesomeIcon
+                                icon={faTrash}
+                                className="text-lg text-error"
+                            />
+                            <h2 className="font-bold text-lg">タスクを削除</h2>
+                        </div>
+                        <p className="mt-4 text-sm text-base-content/70">
+                            このタスクを削除します。削除したタスクは元に戻せません。
+                        </p>
+                        <div className="mt-4 rounded-lg border border-base-300 bg-base-200/50 p-3">
+                            <div className="font-semibold leading-snug">
+                                {deleteTargetTask.title}
+                            </div>
+                            {deleteTargetTask.description && (
+                                <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm text-base-content/60">
+                                    {deleteTargetTask.description}
+                                </p>
+                            )}
+                        </div>
+                        {error && (
+                            <div className="alert alert-error mt-4">{error}</div>
+                        )}
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={closeDeleteTaskModal}
+                                disabled={isDeleting}
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-error gap-2"
+                                onClick={() => void deleteTask()}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? (
+                                    <span className="loading loading-spinner loading-sm" />
+                                ) : (
+                                    <FontAwesomeIcon icon={faTrash} />
+                                )}
+                                削除
+                            </button>
+                        </div>
+                    </div>
+                    <form method="dialog" className="modal-backdrop">
+                        <button type="button" onClick={closeDeleteTaskModal}>
                             閉じる
                         </button>
                     </form>
