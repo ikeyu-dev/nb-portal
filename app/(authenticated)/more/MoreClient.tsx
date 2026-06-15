@@ -8,7 +8,7 @@ import {
     faBookOpen,
     faCircleInfo,
     faCircleQuestion,
-    faListCheck,
+    faFileLines,
     faRightFromBracket,
     faUser,
 } from "@fortawesome/free-solid-svg-icons";
@@ -75,24 +75,24 @@ export default function MoreClient({ user, displayName }: MoreClientProps) {
                     <div className="card-body">
                         <h2 className="card-title text-base">
                             <FontAwesomeIcon
-                                icon={faListCheck}
+                                icon={faFileLines}
                                 className="text-lg"
                             />
-                            タスク管理
+                            資料
                         </h2>
                         <p className="text-sm text-base-content/60 mt-1">
-                            担当者と進捗状況をまとめて確認できます
+                            部内資料や共有ドキュメントを確認できます
                         </p>
                         <div className="card-actions mt-3">
                             <Link
-                                href="/tasks"
+                                href="/documents"
                                 className="btn btn-primary btn-sm w-full gap-2"
                             >
                                 <FontAwesomeIcon
-                                    icon={faListCheck}
+                                    icon={faFileLines}
                                     className="text-lg"
                                 />
-                                タスクを開く
+                                資料を見る
                             </Link>
                         </div>
                     </div>
