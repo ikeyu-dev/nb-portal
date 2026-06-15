@@ -16,25 +16,83 @@ const extractStudentId = (email: string | null | undefined): string => {
 };
 
 const formatScheduleDate = (data: Record<string, unknown>) => {
-    const year = String(data.year ?? "");
-    const month = String(data.month ?? "");
-    const date = String(data.date ?? "");
+    const year = String(data.year ?? data.YYYY ?? "");
+    const month = String(data.month ?? data.MM ?? "");
+    const date = String(data.date ?? data.DD ?? "");
     if (!year || !month || !date) return "";
     return `${year}/${month}/${date}`;
 };
 
 const formatScheduleTime = (data: Record<string, unknown>) => {
-    const hour = String(data.timeHH ?? "");
-    const minute = String(data.timeMM ?? "");
+    const hour = String(data.timeHH ?? data.TIME_HH ?? "");
+    const minute = String(data.timeMM ?? data.TIME_MM ?? "");
     if (!hour) return "";
     return `${hour.padStart(2, "0")}:${(minute || "0").padStart(2, "0")}`;
 };
 
+const getScheduleTitle = (data: Record<string, unknown>) =>
+    String(data.title ?? data.TITLE ?? "予定");
+
+const getScheduleKindLabel = (data: Record<string, unknown>) =>
+    getScheduleTitle(data) === "部会" ? "部会" : "予定";
+
+const getScheduleEventId = (data: Record<string, unknown>) =>
+    String(data.eventId ?? data.EVENT_ID ?? "");
+
 const buildSchedulePushBody = (data: Record<string, unknown>) => {
     const date = formatScheduleDate(data);
     const time = formatScheduleTime(data);
-    const place = String(data.where ?? "");
+    const place = String(data.where ?? data.WHERE ?? "");
     return [date, time, place].filter(Boolean).join(" ");
+};
+
+const fetchScheduleForNotification = async (
+    eventId: string
+): Promise<Record<string, unknown> | null> => {
+    if (!BACKEND_API_URL || !eventId) return null;
+
+    try {
+        const url = new URL(BACKEND_API_URL);
+        url.searchParams.append("path", "schedules");
+        const response = await fetch(url.toString(), {
+            headers: getBackendApiHeaders(),
+            cache: "no-store",
+        });
+        const data = (await response.json()) as {
+            success?: boolean;
+            data?: Array<Record<string, unknown>>;
+        };
+        if (!data.success || !Array.isArray(data.data)) return null;
+        return (
+            data.data.find((schedule) => getScheduleEventId(schedule) === eventId) ||
+            null
+        );
+    } catch (error) {
+        console.error("Failed to fetch schedule for push notification:", error);
+        return null;
+    }
+};
+
+const sendSchedulePushNotification = async (
+    origin: string,
+    action: "created" | "updated" | "deleted",
+    scheduleData: Record<string, unknown>
+) => {
+    const actionLabel = {
+        created: "追加",
+        updated: "更新",
+        deleted: "削除",
+    }[action];
+    const eventId = getScheduleEventId(scheduleData);
+
+    await sendPushNotification(origin, {
+        title: `${getScheduleKindLabel(scheduleData)}が${actionLabel}されました: ${getScheduleTitle(scheduleData)}`,
+        body: buildSchedulePushBody(scheduleData),
+        url: "/calendar",
+        tag: eventId
+            ? `nb-portal-schedule-${action}-${eventId}`
+            : `nb-portal-schedule-${action}`,
+    });
 };
 
 // スケジュール新規作成
@@ -90,12 +148,11 @@ export async function POST(request: NextRequest) {
             revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
             const scheduleData = data.data || body;
-            await sendPushNotification(request.nextUrl.origin, {
-                title: `予定が追加されました: ${String(scheduleData.title ?? "予定")}`,
-                body: buildSchedulePushBody(scheduleData),
-                url: "/calendar",
-                tag: "nb-portal-schedule-created",
-            });
+            await sendSchedulePushNotification(
+                request.nextUrl.origin,
+                "created",
+                scheduleData
+            );
         }
 
         return NextResponse.json(data);
@@ -133,6 +190,8 @@ export async function DELETE(request: NextRequest) {
 
     try {
         const body = (await request.json()) as Record<string, unknown>;
+        const eventId = getScheduleEventId(body);
+        const scheduleBeforeDelete = await fetchScheduleForNotification(eventId);
 
         // Backend APIに転送
         const url = new URL(BACKEND_API_URL);
@@ -156,6 +215,11 @@ export async function DELETE(request: NextRequest) {
             revalidateTag(CACHE_TAGS.schedules, "max");
             revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
+            await sendSchedulePushNotification(
+                request.nextUrl.origin,
+                "deleted",
+                scheduleBeforeDelete || body
+            );
         }
 
         return NextResponse.json(data);
@@ -215,6 +279,7 @@ export async function PUT(request: NextRequest) {
 
         const data = (await response.json()) as {
             success?: boolean;
+            data?: Record<string, unknown>;
             error?: string;
         };
 
@@ -222,6 +287,11 @@ export async function PUT(request: NextRequest) {
             revalidateTag(CACHE_TAGS.schedules, "max");
             revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
+            await sendSchedulePushNotification(
+                request.nextUrl.origin,
+                "updated",
+                data.data || body
+            );
         }
 
         return NextResponse.json(data);

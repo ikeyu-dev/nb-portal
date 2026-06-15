@@ -23,6 +23,27 @@ const formatNextMeetingPushBody = (date: string, time: string, mode: string) => 
     return `${date.replaceAll("-", "/")} ${time} ${place}`;
 };
 
+const fetchCurrentNextMeeting = async (): Promise<Record<string, unknown> | null> => {
+    if (!BACKEND_API_URL) return null;
+
+    try {
+        const url = new URL(BACKEND_API_URL);
+        url.searchParams.append("path", "next-meeting");
+        const response = await fetch(url.toString(), {
+            headers: getBackendApiHeaders(),
+            cache: "no-store",
+        });
+        const data = (await response.json()) as {
+            success?: boolean;
+            data?: Record<string, unknown> | null;
+        };
+        return data.success ? data.data || null : null;
+    } catch (error) {
+        console.error("Failed to fetch current next meeting:", error);
+        return null;
+    }
+};
+
 export async function POST(request: NextRequest) {
     const writeRequestError = validateWriteRequest(request);
     if (writeRequestError) return writeRequestError;
@@ -70,6 +91,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        const currentMeeting = await fetchCurrentNextMeeting();
         const updatedBy =
             session.studentId ||
             extractStudentId(session.user.email) ||
@@ -104,15 +126,16 @@ export async function POST(request: NextRequest) {
             revalidateTag(CACHE_TAGS.nextMeeting, "max");
             revalidateTag(CACHE_TAGS.schedules, "max");
             revalidateTag(CACHE_TAGS.notifications, "max");
+            const actionLabel = currentMeeting ? "更新" : "登録";
             await sendPushNotification(request.nextUrl.origin, {
-                title: "次回部会が登録されました",
+                title: `次回部会が${actionLabel}されました`,
                 body: formatNextMeetingPushBody(
                     validation.data.date,
                     validation.data.time,
                     validation.data.mode
                 ),
                 url: "/home",
-                tag: "nb-portal-next-meeting",
+                tag: `nb-portal-next-meeting-${actionLabel}`,
             });
         }
 
