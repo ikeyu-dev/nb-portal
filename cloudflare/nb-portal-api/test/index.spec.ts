@@ -23,6 +23,7 @@ describe("Hello World worker", () => {
 				end_time TEXT,
 				location TEXT,
 				description TEXT,
+				color TEXT NOT NULL DEFAULT 'primary',
 				attendance_mode TEXT NOT NULL DEFAULT 'ABSENCE',
 				created_by TEXT,
 				updated_by TEXT,
@@ -138,6 +139,7 @@ describe("Hello World worker", () => {
 				title: "合宿",
 				where: "校外",
 				detail: "終日イベント",
+				color: "green",
 				attendanceMode: "ABSENCE",
 				createdBy: "test",
 			}),
@@ -178,6 +180,7 @@ describe("Hello World worker", () => {
 
 		expect(schedule).toMatchObject({
 			TITLE: "合宿",
+			COLOR: "green",
 			END_YYYY: "2099",
 			END_MM: "2",
 			END_DD: "12",
