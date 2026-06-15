@@ -18,6 +18,7 @@ describe("Hello World worker", () => {
 				id TEXT PRIMARY KEY,
 				title TEXT NOT NULL,
 				date TEXT NOT NULL,
+				end_date TEXT,
 				start_time TEXT,
 				end_time TEXT,
 				location TEXT,
@@ -120,6 +121,67 @@ describe("Hello World worker", () => {
 			TIME_HH: "18",
 			TIME_MM: "0",
 			WHERE: "Discord",
+		});
+	});
+
+	it("stores and returns schedule end date", async () => {
+		const request = new IncomingRequest("http://example.com/schedules", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({
+				year: "2099",
+				month: "2",
+				date: "10",
+				endYear: "2099",
+				endMonth: "2",
+				endDate: "12",
+				title: "合宿",
+				where: "校外",
+				detail: "終日イベント",
+				attendanceMode: "ABSENCE",
+				createdBy: "test",
+			}),
+		});
+		const ctx = createExecutionContext();
+		const response = await worker.fetch(request, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(response.status).toBe(200);
+
+		const responseBody = (await response.json()) as {
+			success?: boolean;
+			data?: {
+				eventId?: string;
+				endYear?: string;
+				endMonth?: string;
+				endDate?: string;
+			};
+		};
+		expect(responseBody.success).toBe(true);
+		expect(responseBody.data).toMatchObject({
+			endYear: "2099",
+			endMonth: "2",
+			endDate: "12",
+		});
+
+		const schedulesResponse = await worker.fetch(
+			new IncomingRequest("http://example.com/schedules"),
+			env,
+			createExecutionContext()
+		);
+		const schedulesBody = (await schedulesResponse.json()) as {
+			success?: boolean;
+			data?: Array<Record<string, unknown>>;
+		};
+		const schedule = schedulesBody.data?.find(
+			(item) => item.EVENT_ID === responseBody.data?.eventId
+		);
+
+		expect(schedule).toMatchObject({
+			TITLE: "合宿",
+			END_YYYY: "2099",
+			END_MM: "2",
+			END_DD: "12",
+			IS_PAST: false,
 		});
 	});
 

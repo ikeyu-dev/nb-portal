@@ -159,13 +159,14 @@ for (const schedule of readCsv(files.schedules)) {
 	const eventId = schedule.EVENT_ID;
 	if (!eventId) continue;
 
-statements.push(`INSERT INTO schedules (
-  id, title, date, start_time, end_time, location, description, attendance_mode,
+	statements.push(`INSERT INTO schedules (
+  id, title, date, end_date, start_time, end_time, location, description, attendance_mode,
   is_past, created_by, created_at, updated_by, updated_at
 ) VALUES (
   ${sqlString(eventId)},
   ${sqlString(schedule.TITLE)},
   ${sqlString(buildDate(schedule.YYYY, schedule.MM, schedule.DD))},
+  ${sqlNullableString(buildDate(schedule.END_YYYY, schedule.END_MM, schedule.END_DD))},
   ${sqlNullableString(buildTime(schedule.TIME_HH, schedule.TIME_MM))},
   ${sqlNullableString(buildTime(schedule.END_TIME_HH, schedule.END_TIME_MM))},
   ${sqlNullableString(schedule.WHERE)},

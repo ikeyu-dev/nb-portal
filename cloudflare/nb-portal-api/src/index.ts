@@ -43,6 +43,7 @@ type ScheduleRow = {
 	id: string;
 	title: string;
 	date: string;
+	end_date: string | null;
 	start_time: string | null;
 	end_time: string | null;
 	location: string | null;
@@ -220,7 +221,8 @@ const getJstDateParts = (date = new Date()) => {
 	};
 };
 
-const toScheduleIsPast = (date: string) => (date < getJstDateParts().date ? 1 : 0);
+const toScheduleIsPast = (date: string, endDate?: string | null) =>
+	(endDate || date) < getJstDateParts().date ? 1 : 0;
 
 const generatePrefixedId = (prefix: string) =>
 	`${prefix}-${crypto.randomUUID().toUpperCase()}`;
@@ -241,6 +243,7 @@ const toMemberResponse = (row: MemberRow, rowNumber: number) => ({
 
 const toScheduleResponse = (row: ScheduleRow) => {
 	const startDate = splitDate(row.date);
+	const endDate = splitDate(row.end_date);
 	const startTime = splitTime(row.start_time);
 	const endTime = splitTime(row.end_time);
 
@@ -254,9 +257,9 @@ const toScheduleResponse = (row: ScheduleRow) => {
 		TITLE: row.title,
 		WHERE: row.location || "",
 		DETAIL: row.description || "",
-		END_YYYY: "",
-		END_MM: "",
-		END_DD: "",
+		END_YYYY: endDate.year,
+		END_MM: endDate.month,
+		END_DD: endDate.day,
 		COLOR: "primary",
 		CREATED_BY: row.created_by || "",
 		CREATED_AT: row.created_at || "",
@@ -463,7 +466,7 @@ const verifyMember = async (url: URL, env: Env) => {
 
 const getSchedules = async (env: Env) => {
 	const rows = await env.DB.prepare(
-		`SELECT id, title, date, start_time, end_time, location, description,
+		`SELECT id, title, date, end_date, start_time, end_time, location, description,
 			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		FROM schedules
 		ORDER BY date, start_time, id`
@@ -480,25 +483,27 @@ const createSchedule = async (request: Request, env: Env) => {
 		String(body.eventId ?? "").trim() ||
 		generatePrefixedId("E");
 	const date = buildDate(body.year, body.month, body.date);
+	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
 	if (!date) return error("Schedule date is required", 400);
 
 	await env.DB.prepare(
 		`INSERT INTO schedules (
-			id, title, date, start_time, end_time, location, description,
+			id, title, date, end_date, start_time, end_time, location, description,
 			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
 	)
 		.bind(
 			eventId,
 			String(body.title ?? "").trim(),
 			date,
+			endDate,
 			buildTime(body.timeHH, body.timeMM),
 			buildTime(body.endTimeHH, body.endTimeMM),
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
-			toScheduleIsPast(date),
+			toScheduleIsPast(date, endDate),
 			String(body.createdBy ?? "").trim(),
 			String(body.createdBy ?? "").trim()
 		)
@@ -516,6 +521,9 @@ const createSchedule = async (request: Request, env: Env) => {
 		title: String(body.title ?? ""),
 		where: String(body.where ?? ""),
 		detail: String(body.detail ?? ""),
+		endYear: String(body.endYear ?? ""),
+		endMonth: String(body.endMonth ?? ""),
+		endDate: String(body.endDate ?? ""),
 		color: String(body.color ?? "primary"),
 		attendanceMode: String(body.attendanceMode ?? "ABSENCE"),
 	});
@@ -527,23 +535,25 @@ const updateSchedule = async (request: Request, env: Env) => {
 	if (!eventId) return error("eventId is required", 400);
 
 	const date = buildDate(body.year, body.month, body.date);
+	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
 	if (!date) return error("Schedule date is required", 400);
 
 	await env.DB.prepare(
 		`UPDATE schedules SET
-			title = ?, date = ?, start_time = ?, end_time = ?, location = ?,
+			title = ?, date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?,
 			description = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE id = ?`
 	)
 		.bind(
 			String(body.title ?? "").trim(),
 			date,
+			endDate,
 			buildTime(body.timeHH, body.timeMM),
 			buildTime(body.endTimeHH, body.endTimeMM),
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
-			toScheduleIsPast(date),
+			toScheduleIsPast(date, endDate),
 			String(body.updatedBy ?? "").trim(),
 			eventId
 		)
@@ -711,13 +721,14 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 
 	await env.DB.prepare(
 		`INSERT INTO schedules (
-			id, title, date, start_time, end_time, location, description,
+			id, title, date, end_date, start_time, end_time, location, description,
 			attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, '部会', ?, ?, NULL, ?, '次回部会', 'ABSENCE', ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'ABSENCE', ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			date = excluded.date,
+			end_date = excluded.end_date,
 			start_time = excluded.start_time,
 			end_time = excluded.end_time,
 			location = excluded.location,
@@ -1404,9 +1415,9 @@ const updateSchedulePastState = async (env: RuntimeEnv) => {
 	const today = getJstDateParts().date;
 	await env.DB.prepare(
 		`UPDATE schedules
-		SET is_past = CASE WHEN date < ? THEN 1 ELSE 0 END,
+		SET is_past = CASE WHEN COALESCE(end_date, date) < ? THEN 1 ELSE 0 END,
 			updated_at = CASE
-				WHEN is_past != CASE WHEN date < ? THEN 1 ELSE 0 END
+				WHEN is_past != CASE WHEN COALESCE(end_date, date) < ? THEN 1 ELSE 0 END
 				THEN CURRENT_TIMESTAMP
 				ELSE updated_at
 			END`
