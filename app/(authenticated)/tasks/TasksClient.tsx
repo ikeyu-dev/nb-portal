@@ -16,6 +16,7 @@ import type {
     TaskStatus,
 } from "@/src/shared/types/api";
 import { TASK_STATUS_LABELS } from "@/src/shared/types/api";
+import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 type MemberOption = {
     studentNumber: string;
@@ -77,6 +78,8 @@ const resolveMembers = (data: MembersData | undefined): MemberOption[] => {
 };
 
 export default function TasksClient({ currentStudentId }: TasksClientProps) {
+    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
+    const urlModalQuery = searchParams.toString();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [members, setMembers] = useState<MemberOption[]>([]);
     const [form, setForm] = useState<TaskFormState>(emptyForm);
@@ -148,6 +151,47 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
         void loadData();
     }, []);
 
+    useEffect(() => {
+        if (isLoading) return;
+
+        const params = new URLSearchParams(urlModalQuery);
+        const modal = params.get("modal");
+        const taskId = params.get("task");
+        if (modal === "task-create") {
+            setForm(emptyForm);
+            setError(null);
+            setSuccessMessage(null);
+            setDeleteTargetTask(null);
+            setIsTaskModalOpen(true);
+            return;
+        }
+
+        if ((modal === "task-edit" || modal === "task-delete") && taskId) {
+            const task = tasks.find((item) => item.id === taskId);
+            if (!task) return;
+
+            setError(null);
+            setSuccessMessage(null);
+            if (modal === "task-edit") {
+                setDeleteTargetTask(null);
+                setForm({
+                    id: task.id,
+                    title: task.title,
+                    description: task.description,
+                    status: task.status,
+                    dueDate: task.dueDate || "",
+                    assigneeStudentNumbers: task.assignees.map(
+                        (assignee) => assignee.studentNumber
+                    ),
+                });
+                setIsTaskModalOpen(true);
+            } else {
+                setIsTaskModalOpen(false);
+                setDeleteTargetTask(task);
+            }
+        }
+    }, [isLoading, tasks, urlModalQuery]);
+
     const resetForm = () => {
         setForm(emptyForm);
         setSuccessMessage(null);
@@ -158,22 +202,26 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
         setError(null);
         setSuccessMessage(null);
         setIsTaskModalOpen(true);
+        updateUrlModal({ modal: "task-create", task: null });
     };
 
     const closeTaskModal = () => {
         setIsTaskModalOpen(false);
         resetForm();
+        clearUrlModal(["task"]);
     };
 
     const openDeleteTaskModal = (task: Task) => {
         setDeleteTargetTask(task);
         setError(null);
         setSuccessMessage(null);
+        updateUrlModal({ modal: "task-delete", task: task.id });
     };
 
     const closeDeleteTaskModal = () => {
         if (isDeleting) return;
         setDeleteTargetTask(null);
+        clearUrlModal(["task"]);
     };
 
     const toggleAssignee = (studentNumber: string) => {
@@ -211,6 +259,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             setSuccessMessage(form.id ? "タスクを更新しました" : "タスクを追加しました");
             setIsTaskModalOpen(false);
             resetForm();
+            clearUrlModal(["task"]);
         } catch (caught) {
             setError(
                 caught instanceof Error
@@ -236,6 +285,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
         setSuccessMessage(null);
         setError(null);
         setIsTaskModalOpen(true);
+        updateUrlModal({ modal: "task-edit", task: task.id });
     };
 
     const updateTaskStatus = async (task: Task, status: TaskStatus) => {
@@ -284,6 +334,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             );
             setDeleteTargetTask(null);
             setSuccessMessage("タスクを削除しました");
+            clearUrlModal(["task"]);
         } catch (caught) {
             setError(
                 caught instanceof Error

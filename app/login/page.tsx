@@ -2,7 +2,24 @@ import { signIn } from "@/src/auth";
 import Image from "next/image";
 import { LoginButton } from "./LoginButton";
 
-export default function LoginPage() {
+type LoginPageProps = {
+    searchParams?: Promise<{
+        callbackUrl?: string | string[];
+    }>;
+};
+
+const normalizeCallbackUrl = (value: string | string[] | undefined) => {
+    const callbackUrl = Array.isArray(value) ? value[0] : value;
+    if (!callbackUrl || !callbackUrl.startsWith("/") || callbackUrl.startsWith("//")) {
+        return "/home";
+    }
+    return callbackUrl;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+    const params = searchParams ? await searchParams : {};
+    const callbackUrl = normalizeCallbackUrl(params.callbackUrl);
+
     return (
         <div className="min-h-dvh flex items-center justify-center bg-base-200">
             <div className="card w-96 bg-base-100 shadow-xl">
@@ -28,7 +45,7 @@ export default function LoginPage() {
                         action={async () => {
                             "use server";
                             await signIn("microsoft-entra-id", {
-                                redirectTo: "/home",
+                                redirectTo: callbackUrl,
                             });
                         }}
                     >

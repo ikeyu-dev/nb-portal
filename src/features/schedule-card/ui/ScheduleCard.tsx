@@ -15,6 +15,7 @@ import type {
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
+import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 type AbsenceFormState = {
     type: string;
@@ -132,6 +133,8 @@ export default function ScheduleCard({
     hideCard = false,
     color = "#2a83a2",
 }: ScheduleCardProps) {
+    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
+    const urlModalQuery = searchParams.toString();
     const [isModalOpen, setIsModalOpen] = useState(defaultOpen);
     const [isAttendanceConfirmOpen, setIsAttendanceConfirmOpen] =
         useState(false);
@@ -216,6 +219,37 @@ export default function ScheduleCard({
         setLocalAbsences(absences);
     }, [absences]);
 
+    useEffect(() => {
+        const params = new URLSearchParams(urlModalQuery);
+        if (params.get("event") !== eventId) return;
+
+        const modal = params.get("modal");
+        if (modal === "schedule-response") {
+            setIsModalOpen(true);
+            setIsAttendanceConfirmOpen(false);
+            setIsAbsenceFormOpen(false);
+            setIsDeleteConfirmOpen(false);
+        }
+        if (modal === "response-confirm") {
+            setIsModalOpen(true);
+            setIsAttendanceConfirmOpen(true);
+            setIsAbsenceFormOpen(false);
+            setIsDeleteConfirmOpen(false);
+        }
+        if (modal === "response-form") {
+            setIsModalOpen(true);
+            setIsAttendanceConfirmOpen(false);
+            setIsAbsenceFormOpen(true);
+            setIsDeleteConfirmOpen(false);
+        }
+        if (modal === "response-delete") {
+            setIsModalOpen(true);
+            setIsAttendanceConfirmOpen(false);
+            setIsAbsenceFormOpen(false);
+            setIsDeleteConfirmOpen(true);
+        }
+    }, [eventId, urlModalQuery]);
+
     const handleClose = () => {
         setIsModalOpen(false);
         setIsAttendanceConfirmOpen(false);
@@ -225,6 +259,7 @@ export default function ScheduleCard({
         setAbsenceSubmitMessage(null);
         setAttendanceNote("");
         onClose?.();
+        clearUrlModal(["event"]);
     };
 
     const resetAbsenceForm = () => {
@@ -271,6 +306,7 @@ export default function ScheduleCard({
         setIsAttendanceConfirmOpen(false);
         setAttendanceSubmitMessage(null);
         setAttendanceNote("");
+        updateUrlModal({ modal: "schedule-response", event: eventId });
     };
 
     const closeAbsenceForm = () => {
@@ -278,17 +314,20 @@ export default function ScheduleCard({
         setIsAbsenceFormOpen(false);
         setAbsenceSubmitMessage(null);
         resetAbsenceForm();
+        updateUrlModal({ modal: "schedule-response", event: eventId });
     };
 
     const closeDeleteConfirm = () => {
         if (isDeletingResponse) return;
         setIsDeleteConfirmOpen(false);
+        updateUrlModal({ modal: "schedule-response", event: eventId });
     };
 
     const openAttendanceForm = () => {
         setAttendanceSubmitMessage(null);
         setAttendanceNote(ownResponse?.reasonDetail || "");
         setIsAttendanceConfirmOpen(true);
+        updateUrlModal({ modal: "response-confirm", event: eventId });
     };
 
     const openAbsenceForm = () => {
@@ -306,6 +345,7 @@ export default function ScheduleCard({
                 : emptyAbsenceForm
         );
         setIsAbsenceFormOpen(true);
+        updateUrlModal({ modal: "response-form", event: eventId });
     };
 
     const submitAttendance = async () => {
@@ -474,7 +514,13 @@ export default function ScheduleCard({
         <>
             {!hideCard && (
                 <div
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={() => {
+                        setIsModalOpen(true);
+                        updateUrlModal({
+                            modal: "schedule-response",
+                            event: eventId,
+                        });
+                    }}
                     className="group bg-base-100 p-5 transition-colors cursor-pointer hover:bg-base-200/50"
                 >
                     <div className="flex items-stretch gap-4">
@@ -1055,11 +1101,17 @@ export default function ScheduleCard({
                                                                         <button
                                                                             type="button"
                                                                             className="btn btn-ghost btn-xs text-error"
-                                                                            onClick={() =>
+                                                                            onClick={() => {
                                                                                 setIsDeleteConfirmOpen(
                                                                                     true
-                                                                                )
-                                                                            }
+                                                                                );
+                                                                                updateUrlModal(
+                                                                                    {
+                                                                                        modal: "response-delete",
+                                                                                        event: eventId,
+                                                                                    }
+                                                                                );
+                                                                            }}
                                                                             disabled={
                                                                                 isAttendanceSubmitting ||
                                                                                 isAbsenceSubmitting ||

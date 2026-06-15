@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
+import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import {
     normalizeScheduleAttendanceMode,
     SCHEDULE_ATTENDANCE_MODE_LABELS,
@@ -110,7 +111,27 @@ const getScheduleAttendanceMode = (
         schedule.ATTENDANCE_MODE ?? schedule.attendanceMode
     );
 
+const getScheduleEventId = (schedule: Schedule) =>
+    String(schedule.EVENT_ID ?? Object.values(schedule)[0] ?? "");
+
+const getScheduleDateStr = (schedule: Schedule) => {
+    const values = Object.values(schedule);
+    const year = String(values[1] ?? "").padStart(4, "0");
+    const month = String(values[2] ?? "").padStart(2, "0");
+    const date = String(values[3] ?? "").padStart(2, "0");
+    if (!year || !month || !date) return "";
+    return `${year}-${month}-${date}`;
+};
+
+const parseDateStr = (dateStr: string) => {
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+};
+
 export default function CalendarPage() {
+    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
+    const urlModalQuery = searchParams.toString();
     const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [absences, setAbsences] = useState<Absence[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -354,10 +375,151 @@ export default function CalendarPage() {
         }
     });
 
+    const buildSelectedDateInfo = (dateStr: string): SelectedDateInfo | null => {
+        const date = parseDateStr(dateStr);
+        if (!date) return null;
+        return {
+            date,
+            dateStr,
+            events: eventsByDate.get(dateStr) || [],
+        };
+    };
+
+    const buildEditForm = (event: Schedule): EventForm => {
+        const values = Object.values(event);
+        const rawTimeHH = values[4];
+        const rawTimeMM = values[5];
+        const rawEndTimeHH = values[18];
+        const rawEndTimeMM = values[19];
+        const rawEndYear = values[9];
+        const rawEndMonth = values[10];
+        const rawEndDate = values[11];
+        const hasTime =
+            rawTimeHH !== "" && rawTimeHH !== null && rawTimeHH !== undefined;
+        const hasEndDate =
+            rawEndYear !== "" &&
+            rawEndYear !== null &&
+            rawEndYear !== undefined;
+
+        return {
+            title: String(values[6] ?? ""),
+            where: String(values[7] ?? ""),
+            detail: String(values[8] ?? ""),
+            timeHH:
+                rawTimeHH !== "" &&
+                rawTimeHH !== null &&
+                rawTimeHH !== undefined
+                    ? String(rawTimeHH)
+                    : "",
+            timeMM:
+                rawTimeMM !== "" &&
+                rawTimeMM !== null &&
+                rawTimeMM !== undefined
+                    ? String(rawTimeMM)
+                    : "",
+            endTimeHH:
+                rawEndTimeHH !== "" &&
+                rawEndTimeHH !== null &&
+                rawEndTimeHH !== undefined
+                    ? String(rawEndTimeHH)
+                    : "",
+            endTimeMM:
+                rawEndTimeMM !== "" &&
+                rawEndTimeMM !== null &&
+                rawEndTimeMM !== undefined
+                    ? String(rawEndTimeMM)
+                    : "",
+            year: String(values[1] ?? ""),
+            month: String(values[2] ?? ""),
+            date: String(values[3] ?? ""),
+            endYear:
+                rawEndYear !== "" &&
+                rawEndYear !== null &&
+                rawEndYear !== undefined
+                    ? String(rawEndYear)
+                    : "",
+            endMonth:
+                rawEndMonth !== "" &&
+                rawEndMonth !== null &&
+                rawEndMonth !== undefined
+                    ? String(rawEndMonth)
+                    : "",
+            endDate:
+                rawEndDate !== "" &&
+                rawEndDate !== null &&
+                rawEndDate !== undefined
+                    ? String(rawEndDate)
+                    : "",
+            isAllDay: !hasTime && hasEndDate,
+            color: (values[12] as EventColorId) || "primary",
+            attendanceMode: getScheduleAttendanceMode(event),
+        };
+    };
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        const params = new URLSearchParams(urlModalQuery);
+        const modal = params.get("modal");
+        const dateStr = params.get("date") || "";
+        const eventId = params.get("event") || "";
+        if (modal === "schedule-date" && dateStr) {
+            const nextSelectedDate = buildSelectedDateInfo(dateStr);
+            if (nextSelectedDate) {
+                setSelectedDate(nextSelectedDate);
+                setSelectedEvent(null);
+                setShowAddModal(false);
+                setShowEditModal(false);
+                setShowDeleteConfirm(false);
+            }
+            return;
+        }
+
+        if (modal === "schedule-create" && dateStr) {
+            const nextSelectedDate = buildSelectedDateInfo(dateStr);
+            if (nextSelectedDate) {
+                setSelectedDate(nextSelectedDate);
+                setSelectedEvent(null);
+                setShowAddModal(true);
+                setShowEditModal(false);
+                setShowDeleteConfirm(false);
+            }
+            return;
+        }
+
+        if (
+            [
+                "schedule-detail",
+                "schedule-edit",
+                "schedule-delete",
+            ].includes(modal || "") &&
+            eventId
+        ) {
+            const event = schedules.find(
+                (schedule) => getScheduleEventId(schedule) === eventId
+            );
+            if (!event) return;
+            const eventDateStr = getScheduleDateStr(event);
+            const nextSelectedDate = buildSelectedDateInfo(eventDateStr);
+            setSelectedDate(nextSelectedDate);
+            setSelectedEvent(event);
+            setShowAddModal(false);
+            if (modal === "schedule-edit" || modal === "schedule-delete") {
+                setEditForm(buildEditForm(event));
+                setShowEditModal(true);
+                setShowDeleteConfirm(modal === "schedule-delete");
+            } else {
+                setShowEditModal(false);
+                setShowDeleteConfirm(false);
+            }
+        }
+    }, [isLoading, schedules, urlModalQuery]);
+
     // 日付クリック時のハンドラー
     const handleDateClick = (date: Date, dateStr: string) => {
         const events = eventsByDate.get(dateStr) || [];
         setSelectedDate({ date, dateStr, events });
+        updateUrlModal({ modal: "schedule-date", date: dateStr, event: null });
     };
 
     // モーダルを閉じる
@@ -402,11 +564,17 @@ export default function CalendarPage() {
             color: "primary",
             attendanceMode: "ABSENCE",
         });
+        clearUrlModal(["date", "event"]);
     };
 
     // 追加モーダルを開く
     const openAddModal = () => {
         setShowAddModal(true);
+        updateUrlModal({
+            modal: "schedule-create",
+            date: selectedDate?.dateStr,
+            event: null,
+        });
     };
 
     // 追加モーダルを閉じる（一覧に戻る）
@@ -429,6 +597,11 @@ export default function CalendarPage() {
             isAllDay: false,
             color: "primary",
             attendanceMode: "ABSENCE",
+        });
+        updateUrlModal({
+            modal: "schedule-date",
+            date: selectedDate?.dateStr,
+            event: null,
         });
     };
 
@@ -516,89 +689,37 @@ export default function CalendarPage() {
     // 一覧からイベントを選択
     const handleEventSelect = (event: Schedule) => {
         setSelectedEvent(event);
+        updateUrlModal({
+            modal: "schedule-detail",
+            event: getScheduleEventId(event),
+            date: null,
+        });
     };
 
     // 詳細モーダルを閉じて一覧に戻る
     const closeEventModal = () => {
         setSelectedEvent(null);
+        if (selectedDate) {
+            updateUrlModal({
+                modal: "schedule-date",
+                date: selectedDate.dateStr,
+                event: null,
+            });
+        } else {
+            clearUrlModal(["date", "event"]);
+        }
     };
 
     // 編集モーダルを開く
     const openEditModal = () => {
         if (!selectedEvent) return;
-        const values = Object.values(selectedEvent);
-        const rawTimeHH = values[4];
-        const rawTimeMM = values[5];
-        const rawEndTimeHH = values[18];
-        const rawEndTimeMM = values[19];
-        // 終了日はインデックス9, 10, 11（END_YYYY, END_MM, END_DD）
-        const rawEndYear = values[9];
-        const rawEndMonth = values[10];
-        const rawEndDate = values[11];
-
-        // 終日判定: 時刻がなく、終了日がある場合は終日
-        const hasTime =
-            rawTimeHH !== "" && rawTimeHH !== null && rawTimeHH !== undefined;
-        const hasEndDate =
-            rawEndYear !== "" &&
-            rawEndYear !== null &&
-            rawEndYear !== undefined;
-        const isAllDay = !hasTime && hasEndDate;
-
-        setEditForm({
-            title: String(values[6] ?? ""),
-            where: String(values[7] ?? ""),
-            detail: String(values[8] ?? ""),
-            timeHH:
-                rawTimeHH !== "" &&
-                rawTimeHH !== null &&
-                rawTimeHH !== undefined
-                    ? String(rawTimeHH)
-                    : "",
-            timeMM:
-                rawTimeMM !== "" &&
-                rawTimeMM !== null &&
-                rawTimeMM !== undefined
-                    ? String(rawTimeMM)
-                    : "",
-            endTimeHH:
-                rawEndTimeHH !== "" &&
-                rawEndTimeHH !== null &&
-                rawEndTimeHH !== undefined
-                    ? String(rawEndTimeHH)
-                    : "",
-            endTimeMM:
-                rawEndTimeMM !== "" &&
-                rawEndTimeMM !== null &&
-                rawEndTimeMM !== undefined
-                    ? String(rawEndTimeMM)
-                    : "",
-            year: String(values[1] ?? ""),
-            month: String(values[2] ?? ""),
-            date: String(values[3] ?? ""),
-            endYear:
-                rawEndYear !== "" &&
-                rawEndYear !== null &&
-                rawEndYear !== undefined
-                    ? String(rawEndYear)
-                    : "",
-            endMonth:
-                rawEndMonth !== "" &&
-                rawEndMonth !== null &&
-                rawEndMonth !== undefined
-                    ? String(rawEndMonth)
-                    : "",
-            endDate:
-                rawEndDate !== "" &&
-                rawEndDate !== null &&
-                rawEndDate !== undefined
-                    ? String(rawEndDate)
-                    : "",
-            isAllDay,
-            color: (values[12] as EventColorId) || "primary",
-            attendanceMode: getScheduleAttendanceMode(selectedEvent),
-        });
+        setEditForm(buildEditForm(selectedEvent));
         setShowEditModal(true);
+        updateUrlModal({
+            modal: "schedule-edit",
+            event: getScheduleEventId(selectedEvent),
+            date: null,
+        });
     };
 
     // 編集モーダルを閉じる
@@ -623,6 +744,13 @@ export default function CalendarPage() {
             color: "primary",
             attendanceMode: "ABSENCE",
         });
+        if (selectedEvent) {
+            updateUrlModal({
+                modal: "schedule-detail",
+                event: getScheduleEventId(selectedEvent),
+                date: null,
+            });
+        }
     };
 
     // イベント削除の処理
@@ -2546,9 +2674,18 @@ export default function CalendarPage() {
                                         <button
                                             type="button"
                                             className="btn btn-sm btn-ghost"
-                                            onClick={() =>
-                                                setShowDeleteConfirm(false)
-                                            }
+                                            onClick={() => {
+                                                setShowDeleteConfirm(false);
+                                                if (selectedEvent) {
+                                                    updateUrlModal({
+                                                        modal: "schedule-edit",
+                                                        event: getScheduleEventId(
+                                                            selectedEvent
+                                                        ),
+                                                        date: null,
+                                                    });
+                                                }
+                                            }}
                                         >
                                             キャンセル
                                         </button>
@@ -2571,9 +2708,18 @@ export default function CalendarPage() {
                                     <button
                                         type="button"
                                         className="btn btn-outline btn-error"
-                                        onClick={() =>
-                                            setShowDeleteConfirm(true)
-                                        }
+                                        onClick={() => {
+                                            setShowDeleteConfirm(true);
+                                            if (selectedEvent) {
+                                                updateUrlModal({
+                                                    modal: "schedule-delete",
+                                                    event: getScheduleEventId(
+                                                        selectedEvent
+                                                    ),
+                                                    date: null,
+                                                });
+                                            }
+                                        }}
                                     >
                                         削除
                                     </button>

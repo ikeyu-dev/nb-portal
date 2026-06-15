@@ -29,6 +29,7 @@ import {
     CACHE_TTL_MS,
     CLIENT_CACHE_KEYS,
 } from "@/src/shared/lib/cache-policy";
+import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 const HEADER_LABELS: Record<string, string> = {
     studentnumber: "学籍番号",
@@ -219,6 +220,8 @@ const getAdmissionYear = (studentNumber: SheetCellValue): string | null => {
 };
 
 export default function MembersPage() {
+    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
+    const urlModalQuery = searchParams.toString();
     const [headers, setHeaders] = useState<string[]>([]);
     const [members, setMembers] = useState<MemberRow[]>([]);
     const [query, setQuery] = useState("");
@@ -318,6 +321,14 @@ export default function MembersPage() {
         [headers]
     );
 
+    const getMemberStudentNumber = useCallback(
+        (member: MemberRow) =>
+            studentNumberColumnIndex >= 0
+                ? stringifyCell(member.values[studentNumberColumnIndex])
+                : "",
+        [studentNumberColumnIndex]
+    );
+
     const lineNameColumnIndex = useMemo(
         () => headers.findIndex(isLineNameHeader),
         [headers]
@@ -392,6 +403,54 @@ export default function MembersPage() {
         selectedAdmissionYear !== "all" ||
         checkedMemberRows.size > 0;
 
+    useEffect(() => {
+        if (isLoading) return;
+
+        const params = new URLSearchParams(urlModalQuery);
+        const modal = params.get("modal");
+        const studentNumber = params.get("member");
+        if (modal === "member-create") {
+            setCreateValues(headers.map(() => ""));
+            setModalError(null);
+            setIsCreateModalOpen(true);
+            return;
+        }
+
+        if (modal === "checked-members") {
+            setIsCheckedListModalOpen(true);
+            return;
+        }
+
+        if ((modal === "member-edit" || modal === "member-delete") && studentNumber) {
+            const member = members.find(
+                (currentMember) =>
+                    getMemberStudentNumber(currentMember) === studentNumber
+            );
+            if (!member) return;
+
+            setModalError(null);
+            if (modal === "member-edit") {
+                setEditingMember(member);
+                setEditValues(
+                    headers.map((_, index) =>
+                        stringifyCell(member.values[index])
+                    )
+                );
+                setDeletingMember(null);
+            } else {
+                setDeletingMember(member);
+                setEditingMember(null);
+                setEditValues([]);
+            }
+        }
+    }, [
+        getMemberStudentNumber,
+        headers,
+        isLoading,
+        members,
+        urlModalQuery,
+    ]);
+
     const clearFilters = () => {
         setQuery("");
         setSelectedAdmissionYear("all");
@@ -448,6 +507,7 @@ export default function MembersPage() {
         setCreateValues(headers.map(() => ""));
         setModalError(null);
         setIsCreateModalOpen(true);
+        updateUrlModal({ modal: "member-create", member: null });
     };
 
     const closeCreateModal = (force = false) => {
@@ -455,11 +515,13 @@ export default function MembersPage() {
         setIsCreateModalOpen(false);
         setCreateValues([]);
         setModalError(null);
+        clearUrlModal(["member"]);
     };
 
     const closeCheckedListModal = () => {
         setIsCheckedListModalOpen(false);
         setLineNameCopyStatus("idle");
+        clearUrlModal(["member"]);
     };
 
     const copyCheckedLineNames = async () => {
@@ -488,6 +550,10 @@ export default function MembersPage() {
             headers.map((_, index) => stringifyCell(member.values[index]))
         );
         setModalError(null);
+        updateUrlModal({
+            modal: "member-edit",
+            member: getMemberStudentNumber(member),
+        });
     };
 
     const closeEditModal = (force = false) => {
@@ -495,6 +561,7 @@ export default function MembersPage() {
         setEditingMember(null);
         setEditValues([]);
         setModalError(null);
+        clearUrlModal(["member"]);
     };
 
     const openDeleteModalFromEdit = () => {
@@ -503,12 +570,17 @@ export default function MembersPage() {
         setEditingMember(null);
         setEditValues([]);
         setModalError(null);
+        updateUrlModal({
+            modal: "member-delete",
+            member: getMemberStudentNumber(editingMember),
+        });
     };
 
     const closeDeleteModal = (force = false) => {
         if (isSubmitting && !force) return;
         setDeletingMember(null);
         setModalError(null);
+        clearUrlModal(["member"]);
     };
 
     const handleCreate = async () => {
@@ -644,7 +716,13 @@ export default function MembersPage() {
                         <button
                             type="button"
                             className="btn btn-outline btn-sm gap-2"
-                            onClick={() => setIsCheckedListModalOpen(true)}
+                            onClick={() => {
+                                setIsCheckedListModalOpen(true);
+                                updateUrlModal({
+                                    modal: "checked-members",
+                                    member: null,
+                                });
+                            }}
                             disabled={isLoading || checkedMembers.length === 0}
                         >
                             <FontAwesomeIcon

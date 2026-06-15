@@ -36,6 +36,10 @@ export async function proxy(request: NextRequest) {
     // 未認証ならログインページにリダイレクト
     if (!isLoggedIn) {
         const loginUrl = new URL("/login", request.nextUrl.origin);
+        loginUrl.searchParams.set(
+            "callbackUrl",
+            `${request.nextUrl.pathname}${request.nextUrl.search}`
+        );
         return NextResponse.redirect(loginUrl);
     }
 
