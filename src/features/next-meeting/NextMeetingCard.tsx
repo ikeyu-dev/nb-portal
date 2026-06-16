@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
@@ -15,6 +15,7 @@ import {
     type NextMeetingSettings,
 } from "@/src/shared/types/api";
 import { announceNextMeeting, updateNextMeeting } from "@/src/shared/api";
+import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 const canManageNextMeeting = (permission?: MemberPermission) =>
     permission === "HEAD" || permission === "SUB_HEAD" || permission === "ACCOUNTANT";
@@ -58,6 +59,8 @@ export function NextMeetingCard({
     permission,
     className = "",
 }: NextMeetingCardProps) {
+    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
+    const urlModalQuery = searchParams.toString();
     const [meeting, setMeeting] = useState(initialMeeting);
     const [date, setDate] = useState(initialMeeting?.date || "");
     const [time, setTime] = useState(initialMeeting?.time || "21:00");
@@ -76,6 +79,27 @@ export function NextMeetingCard({
         [permission]
     );
 
+    useEffect(() => {
+        const params = new URLSearchParams(urlModalQuery);
+        const modal = params.get("modal");
+        if (!canManage) return;
+        if (modal === "next-meeting-edit") {
+            setDate(meeting?.date || "");
+            setTime(meeting?.time || "21:00");
+            setMode(meeting?.mode || "DISCORD");
+            setError(null);
+            setSuccessMessage(null);
+            setIsEditorOpen(true);
+            setIsAnnounceConfirmOpen(false);
+        }
+        if (modal === "next-meeting-announce") {
+            setError(null);
+            setSuccessMessage(null);
+            setIsAnnounceConfirmOpen(true);
+            setIsEditorOpen(false);
+        }
+    }, [canManage, meeting, urlModalQuery]);
+
     const openEditor = () => {
         setDate(meeting?.date || "");
         setTime(meeting?.time || "21:00");
@@ -83,18 +107,27 @@ export function NextMeetingCard({
         setError(null);
         setSuccessMessage(null);
         setIsEditorOpen(true);
+        updateUrlModal({ modal: "next-meeting-edit" });
     };
 
     const closeEditor = () => {
         if (isSubmitting) return;
         setIsEditorOpen(false);
         setError(null);
+        clearUrlModal();
     };
 
     const openAnnounceConfirm = () => {
         setError(null);
         setSuccessMessage(null);
         setIsAnnounceConfirmOpen(true);
+        updateUrlModal({ modal: "next-meeting-announce" });
+    };
+
+    const closeAnnounceConfirm = () => {
+        if (isAnnouncing) return;
+        setIsAnnounceConfirmOpen(false);
+        clearUrlModal();
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -118,6 +151,7 @@ export function NextMeetingCard({
             setMeeting(result.data);
             setSuccessMessage("次回部会を更新しました");
             setIsEditorOpen(false);
+            clearUrlModal();
         } catch (submitError) {
             setError(
                 submitError instanceof Error
@@ -143,6 +177,7 @@ export function NextMeetingCard({
 
             setSuccessMessage("次回部会連絡をDiscordに送信しました");
             setIsAnnounceConfirmOpen(false);
+            clearUrlModal();
         } catch (announceError) {
             setError(
                 announceError instanceof Error
@@ -352,9 +387,7 @@ export function NextMeetingCard({
                             <button
                                 type="button"
                                 className="btn"
-                                onClick={() =>
-                                    setIsAnnounceConfirmOpen(false)
-                                }
+                                onClick={closeAnnounceConfirm}
                                 disabled={isAnnouncing}
                             >
                                 キャンセル
@@ -375,11 +408,7 @@ export function NextMeetingCard({
                     <form
                         method="dialog"
                         className="modal-backdrop"
-                        onSubmit={() => {
-                            if (!isAnnouncing) {
-                                setIsAnnounceConfirmOpen(false);
-                            }
-                        }}
+                        onSubmit={closeAnnounceConfirm}
                     >
                         <button type="submit">close</button>
                     </form>
