@@ -16,8 +16,7 @@
 	],
 	"vars": {
 		"APP_DISCORD_SEND_URL": "https://nb-portal.vercel.app/api/discord-send",
-		"NEXT_MEETING_ROLE_MENTION": "@部員",
-		"NEXT_MEETING_UNSET_ROLE_MENTION": "@部長"
+		"NEXT_MEETING_ROLE_MENTION": "@部員"
 	},
 	"d1_databases": [
 		{
@@ -39,8 +38,7 @@
 			},
 			"vars": {
 				"APP_DISCORD_SEND_URL": "https://nb-portal.vercel.app/api/discord-send",
-				"NEXT_MEETING_ROLE_MENTION": "@部員",
-				"NEXT_MEETING_UNSET_ROLE_MENTION": "@部長"
+				"NEXT_MEETING_ROLE_MENTION": "@部員"
 			},
 			"d1_databases": [
 				{
