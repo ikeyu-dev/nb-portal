@@ -15,6 +15,7 @@ import type {
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
+import { cleanupStaleModalScrollLock } from "@/src/shared/lib/modal-scroll-lock";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 type AbsenceFormState = {
@@ -220,6 +221,12 @@ export default function ScheduleCard({
     }, [absences]);
 
     useEffect(() => {
+        return () => {
+            cleanupStaleModalScrollLock();
+        };
+    }, []);
+
+    useEffect(() => {
         const params = new URLSearchParams(urlModalQuery);
         if (params.get("event") !== eventId) return;
 
@@ -260,6 +267,7 @@ export default function ScheduleCard({
         setAttendanceNote("");
         onClose?.();
         clearUrlModal(["event"]);
+        cleanupStaleModalScrollLock();
     };
 
     const resetAbsenceForm = () => {
