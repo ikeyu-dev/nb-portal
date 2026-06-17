@@ -10,6 +10,8 @@ type ApiResponse<T> = {
 type RuntimeEnv = Env & {
 	PUSH_API_SECRET?: string;
 	APP_DISCORD_SEND_URL?: string;
+	DISCORD_MEETING_ROLE_MENTION?: string;
+	DISCORD_MEETING_UNSET_ROLE_MENTION?: string;
 	NEXT_MEETING_ROLE_MENTION?: string;
 	NEXT_MEETING_UNSET_ROLE_MENTION?: string;
 };
@@ -1207,10 +1209,20 @@ const hasFutureMeetingSchedule = async (env: Env, today: string) => {
 	return Boolean(row);
 };
 
+const getNextMeetingRoleMention = (env: RuntimeEnv) =>
+	env.DISCORD_MEETING_ROLE_MENTION ||
+	env.NEXT_MEETING_ROLE_MENTION ||
+	"@部員";
+
+const getNextMeetingUnsetRoleMention = (env: RuntimeEnv) =>
+	env.DISCORD_MEETING_UNSET_ROLE_MENTION ||
+	env.NEXT_MEETING_UNSET_ROLE_MENTION ||
+	"@部長";
+
 const sendNextMeetingUnsetReminder = async (env: RuntimeEnv) => {
 	await sendDiscordViaApp(env, {
 		target: "meeting",
-		content: env.NEXT_MEETING_UNSET_ROLE_MENTION || "@部長",
+		content: getNextMeetingUnsetRoleMention(env),
 		embeds: [
 			{
 				title: "次回部会が未設定です",
@@ -1240,7 +1252,7 @@ const sendNextMeetingInPersonReminder = async (
 
 	await sendDiscordViaApp(env, {
 		target: "meeting",
-		content: env.NEXT_MEETING_ROLE_MENTION || "@部員",
+		content: getNextMeetingRoleMention(env),
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
 				title,
@@ -1263,7 +1275,7 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 
 	await sendDiscordViaApp(env, {
 		target: "meeting",
-		content: env.NEXT_MEETING_ROLE_MENTION || "@部員",
+		content: getNextMeetingRoleMention(env),
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
 				title: "本日18:00 Discord部会リマインド",
