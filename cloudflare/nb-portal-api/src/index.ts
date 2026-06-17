@@ -11,9 +11,7 @@ type RuntimeEnv = Env & {
 	PUSH_API_SECRET?: string;
 	APP_DISCORD_SEND_URL?: string;
 	DISCORD_MEETING_ROLE_MENTION?: string;
-	DISCORD_MEETING_UNSET_ROLE_MENTION?: string;
 	NEXT_MEETING_ROLE_MENTION?: string;
-	NEXT_MEETING_UNSET_ROLE_MENTION?: string;
 };
 
 type DiscordEmbed = {
@@ -1200,48 +1198,17 @@ const getTodayNextMeetingRow = (
 		.bind(today, mode, today)
 		.first<NextMeetingRow>();
 
-const hasFutureMeetingSchedule = async (env: Env, today: string) => {
-	const row = await env.DB.prepare(
-		"SELECT id FROM schedules WHERE date > ? AND title = '部会' ORDER BY date LIMIT 1"
-	)
-		.bind(today)
-		.first<{ id: string }>();
-	return Boolean(row);
-};
-
 const getNextMeetingRoleMention = (env: RuntimeEnv) =>
 	env.DISCORD_MEETING_ROLE_MENTION ||
 	env.NEXT_MEETING_ROLE_MENTION ||
 	"@部員";
 
-const getNextMeetingUnsetRoleMention = (env: RuntimeEnv) =>
-	env.DISCORD_MEETING_UNSET_ROLE_MENTION ||
-	env.NEXT_MEETING_UNSET_ROLE_MENTION ||
-	"@部長";
-
-const sendNextMeetingUnsetReminder = async (env: RuntimeEnv) => {
-	await sendDiscordViaApp(env, {
-		target: "meeting",
-		content: getNextMeetingUnsetRoleMention(env),
-		embeds: [
-			{
-				title: "次回部会が未設定です",
-				description:
-					"本日の部会後の次回部会が設定されていません。ポータルから次回部会を設定してください。",
-				color: 0xf1c40f,
-			},
-		],
-	});
-};
-
 const sendNextMeetingInPersonReminder = async (
 	env: RuntimeEnv,
 	{
 		title,
-		checkFutureSchedule = false,
 	}: {
 		title: string;
-		checkFutureSchedule?: boolean;
 	}
 ) => {
 	const today = getJstDateParts().date;
@@ -1260,10 +1227,6 @@ const sendNextMeetingInPersonReminder = async (
 			}),
 		],
 	});
-
-	if (checkFutureSchedule && !(await hasFutureMeetingSchedule(env, today))) {
-		await sendNextMeetingUnsetReminder(env);
-	}
 };
 
 const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
@@ -1283,10 +1246,6 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 			}),
 		],
 	});
-
-	if (!(await hasFutureMeetingSchedule(env, today))) {
-		await sendNextMeetingUnsetReminder(env);
-	}
 };
 
 const sendTodayAbsences = async (env: RuntimeEnv) => {
@@ -1453,7 +1412,6 @@ const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEn
 			sendTodayAbsences(env),
 			sendNextMeetingInPersonReminder(env, {
 				title: "本日8:50 対面部会リマインド",
-				checkFutureSchedule: true,
 			}),
 		]);
 		return;

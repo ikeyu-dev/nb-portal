@@ -15,9 +15,6 @@ const normalizeAnnounceError = (error?: string) => {
 const getNextMeetingMentionText = () =>
     process.env.DISCORD_MEETING_ROLE_MENTION || "@部員";
 
-const getNextMeetingUnsetMentionText = () =>
-    process.env.DISCORD_MEETING_UNSET_ROLE_MENTION || "@部長";
-
 const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
     const date = new Date(`${dateString}T00:00:00`);
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
@@ -127,25 +124,21 @@ export async function POST(request: NextRequest) {
 
     try {
         const settings = await fetchNextMeeting();
+        if (!settings) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "次回部会が設定されていません",
+                },
+                { status: 400 }
+            );
+        }
 
-        const result = settings
-            ? await sendDiscordWebhook({
-                  target: "meeting",
-                  embeds: [buildNextMeetingReminderEmbed(settings)],
-                  content: getNextMeetingMentionText(),
-              })
-            : await sendDiscordWebhook({
-                  target: "meeting",
-                  embeds: [
-                      {
-                          title: "次回部会が未設定です",
-                          description:
-                              "次回部会が設定されていません。ポータルから次回部会を設定してください。",
-                          color: 0xf1c40f,
-                      },
-                  ],
-                  content: getNextMeetingUnsetMentionText(),
-              });
+        const result = await sendDiscordWebhook({
+            target: "meeting",
+            embeds: [buildNextMeetingReminderEmbed(settings)],
+            content: getNextMeetingMentionText(),
+        });
 
         return NextResponse.json(
             {
