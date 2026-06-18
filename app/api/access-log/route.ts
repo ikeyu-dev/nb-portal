@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/src/auth";
 import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
+import { formatJstTimestamp } from "@/src/shared/lib/jst-date";
 
 const BACKEND_API_URL = getBackendApiUrl();
 
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     const url = new URL(BACKEND_API_URL);
     url.searchParams.set("path", "access-logs");
 
-    const now = new Date().toISOString();
+    const now = formatJstTimestamp();
     const userAgent = request.headers.get("user-agent") || "";
     const ipHash = hashIpAddress(getIpAddress(request));
 

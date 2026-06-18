@@ -179,6 +179,12 @@ const splitDate = (date: string | null) => {
 	};
 };
 
+const parseDateInput = (date: string) => {
+	const match = String(date ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (!match) return null;
+	return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+};
+
 const splitTime = (time: string | null) => {
 	const match = String(time ?? "").match(/^(\d{1,2}):(\d{2})/);
 	return {
@@ -201,6 +207,9 @@ const buildTime = (hour: unknown, minute: unknown) => {
 	return `${h.padStart(2, "0")}:${(m || "0").padStart(2, "0")}`;
 };
 
+const JST_SQL_TIMESTAMP =
+	"strftime('%Y-%m-%dT%H:%M:%S+09:00', 'now', '+9 hours')";
+
 const getJstDateParts = (date = new Date()) => {
 	const parts = new Intl.DateTimeFormat("en-CA", {
 		timeZone: "Asia/Tokyo",
@@ -220,6 +229,15 @@ const getJstDateParts = (date = new Date()) => {
 		hour: value("hour"),
 		minute: value("minute"),
 	};
+};
+
+const getJstTimestamp = (date = new Date()) => {
+	const parts = getJstDateParts(date);
+	const seconds = new Intl.DateTimeFormat("en-CA", {
+		timeZone: "Asia/Tokyo",
+		second: "2-digit",
+	}).format(date);
+	return `${parts.date}T${parts.hour}:${parts.minute}:${seconds}+09:00`;
 };
 
 const toScheduleIsPast = (date: string, endDate?: string | null) =>
@@ -362,7 +380,7 @@ const upsertMemberFromValues = async (
 			student_number, name, nickname, is_joined_line, line_name,
 			is_joined_discord, is_signed, permission, is_active, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(student_number) DO UPDATE SET
 			name = excluded.name,
 			nickname = excluded.nickname,
@@ -372,7 +390,7 @@ const upsertMemberFromValues = async (
 			is_signed = excluded.is_signed,
 			permission = excluded.permission,
 			is_active = 1,
-			updated_at = CURRENT_TIMESTAMP`
+			updated_at = ${JST_SQL_TIMESTAMP}`
 	)
 		.bind(
 			studentNumber,
@@ -492,7 +510,7 @@ const createSchedule = async (request: Request, env: Env) => {
 			id, title, date, end_date, start_time, end_time, location, description,
 			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})`
 	)
 		.bind(
 			eventId,
@@ -543,7 +561,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`UPDATE schedules SET
 			title = ?, date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?,
-			description = ?, color = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+			description = ?, color = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = ${JST_SQL_TIMESTAMP}
 		WHERE id = ?`
 	)
 		.bind(
@@ -635,7 +653,7 @@ const upsertAbsence = async (request: Request, env: Env) => {
 			time_leaving_early, time_step_out, time_return, event_title,
 			event_date_label, event_time_label, event_where, submitted_at, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(event_id, student_number) DO UPDATE SET
 			name = excluded.name,
 			type = excluded.type,
@@ -648,7 +666,7 @@ const upsertAbsence = async (request: Request, env: Env) => {
 			event_date_label = excluded.event_date_label,
 			event_time_label = excluded.event_time_label,
 			event_where = excluded.event_where,
-			updated_at = CURRENT_TIMESTAMP`
+			updated_at = ${JST_SQL_TIMESTAMP}`
 	)
 		.bind(
 			`${eventId}:${studentNumber}`,
@@ -669,7 +687,7 @@ const upsertAbsence = async (request: Request, env: Env) => {
 		.run();
 
 	return ok({
-		timestamp: new Date().toISOString(),
+		timestamp: getJstTimestamp(),
 		eventId,
 		studentNumber,
 	});
@@ -727,7 +745,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			id, title, date, end_date, start_time, end_time, location, description,
 			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'primary', 'ABSENCE', ?, ?, CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP)
+		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'primary', 'ABSENCE', ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			date = excluded.date,
@@ -740,7 +758,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			attendance_mode = excluded.attendance_mode,
 			is_past = excluded.is_past,
 			updated_by = excluded.updated_by,
-			updated_at = CURRENT_TIMESTAMP`
+			updated_at = ${JST_SQL_TIMESTAMP}`
 	)
 		.bind(
 			eventId,
@@ -755,14 +773,14 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 
 	await env.DB.prepare(
 		`INSERT INTO next_meeting_settings (id, event_id, date, time, mode, updated_by, updated_at)
-		VALUES (1, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		VALUES (1, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(id) DO UPDATE SET
 			event_id = excluded.event_id,
 			date = excluded.date,
 			time = excluded.time,
 			mode = excluded.mode,
 			updated_by = excluded.updated_by,
-			updated_at = CURRENT_TIMESTAMP`
+			updated_at = ${JST_SQL_TIMESTAMP}`
 	)
 		.bind(
 			eventId,
@@ -923,7 +941,7 @@ const replaceTaskAssignees = async (
 		...uniqueStudentNumbers.map((studentNumber) =>
 			env.DB.prepare(
 				`INSERT INTO task_assignees (task_id, student_number, assigned_at)
-				VALUES (?, ?, CURRENT_TIMESTAMP)`
+				VALUES (?, ?, ${JST_SQL_TIMESTAMP})`
 			)
 				.bind(taskId, studentNumber)
 		),
@@ -947,14 +965,14 @@ const upsertTask = async (request: Request, env: Env) => {
 		`INSERT INTO tasks (
 			id, title, description, status, due_date, created_by, updated_by, created_at, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			description = excluded.description,
 			status = excluded.status,
 			due_date = excluded.due_date,
 			updated_by = excluded.updated_by,
-			updated_at = CURRENT_TIMESTAMP`
+			updated_at = ${JST_SQL_TIMESTAMP}`
 	)
 		.bind(
 			taskId,
@@ -998,12 +1016,12 @@ const savePushSubscription = async (request: Request, env: Env) => {
 
 	await env.DB.prepare(
 		`INSERT INTO push_subscriptions (endpoint, student_id, p256dh, auth, created_at, updated_at)
-		VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+		VALUES (?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(endpoint) DO UPDATE SET
 			student_id = excluded.student_id,
 			p256dh = excluded.p256dh,
 			auth = excluded.auth,
-			updated_at = CURRENT_TIMESTAMP`
+			updated_at = ${JST_SQL_TIMESTAMP}`
 	)
 		.bind(
 			subscription.endpoint,
@@ -1055,7 +1073,7 @@ const saveAccessLogs = async (request: Request, env: Env) => {
 			)
 			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 		).bind(
-			String(entry.timestamp ?? new Date().toISOString()),
+			String(entry.timestamp ?? getJstTimestamp()),
 			String(entry.clientTimestamp ?? ""),
 			normalizeStudentId(entry.studentId),
 			String(entry.displayName ?? ""),
@@ -1089,9 +1107,10 @@ const formatDateTime = (value: string | null) => {
 };
 
 const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
-	const date = new Date(`${dateString}T00:00:00`);
+	const date = parseDateInput(dateString);
 	const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-	return `${dateString.replace(/-/g, "/")}(${weekdays[date.getDay()]}) ${timeString}`;
+	const weekday = date ? `(${weekdays[date.getDay()]})` : "";
+	return `${dateString.replace(/-/g, "/")}${weekday} ${timeString}`;
 };
 
 const formatAbsenceTypeWithTime = (row: DailyAbsenceSummaryRow) => {
@@ -1328,15 +1347,15 @@ const claimCronExecution = async (
 		return false;
 	}
 
-	const scheduledTime = new Date(controller.scheduledTime).toISOString();
+	const scheduledTime = getJstTimestamp(new Date(controller.scheduledTime));
 	if (existing) {
 		await env.DB.prepare(
 			`UPDATE cron_executions
 			SET status = 'running',
-				started_at = CURRENT_TIMESTAMP,
+				started_at = ${JST_SQL_TIMESTAMP},
 				completed_at = NULL,
 				error = NULL,
-				updated_at = CURRENT_TIMESTAMP
+				updated_at = ${JST_SQL_TIMESTAMP}
 			WHERE id = ?`
 		)
 			.bind(id)
@@ -1360,9 +1379,9 @@ const markCronExecutionCompleted = async (
 	await env.DB.prepare(
 		`UPDATE cron_executions
 		SET status = 'completed',
-			completed_at = CURRENT_TIMESTAMP,
+			completed_at = ${JST_SQL_TIMESTAMP},
 			error = NULL,
-			updated_at = CURRENT_TIMESTAMP
+			updated_at = ${JST_SQL_TIMESTAMP}
 		WHERE id = ?`
 	)
 		.bind(getCronExecutionId(controller))
@@ -1379,7 +1398,7 @@ const markCronExecutionFailed = async (
 		`UPDATE cron_executions
 		SET status = 'failed',
 			error = ?,
-			updated_at = CURRENT_TIMESTAMP
+			updated_at = ${JST_SQL_TIMESTAMP}
 		WHERE id = ?`
 	)
 		.bind(message.slice(0, 1000), getCronExecutionId(controller))
@@ -1393,7 +1412,7 @@ const updateSchedulePastState = async (env: RuntimeEnv) => {
 		SET is_past = CASE WHEN COALESCE(end_date, date) < ? THEN 1 ELSE 0 END,
 			updated_at = CASE
 				WHEN is_past != CASE WHEN COALESCE(end_date, date) < ? THEN 1 ELSE 0 END
-				THEN CURRENT_TIMESTAMP
+				THEN ${JST_SQL_TIMESTAMP}
 				ELSE updated_at
 			END`
 	)

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { formatJstTimestamp } from "@/src/shared/lib/jst-date";
 
 const TRACKED_PATHS = new Set([
     "/home",
@@ -40,7 +41,7 @@ export function AccessLogger() {
                 logs: [
                     {
                         path: pathname,
-                        clientTimestamp: new Date(now).toISOString(),
+                        clientTimestamp: formatJstTimestamp(new Date(now)),
                     },
                 ],
             }),

@@ -4,6 +4,7 @@ import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 import type { NextMeetingSettings } from "@/src/shared/types/api";
 import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 import { validateOrigin } from "@/src/shared/lib/csrf";
+import { parseDateInput } from "@/src/shared/lib/jst-date";
 
 const BACKEND_API_URL = getBackendApiUrl();
 
@@ -16,9 +17,10 @@ const getNextMeetingMentionText = () =>
     process.env.DISCORD_MEETING_ROLE_MENTION || "@部員";
 
 const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
-    const date = new Date(`${dateString}T00:00:00`);
+    const date = parseDateInput(dateString);
     const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-    return `${dateString.replace(/-/g, "/")}(${weekdays[date.getDay()]}) ${timeString}`;
+    const weekday = date ? `(${weekdays[date.getDay()]})` : "";
+    return `${dateString.replace(/-/g, "/")}${weekday} ${timeString}`;
 };
 
 const formatDateTime = (value: string) => {
