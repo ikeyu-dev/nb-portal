@@ -15,7 +15,10 @@ import type {
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
-import { cleanupStaleModalScrollLock } from "@/src/shared/lib/modal-scroll-lock";
+import {
+    cleanupStaleModalScrollLock,
+    prepareModalScrollLock,
+} from "@/src/shared/lib/modal-scroll-lock";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 type AbsenceFormState = {
@@ -227,29 +230,42 @@ export default function ScheduleCard({
     }, []);
 
     useEffect(() => {
+        if (isModalOpen) {
+            prepareModalScrollLock();
+            return;
+        }
+
+        cleanupStaleModalScrollLock();
+    }, [isModalOpen]);
+
+    useEffect(() => {
         const params = new URLSearchParams(urlModalQuery);
         if (params.get("event") !== eventId) return;
 
         const modal = params.get("modal");
         if (modal === "schedule-response") {
+            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(false);
         }
         if (modal === "response-confirm") {
+            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(true);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(false);
         }
         if (modal === "response-form") {
+            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(true);
             setIsDeleteConfirmOpen(false);
         }
         if (modal === "response-delete") {
+            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(false);
@@ -523,6 +539,7 @@ export default function ScheduleCard({
             {!hideCard && (
                 <div
                     onClick={() => {
+                        prepareModalScrollLock();
                         setIsModalOpen(true);
                         updateUrlModal({
                             modal: "schedule-response",

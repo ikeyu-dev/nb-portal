@@ -158,7 +158,7 @@ export default async function HomePage() {
                             {upcomingSchedules.length > 0 ? (
                                 <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
                                     {upcomingSchedules.map(
-                                        (schedule: Schedule, index: number) => {
+                                        (schedule: Schedule) => {
                                             const values =
                                                 Object.values(schedule);
                                             const eventId = String(
@@ -246,7 +246,7 @@ export default async function HomePage() {
 
                                             return (
                                                 <ScheduleCard
-                                                    key={index}
+                                                    key={eventId}
                                                     eventId={eventId}
                                                     title={title}
                                                     where={where}
