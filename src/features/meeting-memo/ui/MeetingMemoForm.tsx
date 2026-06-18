@@ -9,6 +9,10 @@ import {
     getClientCache,
     setClientCache,
 } from "@/src/shared/lib/client-cache";
+import {
+    formatJstDateInput,
+    parseDateInput,
+} from "@/src/shared/lib/jst-date";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 const LOCATIONS = ["Discord", "クラブ棟前", "部室", "その他"] as const;
@@ -41,7 +45,7 @@ const createDefaultFormData = (): MemoFormData => {
     nextWeek.setDate(nextWeek.getDate() + 7);
 
     return {
-        date: today.toISOString().split("T")[0],
+        date: formatJstDateInput(today),
         time: "21:00",
         location: "Discord",
         customLocation: "",
@@ -49,7 +53,7 @@ const createDefaultFormData = (): MemoFormData => {
         accountingNote: "@部費滞納者\n計画的に部費の支払いをお願いします",
         bundanNote: "特になし",
         otherNote: "",
-        nextMeetingDate: nextWeek.toISOString().split("T")[0],
+        nextMeetingDate: formatJstDateInput(nextWeek),
         nextMeetingTime: "21:00",
         nextMeetingLocation: "Discord",
     };
@@ -171,7 +175,8 @@ export function MeetingMemoForm() {
     }, [formData]);
 
     const formatDate = (dateStr: string): string => {
-        const date = new Date(dateStr);
+        const date = parseDateInput(dateStr);
+        if (!date) return dateStr;
         const month = date.getMonth() + 1;
         const day = date.getDate();
         const weekday = WEEKDAYS[date.getDay()];

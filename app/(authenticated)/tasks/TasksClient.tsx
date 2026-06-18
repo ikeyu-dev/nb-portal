@@ -17,6 +17,7 @@ import type {
 } from "@/src/shared/types/api";
 import { TASK_STATUS_LABELS } from "@/src/shared/types/api";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
+import { parseDateInput } from "@/src/shared/lib/jst-date";
 
 type MemberOption = {
     studentNumber: string;
@@ -57,8 +58,8 @@ const normalizeStudentNumber = (value: string | null | undefined) =>
 
 const formatDate = (value?: string | null) => {
     if (!value) return "期限なし";
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) return value;
+    const date = parseDateInput(value);
+    if (!date) return value;
     const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
     return `${date.getMonth() + 1}/${date.getDate()}(${weekday})`;
 };

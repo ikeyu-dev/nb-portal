@@ -16,6 +16,7 @@ import {
 } from "@/src/shared/types/api";
 import { announceNextMeeting, updateNextMeeting } from "@/src/shared/api";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
+import { parseDateInput } from "@/src/shared/lib/jst-date";
 
 const canManageNextMeeting = (permission?: MemberPermission) =>
     permission === "HEAD" || permission === "SUB_HEAD" || permission === "ACCOUNTANT";
@@ -23,7 +24,8 @@ const canManageNextMeeting = (permission?: MemberPermission) =>
 const formatNextMeeting = (meeting: NextMeetingSettings | null): string => {
     if (!meeting) return "未設定";
 
-    const date = new Date(`${meeting.date}T00:00:00`);
+    const date = parseDateInput(meeting.date);
+    if (!date) return `${meeting.date.replaceAll("-", "/")} ${meeting.time} ${NEXT_MEETING_MODE_LABELS[meeting.mode]}`;
     const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
     return `${meeting.date.replaceAll("-", "/")}(${weekday}) ${meeting.time} ${NEXT_MEETING_MODE_LABELS[meeting.mode]}`;
 };
