@@ -17,6 +17,7 @@ import {
 import { announceNextMeeting, updateNextMeeting } from "@/src/shared/api";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { parseDateInput } from "@/src/shared/lib/jst-date";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 const canManageNextMeeting = (permission?: MemberPermission) =>
     permission === "HEAD" || permission === "SUB_HEAD" || permission === "ACCOUNTANT";
@@ -268,8 +269,11 @@ export function NextMeetingCard({
             </div>
 
             {isEditorOpen && (
-                <dialog className="modal modal-open">
-                    <div className="modal-box max-w-2xl">
+                <AppModal
+                    onClose={closeEditor}
+                    ariaLabel="次回部会を編集"
+                    boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                         <h3 className="font-bold text-lg mb-4">
                             次回部会を編集
                         </h3>
@@ -357,20 +361,15 @@ export function NextMeetingCard({
                                 </button>
                             </div>
                         </form>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                        onSubmit={closeEditor}
-                    >
-                        <button type="submit">close</button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {isAnnounceConfirmOpen && (
-                <dialog className="modal modal-open">
-                    <div className="modal-box max-w-md">
+                <AppModal
+                    onClose={closeAnnounceConfirm}
+                    ariaLabel="次回部会連絡を送信"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                         <h3 className="font-bold text-lg mb-3">
                             次回部会連絡を送信
                         </h3>
@@ -406,15 +405,7 @@ export function NextMeetingCard({
                                 送信する
                             </button>
                         </div>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                        onSubmit={closeAnnounceConfirm}
-                    >
-                        <button type="submit">close</button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
         </div>
     );

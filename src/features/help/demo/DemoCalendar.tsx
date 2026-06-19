@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 const EVENT_COLORS = [
     { id: "primary", hex: "#2a83a2", label: "デフォルト" },
@@ -48,16 +49,6 @@ export function DemoCalendar() {
         title: "",
         color: "primary" as EventColorId,
     });
-
-    const addModalRef = useRef<HTMLDialogElement>(null);
-
-    useEffect(() => {
-        if (showAddModal) {
-            addModalRef.current?.showModal();
-        } else {
-            addModalRef.current?.close();
-        }
-    }, [showAddModal]);
 
     const changeMonth = (delta: number) => {
         setCurrentDate((prev) => {
@@ -278,12 +269,12 @@ export function DemoCalendar() {
             </div>
 
             {/* 追加モーダル */}
-            <dialog
-                ref={addModalRef}
-                className="modal"
-                onClose={closeModal}
-            >
-                <div className="modal-box">
+            {showAddModal && (
+                <AppModal
+                    onClose={closeModal}
+                    ariaLabel="予定を追加"
+                    boxClassName="max-w-lg max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                     <button
                         onClick={closeModal}
                         className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -357,14 +348,8 @@ export function DemoCalendar() {
                             追加
                         </button>
                     </div>
-                </div>
-                <form
-                    method="dialog"
-                    className="modal-backdrop"
-                >
-                    <button onClick={closeModal}>close</button>
-                </form>
-            </dialog>
+                </AppModal>
+            )}
 
             <p className="text-xs text-base-content/50 text-center">
                 これはデモ表示です。実際のカレンダーとは異なります。
