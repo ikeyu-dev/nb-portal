@@ -20,7 +20,7 @@ export function AppModal({
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
-            className="fixed inset-0 z-[999] overflow-y-auto bg-black/40 px-4 py-16 sm:py-20"
+            className="fixed inset-0 z-[999] overflow-y-auto bg-black/40 px-4"
         >
             <button
                 type="button"
@@ -29,9 +29,15 @@ export function AppModal({
                 onClick={onClose}
             />
             <div
-                className={`relative z-10 mx-auto w-11/12 rounded-box bg-base-100 shadow-2xl ${boxClassName}`}
+                className="relative z-10 flex min-h-full items-center justify-center py-16 sm:py-20"
+                onClick={onClose}
             >
-                {children}
+                <div
+                    className={`w-11/12 rounded-box bg-base-100 shadow-2xl ${boxClassName}`}
+                    onClick={(event) => event.stopPropagation()}
+                >
+                    {children}
+                </div>
             </div>
         </div>
     );

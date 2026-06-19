@@ -671,8 +671,8 @@ export default function CalendarPage() {
                     return next;
                 });
 
-                // モーダルを閉じる
-                closeModal();
+                // 追加モーダルを閉じて日付一覧に戻る
+                closeAddModal();
             } else {
                 setError(data.error || "スケジュールの追加に失敗しました");
             }
