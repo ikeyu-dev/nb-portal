@@ -597,15 +597,19 @@ export default function ScheduleCard({
                     role="dialog"
                     aria-modal="true"
                     className="fixed inset-0 z-[999] overflow-y-auto bg-black/40 px-4 py-16 sm:py-20"
-                    onClick={handleClose}
                 >
+                    <button
+                        type="button"
+                        aria-label="モーダルを閉じる"
+                        className="fixed inset-0 h-full w-full cursor-default"
+                        onClick={handleClose}
+                    />
                     <div
-                        className={`relative mx-auto w-11/12 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-box bg-base-100 p-6 shadow-2xl sm:max-h-[calc(100dvh-10rem)] ${
+                        className={`relative z-10 mx-auto w-11/12 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-box bg-base-100 p-6 shadow-2xl sm:max-h-[calc(100dvh-10rem)] ${
                             isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
                         }`}
-                        onClick={(event) => event.stopPropagation()}
                     >
                         <button
                             onClick={handleClose}
