@@ -15,10 +15,6 @@ import type {
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
-import {
-    cleanupStaleModalScrollLock,
-    prepareModalScrollLock,
-} from "@/src/shared/lib/modal-scroll-lock";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 type AbsenceFormState = {
@@ -224,48 +220,29 @@ export default function ScheduleCard({
     }, [absences]);
 
     useEffect(() => {
-        return () => {
-            cleanupStaleModalScrollLock();
-        };
-    }, []);
-
-    useEffect(() => {
-        if (isModalOpen) {
-            prepareModalScrollLock();
-            return;
-        }
-
-        cleanupStaleModalScrollLock();
-    }, [isModalOpen]);
-
-    useEffect(() => {
         const params = new URLSearchParams(urlModalQuery);
         if (params.get("event") !== eventId) return;
 
         const modal = params.get("modal");
         if (modal === "schedule-response") {
-            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(false);
         }
         if (modal === "response-confirm") {
-            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(true);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(false);
         }
         if (modal === "response-form") {
-            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(true);
             setIsDeleteConfirmOpen(false);
         }
         if (modal === "response-delete") {
-            prepareModalScrollLock();
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(false);
@@ -283,7 +260,6 @@ export default function ScheduleCard({
         setAttendanceNote("");
         onClose?.();
         clearUrlModal(["event"]);
-        cleanupStaleModalScrollLock();
     };
 
     const resetAbsenceForm = () => {
@@ -539,7 +515,6 @@ export default function ScheduleCard({
             {!hideCard && (
                 <div
                     onClick={() => {
-                        prepareModalScrollLock();
                         setIsModalOpen(true);
                         updateUrlModal({
                             modal: "schedule-response",
@@ -618,13 +593,19 @@ export default function ScheduleCard({
 
             {/* Modal */}
             {isModalOpen && (
-                <dialog className="modal modal-open px-4 py-16 sm:py-20">
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    className="fixed inset-0 z-[999] overflow-y-auto bg-black/40 px-4 py-16 sm:py-20"
+                    onClick={handleClose}
+                >
                     <div
-                        className={`modal-box max-h-[calc(100dvh-8rem)] overflow-y-auto bg-base-100 sm:max-h-[calc(100dvh-10rem)] ${
+                        className={`relative mx-auto w-11/12 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-box bg-base-100 p-6 shadow-2xl sm:max-h-[calc(100dvh-10rem)] ${
                             isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
                         }`}
+                        onClick={(event) => event.stopPropagation()}
                     >
                         <button
                             onClick={handleClose}
@@ -1207,13 +1188,7 @@ export default function ScheduleCard({
                             </>
                         )}
                     </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button onClick={handleClose}>閉じる</button>
-                    </form>
-                </dialog>
+                </div>
             )}
         </>
     );
