@@ -671,8 +671,8 @@ export default function CalendarPage() {
                     return next;
                 });
 
-                // 追加モーダルを閉じて日付一覧に戻る
-                closeAddModal();
+                // 登録後はカレンダーに戻る
+                closeModal();
             } else {
                 setError(data.error || "スケジュールの追加に失敗しました");
             }
@@ -773,7 +773,7 @@ export default function CalendarPage() {
 
             const data = (await response.json()) as ApiResponse<null>;
 
-            if (data.success && data.data) {
+            if (data.success) {
                 // ローカル状態から削除
                 setSchedules((prev) => {
                     const next = prev.filter((schedule) => {
@@ -788,8 +788,7 @@ export default function CalendarPage() {
                     return next;
                 });
 
-                // モーダルを閉じる
-                closeEditModal();
+                // 削除後はカレンダーに戻る
                 closeModal();
             } else {
                 setError(data.error || "スケジュールの削除に失敗しました");
@@ -880,8 +879,7 @@ export default function CalendarPage() {
                     return next;
                 });
 
-                // 編集モーダルと詳細モーダルを閉じる（日付が変わった可能性があるため）
-                closeEditModal();
+                // 編集後はカレンダーに戻る（日付が変わった可能性があるため）
                 closeModal();
             } else {
                 setError(data.error || "スケジュールの更新に失敗しました");
