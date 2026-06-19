@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 type CategoryFilter = "all" | "MIC" | "SPK" | "CAB" | "OTHER";
 type ItemCategory = "MIC" | "SPK" | "CAB" | "OTH";
@@ -51,25 +52,6 @@ export function DemoItems() {
         count: 1,
     });
     const [editForm, setEditForm] = useState({ name: "" });
-
-    const createModalRef = useRef<HTMLDialogElement>(null);
-    const editModalRef = useRef<HTMLDialogElement>(null);
-
-    useEffect(() => {
-        if (isCreateModalOpen) {
-            createModalRef.current?.showModal();
-        } else {
-            createModalRef.current?.close();
-        }
-    }, [isCreateModalOpen]);
-
-    useEffect(() => {
-        if (isEditModalOpen) {
-            editModalRef.current?.showModal();
-        } else {
-            editModalRef.current?.close();
-        }
-    }, [isEditModalOpen]);
 
     const handleCreate = () => {
         if (!createForm.name.trim()) return;
@@ -254,12 +236,12 @@ export function DemoItems() {
             </div>
 
             {/* 機材登録モーダル */}
-            <dialog
-                ref={createModalRef}
-                className="modal"
-                onClose={() => setIsCreateModalOpen(false)}
-            >
-                <div className="modal-box">
+            {isCreateModalOpen && (
+                <AppModal
+                    onClose={() => setIsCreateModalOpen(false)}
+                    ariaLabel="機材を登録"
+                    boxClassName="max-w-lg max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                     <h3 className="font-bold text-lg mb-4">機材を登録</h3>
 
                     <div className="form-control mb-4">
@@ -334,22 +316,16 @@ export function DemoItems() {
                             登録
                         </button>
                     </div>
-                </div>
-                <form
-                    method="dialog"
-                    className="modal-backdrop"
-                >
-                    <button>close</button>
-                </form>
-            </dialog>
+                </AppModal>
+            )}
 
             {/* 機材編集モーダル */}
-            <dialog
-                ref={editModalRef}
-                className="modal"
-                onClose={() => setIsEditModalOpen(false)}
-            >
-                <div className="modal-box">
+            {isEditModalOpen && (
+                <AppModal
+                    onClose={() => setIsEditModalOpen(false)}
+                    ariaLabel="機材を編集"
+                    boxClassName="max-w-lg max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                     <h3 className="font-bold text-lg mb-4">機材を編集</h3>
 
                     <div className="form-control mb-4">
@@ -400,14 +376,8 @@ export function DemoItems() {
                             </button>
                         </div>
                     </div>
-                </div>
-                <form
-                    method="dialog"
-                    className="modal-backdrop"
-                >
-                    <button>close</button>
-                </form>
-            </dialog>
+                </AppModal>
+            )}
 
             <p className="text-xs text-base-content/50 text-center">
                 これはデモ表示です。実際のデータとは異なります。

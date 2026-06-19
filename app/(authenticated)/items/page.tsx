@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/src/features/help";
@@ -16,6 +16,7 @@ import {
     CLIENT_CACHE_KEYS,
 } from "@/src/shared/lib/cache-policy";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 type CategoryFilter = "all" | "MIC" | "SPK" | "CAB" | "OTHER";
 type ItemCategory = "MIC" | "SPK" | "CAB" | "OTH";
@@ -60,10 +61,6 @@ export default function ItemsPage() {
     const [editForm, setEditForm] = useState({
         name: "",
     });
-
-    const createModalRef = useRef<HTMLDialogElement>(null);
-    const editModalRef = useRef<HTMLDialogElement>(null);
-    const deleteModalRef = useRef<HTMLDialogElement>(null);
 
     const fetchItems = async (useCache = true) => {
         if (useCache) {
@@ -143,30 +140,6 @@ export default function ItemsPage() {
             }
         }
     }, [isLoading, items, urlModalQuery]);
-
-    useEffect(() => {
-        if (isCreateModalOpen) {
-            createModalRef.current?.showModal();
-        } else {
-            createModalRef.current?.close();
-        }
-    }, [isCreateModalOpen]);
-
-    useEffect(() => {
-        if (isEditModalOpen) {
-            editModalRef.current?.showModal();
-        } else {
-            editModalRef.current?.close();
-        }
-    }, [isEditModalOpen]);
-
-    useEffect(() => {
-        if (isDeleteModalOpen) {
-            deleteModalRef.current?.showModal();
-        } else {
-            deleteModalRef.current?.close();
-        }
-    }, [isDeleteModalOpen]);
 
     const handleCreate = async () => {
         if (!createForm.name.trim()) {
@@ -543,15 +516,15 @@ export default function ItemsPage() {
             </div>
 
             {/* 機材登録モーダル */}
-            <dialog
-                ref={createModalRef}
-                className="modal"
-                onClose={() => {
+            {isCreateModalOpen && (
+                <AppModal
+                    onClose={() => {
                     setIsCreateModalOpen(false);
                     clearUrlModal(["item"]);
-                }}
-            >
-                <div className="modal-box">
+                    }}
+                    ariaLabel="機材を登録"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                     <h3 className="font-bold text-lg mb-4">機材を登録</h3>
 
                     {modalError && (
@@ -646,25 +619,19 @@ export default function ItemsPage() {
                             )}
                         </button>
                     </div>
-                </div>
-                <form
-                    method="dialog"
-                    className="modal-backdrop"
-                >
-                    <button>close</button>
-                </form>
-            </dialog>
+                </AppModal>
+            )}
 
             {/* 機材編集モーダル */}
-            <dialog
-                ref={editModalRef}
-                className="modal"
-                onClose={() => {
+            {isEditModalOpen && (
+                <AppModal
+                    onClose={() => {
                     setIsEditModalOpen(false);
                     clearUrlModal(["item"]);
-                }}
-            >
-                <div className="modal-box">
+                    }}
+                    ariaLabel="機材を編集"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                     <h3 className="font-bold text-lg mb-4">機材を編集</h3>
 
                     {modalError && (
@@ -739,25 +706,19 @@ export default function ItemsPage() {
                             </button>
                         </div>
                     </div>
-                </div>
-                <form
-                    method="dialog"
-                    className="modal-backdrop"
-                >
-                    <button>close</button>
-                </form>
-            </dialog>
+                </AppModal>
+            )}
 
             {/* 削除確認モーダル */}
-            <dialog
-                ref={deleteModalRef}
-                className="modal"
-                onClose={() => {
+            {isDeleteModalOpen && (
+                <AppModal
+                    onClose={() => {
                     setIsDeleteModalOpen(false);
                     clearUrlModal(["item"]);
-                }}
-            >
-                <div className="modal-box">
+                    }}
+                    ariaLabel="機材を削除"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                     <h3 className="font-bold text-lg mb-4">機材を削除</h3>
 
                     {modalError && (
@@ -808,14 +769,8 @@ export default function ItemsPage() {
                             )}
                         </button>
                     </div>
-                </div>
-                <form
-                    method="dialog"
-                    className="modal-backdrop"
-                >
-                    <button>close</button>
-                </form>
-            </dialog>
+                </AppModal>
+            )}
         </div>
     );
 }

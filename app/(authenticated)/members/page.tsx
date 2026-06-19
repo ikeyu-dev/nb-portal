@@ -30,6 +30,7 @@ import {
     CLIENT_CACHE_KEYS,
 } from "@/src/shared/lib/cache-policy";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 const HEADER_LABELS: Record<string, string> = {
     studentnumber: "学籍番号",
@@ -983,11 +984,11 @@ export default function MembersPage() {
             </div>
 
             {isCreateModalOpen && (
-                <dialog
-                    className="modal modal-open"
+                <AppModal
                     onClose={() => closeCreateModal()}
+                    ariaLabel="名簿に追加"
+                    boxClassName="max-w-xl max-h-[calc(100dvh-8rem)] overflow-hidden p-0 sm:max-h-[calc(100dvh-10rem)]"
                 >
-                    <div className="modal-box max-w-xl p-0 overflow-hidden">
                         <div className="bg-base-200 px-6 py-5">
                             <h2 className="font-bold text-lg">名簿に追加</h2>
                         </div>
@@ -1034,27 +1035,15 @@ export default function MembersPage() {
                                 追加
                             </button>
                         </div>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button
-                            type="button"
-                            onClick={() => closeCreateModal()}
-                        >
-                            閉じる
-                        </button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {isCheckedListModalOpen && (
-                <dialog
-                    className="modal modal-open"
+                <AppModal
                     onClose={closeCheckedListModal}
+                    ariaLabel="チェック済み部員"
+                    boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-hidden p-0 sm:max-h-[calc(100dvh-10rem)]"
                 >
-                    <div className="modal-box max-w-2xl p-0 overflow-hidden">
                         <div className="bg-base-200 px-6 py-5">
                             <h2 className="font-bold text-lg">
                                 チェック済み部員
@@ -1162,27 +1151,15 @@ export default function MembersPage() {
                                 </button>
                             </div>
                         </div>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button
-                            type="button"
-                            onClick={closeCheckedListModal}
-                        >
-                            閉じる
-                        </button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {editingMember && (
-                <dialog
-                    className="modal modal-open"
+                <AppModal
                     onClose={() => closeEditModal()}
+                    ariaLabel="名簿を編集"
+                    boxClassName="max-w-xl max-h-[calc(100dvh-8rem)] overflow-hidden p-0 sm:max-h-[calc(100dvh-10rem)]"
                 >
-                    <div className="modal-box max-w-xl p-0 overflow-hidden">
                         <div className="bg-base-200 px-6 py-5">
                             <h2 className="font-bold text-lg">編集</h2>
                         </div>
@@ -1245,27 +1222,15 @@ export default function MembersPage() {
                                 </button>
                             </div>
                         </div>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button
-                            type="button"
-                            onClick={() => closeEditModal()}
-                        >
-                            閉じる
-                        </button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {deletingMember && (
-                <dialog
-                    className="modal modal-open"
+                <AppModal
                     onClose={() => closeDeleteModal()}
+                    ariaLabel="名簿から削除"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
-                    <div className="modal-box">
                         <h2 className="font-bold text-lg">名簿から削除</h2>
                         <p className="mt-3">
                             {getPrimaryValue(deletingMember, headers)}
@@ -1299,19 +1264,7 @@ export default function MembersPage() {
                                 削除
                             </button>
                         </div>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button
-                            type="button"
-                            onClick={() => closeDeleteModal()}
-                        >
-                            閉じる
-                        </button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
         </div>
     );

@@ -15,6 +15,7 @@ import type {
     Absence,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
+import { AppModal } from "@/src/shared/ui/AppModal";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 
 type AbsenceFormState = {
@@ -593,24 +594,15 @@ export default function ScheduleCard({
 
             {/* Modal */}
             {isModalOpen && (
-                <div
-                    role="dialog"
-                    aria-modal="true"
-                    className="fixed inset-0 z-[999] overflow-y-auto bg-black/40 px-4 py-16 sm:py-20"
-                >
-                    <button
-                        type="button"
-                        aria-label="モーダルを閉じる"
-                        className="fixed inset-0 h-full w-full cursor-default"
-                        onClick={handleClose}
-                    />
-                    <div
-                        className={`relative z-10 mx-auto w-11/12 max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-box bg-base-100 p-6 shadow-2xl sm:max-h-[calc(100dvh-10rem)] ${
+                <AppModal
+                    onClose={handleClose}
+                    ariaLabel={title}
+                    boxClassName={`max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)] ${
                             isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
                         }`}
-                    >
+                >
                         <button
                             onClick={handleClose}
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -1191,8 +1183,7 @@ export default function ScheduleCard({
                                 )}
                             </>
                         )}
-                    </div>
-                </div>
+                </AppModal>
             )}
         </>
     );

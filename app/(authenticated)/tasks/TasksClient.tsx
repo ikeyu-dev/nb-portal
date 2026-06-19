@@ -18,6 +18,7 @@ import type {
 import { TASK_STATUS_LABELS } from "@/src/shared/types/api";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { parseDateInput } from "@/src/shared/lib/jst-date";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 type MemberOption = {
     studentNumber: string;
@@ -512,8 +513,11 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             </section>
 
             {isTaskModalOpen && (
-                <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)] overflow-y-auto">
+                <AppModal
+                    onClose={closeTaskModal}
+                    ariaLabel={form.id ? "タスクを編集" : "タスクを追加"}
+                    boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                         <form className="space-y-4" onSubmit={submitTask}>
                             <div className="flex items-center gap-2">
                                 <FontAwesomeIcon
@@ -667,18 +671,15 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                    <form method="dialog" className="modal-backdrop">
-                        <button type="button" onClick={closeTaskModal}>
-                            閉じる
-                        </button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {deleteTargetTask && (
-                <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box">
+                <AppModal
+                    onClose={closeDeleteTaskModal}
+                    ariaLabel="タスクを削除"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                         <div className="flex items-center gap-2">
                             <FontAwesomeIcon
                                 icon={faTrash}
@@ -725,13 +726,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                 削除
                             </button>
                         </div>
-                    </div>
-                    <form method="dialog" className="modal-backdrop">
-                        <button type="button" onClick={closeDeleteTaskModal}>
-                            閉じる
-                        </button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
         </>
     );

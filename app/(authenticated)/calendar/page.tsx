@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
+import { AppModal } from "@/src/shared/ui/AppModal";
 import {
     normalizeScheduleAttendanceMode,
     SCHEDULE_ATTENDANCE_MODE_LABELS,
@@ -1528,8 +1529,13 @@ export default function CalendarPage() {
 
             {/* イベント一覧モーダル */}
             {selectedDate && !selectedEvent && !showAddModal && (
-                <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box max-w-2xl max-h-[calc(100vh-5rem)] flex flex-col bg-base-200">
+                <AppModal
+                    onClose={closeModal}
+                    ariaLabel={`${selectedDate.date.getFullYear()}年${
+                        selectedDate.date.getMonth() + 1
+                    }月${selectedDate.date.getDate()}日の予定`}
+                    boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-hidden bg-base-200 p-6 sm:max-h-[calc(100dvh-10rem)] flex flex-col"
+                >
                         <button
                             onClick={closeModal}
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -1791,20 +1797,16 @@ export default function CalendarPage() {
                                 追加
                             </button>
                         </div>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button onClick={closeModal}>close</button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {/* イベント追加モーダル */}
             {selectedDate && showAddModal && (
-                <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box max-w-md">
+                <AppModal
+                    onClose={closeAddModal}
+                    ariaLabel="予定を追加"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                         <button
                             onClick={closeAddModal}
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -2181,14 +2183,7 @@ export default function CalendarPage() {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button onClick={closeAddModal}>close</button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
 
             {/* 選択されたイベントの詳細モーダル */}
@@ -2276,8 +2271,11 @@ export default function CalendarPage() {
 
             {/* イベント編集モーダル */}
             {selectedEvent && showEditModal && (
-                <dialog className="modal modal-open modal-middle">
-                    <div className="modal-box max-w-md">
+                <AppModal
+                    onClose={closeEditModal}
+                    ariaLabel="予定を編集"
+                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
+                >
                         <button
                             onClick={closeEditModal}
                             className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
@@ -2749,14 +2747,7 @@ export default function CalendarPage() {
                                 </div>
                             )}
                         </form>
-                    </div>
-                    <form
-                        method="dialog"
-                        className="modal-backdrop"
-                    >
-                        <button onClick={closeEditModal}>close</button>
-                    </form>
-                </dialog>
+                </AppModal>
             )}
         </div>
     );

@@ -9,6 +9,7 @@ import {
     isPushNotificationSupported,
     subscribeToPushNotifications,
 } from "@/src/features/push-notification/lib/push-subscription";
+import { AppModal } from "@/src/shared/ui/AppModal";
 
 interface PWANotificationPromptProps {
     userEmail: string | null;
@@ -96,8 +97,11 @@ export function PWANotificationPrompt({
     if (!isVisible) return null;
 
     return (
-        <dialog className="modal modal-open">
-            <div className="modal-box max-w-sm rounded-2xl">
+        <AppModal
+            onClose={dismiss}
+            ariaLabel="通知を有効にしますか"
+            boxClassName="max-w-sm max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl p-6 sm:max-h-[calc(100dvh-10rem)]"
+        >
                 <div className="mb-4 flex items-start gap-3">
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                         <FontAwesomeIcon icon={faBell} />
@@ -146,12 +150,6 @@ export function PWANotificationPrompt({
                         )}
                     </button>
                 </div>
-            </div>
-            <form method="dialog" className="modal-backdrop">
-                <button type="button" onClick={dismiss}>
-                    閉じる
-                </button>
-            </form>
-        </dialog>
+        </AppModal>
     );
 }
