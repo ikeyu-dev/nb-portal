@@ -618,9 +618,9 @@ export default function ScheduleCard({
 
             {/* Modal */}
             {isModalOpen && (
-                <dialog className="modal modal-open">
+                <dialog className="modal modal-open px-4 py-16 sm:py-20">
                     <div
-                        className={`modal-box bg-base-100 ${
+                        className={`modal-box max-h-[calc(100dvh-8rem)] overflow-y-auto bg-base-100 sm:max-h-[calc(100dvh-10rem)] ${
                             isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
