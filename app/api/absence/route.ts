@@ -108,6 +108,29 @@ const getAbsenceNotificationTitle = (data: AbsenceSubmitData) =>
         data.type === "出席" ? "出席連絡" : `${data.type}連絡`
     }`;
 
+const formatDiscordDateTime = (value?: string) => {
+    if (!value) return "";
+
+    const jstWallClockMatch = value.match(
+        /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?(?:\+09:00)?$/
+    );
+    if (jstWallClockMatch) {
+        return `${jstWallClockMatch[1]}/${jstWallClockMatch[2]}/${jstWallClockMatch[3]} ${jstWallClockMatch[4]}:${jstWallClockMatch[5]}`;
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    return date.toLocaleString("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
 const buildAbsenceDescription = (data: AbsenceSubmitData) => {
     const eventLines = [
         `**${data.eventTitle || data.eventId}**`,
@@ -132,7 +155,9 @@ const sendAbsenceDiscordNotification = async (
                 title: getAbsenceNotificationTitle(data),
                 description: buildAbsenceDescription(data),
                 color: getAbsenceColor(data.type),
-                ...(timestamp ? { footer: { text: timestamp } } : {}),
+                ...(timestamp
+                    ? { footer: { text: formatDiscordDateTime(timestamp) } }
+                    : {}),
             },
         ],
     });
