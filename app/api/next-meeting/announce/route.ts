@@ -24,6 +24,13 @@ const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
 };
 
 const formatDateTime = (value: string) => {
+    const jstWallClockMatch = value.match(
+        /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?(?:\+09:00)?$/
+    );
+    if (jstWallClockMatch) {
+        return `${jstWallClockMatch[1]}/${jstWallClockMatch[2]}/${jstWallClockMatch[3]} ${jstWallClockMatch[4]}:${jstWallClockMatch[5]}`;
+    }
+
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return value;
 
