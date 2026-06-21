@@ -17,6 +17,10 @@ import type {
 } from "@/src/shared/types/api";
 import { AppModal } from "@/src/shared/ui/AppModal";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
+import {
+    getAttendanceDeadlineLabel,
+    isAttendanceResponseAllowed,
+} from "@/src/shared/lib/schedule-deadline";
 
 type AbsenceFormState = {
     type: string;
@@ -108,6 +112,11 @@ interface ScheduleCardProps {
     attendanceMode?: ScheduleAttendanceMode;
     currentStudentNumber?: string | null;
     currentDisplayName?: string | null;
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+    attendanceDeadline?: string;
     dateLabel?: string;
     timeLabel?: string;
     defaultOpen?: boolean;
@@ -126,6 +135,11 @@ export default function ScheduleCard({
     attendanceMode = "ABSENCE",
     currentStudentNumber,
     currentDisplayName,
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    attendanceDeadline,
     dateLabel,
     timeLabel,
     defaultOpen = false,
@@ -171,6 +185,23 @@ export default function ScheduleCard({
     const attendanceDateTimeLabel = [dateLabel, timeLabel]
         .filter(Boolean)
         .join(" ");
+    const canSubmitResponse = isAttendanceResponseAllowed({
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        deadlineDate: attendanceDeadline,
+    });
+    const attendanceDeadlineLabel = getAttendanceDeadlineLabel({
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        deadlineDate: attendanceDeadline,
+    });
+    const responseClosedMessage = attendanceDeadlineLabel
+        ? `出欠入力期限は${attendanceDeadlineLabel}です。期限後は当日5:00からイベント終了まで入力できます。`
+        : "現在は出欠入力の受付時間外です。";
     const normalizedStudentNumber = profile.studentNumber.trim().toLowerCase();
     const displayedAbsences = dedupeAbsencesByStudent(localAbsences);
     const ownResponse =
@@ -325,6 +356,10 @@ export default function ScheduleCard({
     };
 
     const openAttendanceForm = () => {
+        if (!canSubmitResponse) {
+            setAttendanceSubmitMessage(responseClosedMessage);
+            return;
+        }
         setAttendanceSubmitMessage(null);
         setAttendanceNote(ownResponse?.reasonDetail || "");
         setIsAttendanceConfirmOpen(true);
@@ -332,6 +367,10 @@ export default function ScheduleCard({
     };
 
     const openAbsenceForm = () => {
+        if (!canSubmitResponse) {
+            setAbsenceSubmitMessage(responseClosedMessage);
+            return;
+        }
         setAbsenceSubmitMessage(null);
         setAbsenceForm(
             ownResponse
@@ -350,6 +389,10 @@ export default function ScheduleCard({
     };
 
     const submitAttendance = async () => {
+        if (!canSubmitResponse) {
+            setAttendanceSubmitMessage(responseClosedMessage);
+            return;
+        }
         setIsAttendanceSubmitting(true);
         setAttendanceSubmitMessage(null);
 
@@ -405,6 +448,10 @@ export default function ScheduleCard({
 
     const submitAbsence = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (!canSubmitResponse) {
+            setAbsenceSubmitMessage(responseClosedMessage);
+            return;
+        }
         setIsAbsenceSubmitting(true);
         setAbsenceSubmitMessage(null);
 
@@ -1033,6 +1080,11 @@ export default function ScheduleCard({
                                     >
                                         {responseSectionTitle}
                                     </h4>
+                                    {!canSubmitResponse && (
+                                        <div className="alert alert-warning mb-3">
+                                            <span>{responseClosedMessage}</span>
+                                        </div>
+                                    )}
                                     {displayedAbsences.length > 0 ? (
                                         <div className="space-y-2">
                                             {displayedAbsences.map(
@@ -1095,7 +1147,8 @@ export default function ScheduleCard({
                                                                             disabled={
                                                                                 isAttendanceSubmitting ||
                                                                                 isAbsenceSubmitting ||
-                                                                                isDeletingResponse
+                                                                                isDeletingResponse ||
+                                                                                !canSubmitResponse
                                                                             }
                                                                         >
                                                                             編集
@@ -1157,17 +1210,29 @@ export default function ScheduleCard({
                                             type="button"
                                             className="btn btn-primary"
                                             onClick={openAttendanceForm}
-                                            disabled={!!ownResponse}
+                                            disabled={
+                                                !!ownResponse ||
+                                                !canSubmitResponse
+                                            }
                                         >
-                                            {ownResponse ? "申告済み" : actionLabel}
+                                            {ownResponse
+                                                ? "申告済み"
+                                                : canSubmitResponse
+                                                  ? actionLabel
+                                                  : "受付時間外"}
                                         </button>
                                     ) : (
                                         <button
                                             type="button"
                                             className="btn btn-primary"
                                             onClick={openAbsenceForm}
+                                            disabled={!canSubmitResponse}
                                         >
-                                            {ownResponse ? "連絡を編集" : actionLabel}
+                                            {ownResponse
+                                                ? "連絡を編集"
+                                                : canSubmitResponse
+                                                  ? actionLabel
+                                                  : "受付時間外"}
                                         </button>
                                     )}
                                 </div>

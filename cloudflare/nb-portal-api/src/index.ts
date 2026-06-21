@@ -50,6 +50,7 @@ type ScheduleRow = {
 	description: string | null;
 	color: string | null;
 	attendance_mode: string;
+	attendance_deadline: string | null;
 	is_past: number;
 	created_by: string | null;
 	created_at: string;
@@ -243,6 +244,23 @@ const getJstTimestamp = (date = new Date()) => {
 const toScheduleIsPast = (date: string, endDate?: string | null) =>
 	(endDate || date) < getJstDateParts().date ? 1 : 0;
 
+const getDefaultAttendanceDeadline = (date: string) => {
+	const parsed = parseDateInput(date);
+	if (!parsed) return null;
+	parsed.setDate(parsed.getDate() - 2);
+	const year = parsed.getFullYear();
+	const month = String(parsed.getMonth() + 1).padStart(2, "0");
+	const day = String(parsed.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+};
+
+const normalizeAttendanceDeadline = (value: unknown, date: string) => {
+	const deadline = String(value ?? "").trim();
+	return /^\d{4}-\d{2}-\d{2}$/.test(deadline)
+		? deadline
+		: getDefaultAttendanceDeadline(date);
+};
+
 const generatePrefixedId = (prefix: string) =>
 	`${prefix}-${crypto.randomUUID().toUpperCase()}`;
 
@@ -288,6 +306,8 @@ const toScheduleResponse = (row: ScheduleRow) => {
 		END_TIME_HH: endTime.hour,
 		END_TIME_MM: endTime.minute,
 		IS_PAST: row.is_past === 1,
+		ATTENDANCE_DEADLINE:
+			row.attendance_deadline || getDefaultAttendanceDeadline(row.date) || "",
 	};
 };
 
@@ -486,7 +506,7 @@ const verifyMember = async (url: URL, env: Env) => {
 const getSchedules = async (env: Env) => {
 	const rows = await env.DB.prepare(
 		`SELECT id, title, date, end_date, start_time, end_time, location, description,
-			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 		FROM schedules
 		ORDER BY date, start_time, id`
 	).all<ScheduleRow>();
@@ -504,13 +524,17 @@ const createSchedule = async (request: Request, env: Env) => {
 	const date = buildDate(body.year, body.month, body.date);
 	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
 	if (!date) return error("Schedule date is required", 400);
+	const attendanceDeadline = normalizeAttendanceDeadline(
+		body.attendanceDeadline,
+		date
+	);
 
 	await env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, end_date, start_time, end_time, location, description,
-			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})`
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})`
 	)
 		.bind(
 			eventId,
@@ -523,6 +547,7 @@ const createSchedule = async (request: Request, env: Env) => {
 			String(body.detail ?? "").trim(),
 			String(body.color ?? "primary").trim() || "primary",
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
+			attendanceDeadline,
 			toScheduleIsPast(date, endDate),
 			String(body.createdBy ?? "").trim(),
 			String(body.createdBy ?? "").trim()
@@ -546,6 +571,7 @@ const createSchedule = async (request: Request, env: Env) => {
 		endDate: String(body.endDate ?? ""),
 		color: String(body.color ?? "primary"),
 		attendanceMode: String(body.attendanceMode ?? "ABSENCE"),
+		attendanceDeadline: attendanceDeadline || "",
 	});
 };
 
@@ -557,11 +583,15 @@ const updateSchedule = async (request: Request, env: Env) => {
 	const date = buildDate(body.year, body.month, body.date);
 	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
 	if (!date) return error("Schedule date is required", 400);
+	const attendanceDeadline = normalizeAttendanceDeadline(
+		body.attendanceDeadline,
+		date
+	);
 
 	await env.DB.prepare(
 		`UPDATE schedules SET
 			title = ?, date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?,
-			description = ?, color = ?, attendance_mode = ?, is_past = ?, updated_by = ?, updated_at = ${JST_SQL_TIMESTAMP}
+			description = ?, color = ?, attendance_mode = ?, attendance_deadline = ?, is_past = ?, updated_by = ?, updated_at = ${JST_SQL_TIMESTAMP}
 		WHERE id = ?`
 	)
 		.bind(
@@ -574,6 +604,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 			String(body.detail ?? "").trim(),
 			String(body.color ?? "primary").trim() || "primary",
 			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
+			attendanceDeadline,
 			toScheduleIsPast(date, endDate),
 			String(body.updatedBy ?? "").trim(),
 			eventId
@@ -597,6 +628,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 		endDate: String(body.endDate ?? ""),
 		color: String(body.color ?? "primary"),
 		attendanceMode: String(body.attendanceMode ?? "ABSENCE"),
+		attendanceDeadline: attendanceDeadline || "",
 	});
 };
 
@@ -743,9 +775,9 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, end_date, start_time, end_time, location, description,
-			color, attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'primary', 'ABSENCE', ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})
+		VALUES (?, '部会', ?, NULL, ?, NULL, ?, '次回部会', 'primary', 'ABSENCE', ?, ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})
 		ON CONFLICT(id) DO UPDATE SET
 			title = excluded.title,
 			date = excluded.date,
@@ -756,6 +788,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			description = excluded.description,
 			color = excluded.color,
 			attendance_mode = excluded.attendance_mode,
+			attendance_deadline = excluded.attendance_deadline,
 			is_past = excluded.is_past,
 			updated_by = excluded.updated_by,
 			updated_at = ${JST_SQL_TIMESTAMP}`
@@ -765,6 +798,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			date,
 			time,
 			mode === "DISCORD" ? "Discord" : "対面",
+			getDefaultAttendanceDeadline(date),
 			toScheduleIsPast(date),
 			updatedBy,
 			updatedBy
@@ -811,7 +845,7 @@ const getDashboardData = async (env: Env) => {
 		env.DB.prepare("SELECT * FROM absences ORDER BY submitted_at").all<AbsenceRow>(),
 		env.DB.prepare(
 			`SELECT id, title, date, start_time, end_time, location, description,
-				attendance_mode, is_past, created_by, created_at, updated_by, updated_at
+				end_date, color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 			FROM schedules
 			ORDER BY date, start_time, id`
 		).all<ScheduleRow>(),
