@@ -23,6 +23,10 @@ import {
     CACHE_TTL_MS,
     CLIENT_CACHE_KEYS,
 } from "@/src/shared/lib/cache-policy";
+import {
+    formatDateInput,
+    getDefaultAttendanceDeadline,
+} from "@/src/shared/lib/schedule-deadline";
 
 // イベントカラーの定義
 export const EVENT_COLORS = [
@@ -63,6 +67,7 @@ type ScheduleMutationData = {
     endDate?: string | number;
     color?: string;
     attendanceMode?: string;
+    attendanceDeadline?: string;
 };
 
 interface SelectedDateInfo {
@@ -100,6 +105,7 @@ interface EventForm {
     isAllDay: boolean;
     color: EventColorId;
     attendanceMode: ScheduleAttendanceMode;
+    attendanceDeadline: string;
 }
 
 const CALENDAR_REFRESH_INTERVAL = CACHE_TTL_MS.pageData;
@@ -115,6 +121,9 @@ const getScheduleAttendanceMode = (
 const getScheduleEventId = (schedule: Schedule) =>
     String(schedule.EVENT_ID ?? Object.values(schedule)[0] ?? "");
 
+const getScheduleAttendanceDeadline = (schedule: Schedule) =>
+    String(schedule.ATTENDANCE_DEADLINE ?? schedule.attendanceDeadline ?? "");
+
 const getScheduleDateStr = (schedule: Schedule) => {
     const values = Object.values(schedule);
     const year = String(values[1] ?? "").padStart(4, "0");
@@ -128,6 +137,23 @@ const parseDateStr = (dateStr: string) => {
     const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     if (!match) return null;
     return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+};
+
+const splitDateInput = (dateInput: string) => {
+    const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    return {
+        year: match?.[1] || "",
+        month: match?.[2] ? String(Number(match[2])) : "",
+        date: match?.[3] ? String(Number(match[3])) : "",
+    };
+};
+
+const buildDateInput = (year: string, month: string, date: string) => {
+    if (!year || !month || !date) return "";
+    return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${date.padStart(
+        2,
+        "0"
+    )}`;
 };
 
 export default function CalendarPage() {
@@ -165,6 +191,7 @@ export default function CalendarPage() {
         isAllDay: false,
         color: "primary",
         attendanceMode: "ABSENCE",
+        attendanceDeadline: "",
     });
     const [editForm, setEditForm] = useState<EventForm>({
         title: "",
@@ -183,6 +210,7 @@ export default function CalendarPage() {
         isAllDay: false,
         color: "primary",
         attendanceMode: "ABSENCE",
+        attendanceDeadline: "",
     });
 
     useEffect(() => {
@@ -454,6 +482,39 @@ export default function CalendarPage() {
             isAllDay: !hasTime && hasEndDate,
             color: (values[12] as EventColorId) || "primary",
             attendanceMode: getScheduleAttendanceMode(event),
+            attendanceDeadline:
+                getScheduleAttendanceDeadline(event) ||
+                getDefaultAttendanceDeadline(
+                    `${String(values[1] ?? "").padStart(4, "0")}-${String(
+                        values[2] ?? ""
+                    ).padStart(2, "0")}-${String(values[3] ?? "").padStart(
+                        2,
+                        "0"
+                    )}`
+                ),
+        };
+    };
+
+    const buildAddForm = (date: Date): EventForm => {
+        const startDate = formatDateInput(date);
+        return {
+            title: "",
+            where: "",
+            detail: "",
+            timeHH: "",
+            timeMM: "",
+            endTimeHH: "",
+            endTimeMM: "",
+            year: String(date.getFullYear()),
+            month: String(date.getMonth() + 1),
+            date: String(date.getDate()),
+            endYear: String(date.getFullYear()),
+            endMonth: String(date.getMonth() + 1),
+            endDate: String(date.getDate()),
+            isAllDay: false,
+            color: "primary",
+            attendanceMode: "ABSENCE",
+            attendanceDeadline: getDefaultAttendanceDeadline(startDate),
         };
     };
 
@@ -481,6 +542,7 @@ export default function CalendarPage() {
             if (nextSelectedDate) {
                 setSelectedDate(nextSelectedDate);
                 setSelectedEvent(null);
+                setAddForm(buildAddForm(nextSelectedDate.date));
                 setShowAddModal(true);
                 setShowEditModal(false);
                 setShowDeleteConfirm(false);
@@ -546,6 +608,7 @@ export default function CalendarPage() {
             isAllDay: false,
             color: "primary",
             attendanceMode: "ABSENCE",
+            attendanceDeadline: "",
         });
         setEditForm({
             title: "",
@@ -564,12 +627,16 @@ export default function CalendarPage() {
             isAllDay: false,
             color: "primary",
             attendanceMode: "ABSENCE",
+            attendanceDeadline: "",
         });
         clearUrlModal(["date", "event"]);
     };
 
     // 追加モーダルを開く
     const openAddModal = () => {
+        if (selectedDate) {
+            setAddForm(buildAddForm(selectedDate.date));
+        }
         setShowAddModal(true);
         updateUrlModal({
             modal: "schedule-create",
@@ -598,6 +665,7 @@ export default function CalendarPage() {
             isAllDay: false,
             color: "primary",
             attendanceMode: "ABSENCE",
+            attendanceDeadline: "",
         });
         updateUrlModal({
             modal: "schedule-date",
@@ -629,11 +697,18 @@ export default function CalendarPage() {
                     title: addForm.title.trim(),
                     where: addForm.where.trim(),
                     detail: addForm.detail.trim(),
-                    endYear: addForm.endYear || undefined,
-                    endMonth: addForm.endMonth || undefined,
-                    endDate: addForm.endDate || undefined,
+                    endYear: addForm.isAllDay
+                        ? addForm.endYear || undefined
+                        : undefined,
+                    endMonth: addForm.isAllDay
+                        ? addForm.endMonth || undefined
+                        : undefined,
+                    endDate: addForm.isAllDay
+                        ? addForm.endDate || undefined
+                        : undefined,
                     color: addForm.color,
                     attendanceMode: addForm.attendanceMode,
+                    attendanceDeadline: addForm.attendanceDeadline,
                 }),
             });
 
@@ -660,6 +735,9 @@ export default function CalendarPage() {
                     ATTENDANCE_MODE: scheduleData.attendanceMode || "ABSENCE",
                     END_TIME_HH: scheduleData.endTimeHH || "",
                     END_TIME_MM: scheduleData.endTimeMM || "",
+                    ATTENDANCE_DEADLINE:
+                        scheduleData.attendanceDeadline ||
+                        addForm.attendanceDeadline,
                 };
                 setSchedules((prev) => {
                     const next = [...prev, newSchedule];
@@ -744,6 +822,7 @@ export default function CalendarPage() {
             isAllDay: false,
             color: "primary",
             attendanceMode: "ABSENCE",
+            attendanceDeadline: "",
         });
         if (selectedEvent) {
             updateUrlModal({
@@ -831,11 +910,18 @@ export default function CalendarPage() {
                     title: editForm.title.trim(),
                     where: editForm.where.trim(),
                     detail: editForm.detail.trim(),
-                    endYear: editForm.endYear || undefined,
-                    endMonth: editForm.endMonth || undefined,
-                    endDate: editForm.endDate || undefined,
+                    endYear: editForm.isAllDay
+                        ? editForm.endYear || undefined
+                        : undefined,
+                    endMonth: editForm.isAllDay
+                        ? editForm.endMonth || undefined
+                        : undefined,
+                    endDate: editForm.isAllDay
+                        ? editForm.endDate || undefined
+                        : undefined,
                     color: editForm.color,
                     attendanceMode: editForm.attendanceMode,
+                    attendanceDeadline: editForm.attendanceDeadline,
                 }),
             });
 
@@ -867,6 +953,9 @@ export default function CalendarPage() {
                                 COLOR: scheduleData.color || "primary",
                                 ATTENDANCE_MODE:
                                     scheduleData.attendanceMode || "ABSENCE",
+                                ATTENDANCE_DEADLINE:
+                                    scheduleData.attendanceDeadline ||
+                                    editForm.attendanceDeadline,
                             };
                         }
                         return schedule;
@@ -1865,6 +1954,21 @@ export default function CalendarPage() {
                                                 endTimeMM: e.target.checked
                                                     ? ""
                                                     : addForm.endTimeMM,
+                                                endYear:
+                                                    e.target.checked &&
+                                                    !addForm.endYear
+                                                        ? addForm.year
+                                                        : addForm.endYear,
+                                                endMonth:
+                                                    e.target.checked &&
+                                                    !addForm.endMonth
+                                                        ? addForm.month
+                                                        : addForm.endMonth,
+                                                endDate:
+                                                    e.target.checked &&
+                                                    !addForm.endDate
+                                                        ? addForm.date
+                                                        : addForm.endDate,
                                             })
                                         }
                                     />
@@ -1931,6 +2035,27 @@ export default function CalendarPage() {
                                     </label>
                                 </div>
                             </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        出欠入力期限
+                                    </span>
+                                </label>
+                                <input
+                                    type="date"
+                                    className="input input-bordered w-full"
+                                    value={addForm.attendanceDeadline}
+                                    onChange={(e) =>
+                                        setAddForm({
+                                            ...addForm,
+                                            attendanceDeadline: e.target.value,
+                                        })
+                                    }
+                                />
+                                <p className="mt-1 text-xs text-base-content/60">
+                                    期限後でも、当日5:00からイベント終了までは入力できます。
+                                </p>
+                            </div>
                             {addForm.isAllDay ? (
                                 <>
                                     <div className="form-control">
@@ -1959,57 +2084,27 @@ export default function CalendarPage() {
                                                 </span>
                                             </span>
                                         </label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder="年"
-                                                min="2020"
-                                                max="2100"
-                                                className="input input-bordered w-24"
-                                                value={addForm.endYear}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        endYear: e.target.value,
-                                                    })
-                                                }
-                                                required
-                                            />
-                                            <span>年</span>
-                                            <input
-                                                type="number"
-                                                placeholder="月"
-                                                min="1"
-                                                max="12"
-                                                className="input input-bordered w-20"
-                                                value={addForm.endMonth}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        endMonth:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                                required
-                                            />
-                                            <span>月</span>
-                                            <input
-                                                type="number"
-                                                placeholder="日"
-                                                min="1"
-                                                max="31"
-                                                className="input input-bordered w-20"
-                                                value={addForm.endDate}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        endDate: e.target.value,
-                                                    })
-                                                }
-                                                required
-                                            />
-                                            <span>日</span>
-                                        </div>
+                                        <input
+                                            type="date"
+                                            className="input input-bordered w-full"
+                                            value={buildDateInput(
+                                                addForm.endYear,
+                                                addForm.endMonth,
+                                                addForm.endDate
+                                            )}
+                                            onChange={(e) => {
+                                                const next = splitDateInput(
+                                                    e.target.value
+                                                );
+                                                setAddForm({
+                                                    ...addForm,
+                                                    endYear: next.year,
+                                                    endMonth: next.month,
+                                                    endDate: next.date,
+                                                });
+                                            }}
+                                            required
+                                        />
                                     </div>
                                 </>
                             ) : (
@@ -2197,6 +2292,9 @@ export default function CalendarPage() {
                     const rawTimeMM = values[5];
                     const rawEndTimeHH = values[18];
                     const rawEndTimeMM = values[19];
+                    const rawEndYear = values[9];
+                    const rawEndMonth = values[10];
+                    const rawEndDate = values[11];
                     const title = String(values[6] ?? "予定");
                     const where = String(values[7] ?? "");
                     const detail = String(values[8] ?? "");
@@ -2243,6 +2341,18 @@ export default function CalendarPage() {
                         timeLabel && endTimeLabel
                             ? `${timeLabel}-${endTimeLabel}`
                             : timeLabel;
+                    const startDateInput = `${String(year).padStart(4, "0")}-${String(
+                        month
+                    ).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+                    const endDateInput =
+                        rawEndYear && rawEndMonth && rawEndDate
+                            ? `${String(rawEndYear).padStart(4, "0")}-${String(
+                                  rawEndMonth
+                              ).padStart(2, "0")}-${String(rawEndDate).padStart(
+                                  2,
+                                  "0"
+                              )}`
+                            : undefined;
 
                     const eventAbsences = absences.filter((absence) => {
                         const absenceValues = Object.values(absence);
@@ -2259,6 +2369,13 @@ export default function CalendarPage() {
                             attendanceMode={attendanceMode}
                             dateLabel={dateLabel}
                             timeLabel={timeRangeLabel}
+                            startDate={startDateInput}
+                            endDate={endDateInput}
+                            startTime={timeLabel}
+                            endTime={endTimeLabel}
+                            attendanceDeadline={getScheduleAttendanceDeadline(
+                                selectedEvent
+                            )}
                             defaultOpen={true}
                             onClose={closeEventModal}
                             onEdit={openEditModal}
@@ -2329,6 +2446,21 @@ export default function CalendarPage() {
                                                 endTimeMM: e.target.checked
                                                     ? ""
                                                     : editForm.endTimeMM,
+                                                endYear:
+                                                    e.target.checked &&
+                                                    !editForm.endYear
+                                                        ? editForm.year
+                                                        : editForm.endYear,
+                                                endMonth:
+                                                    e.target.checked &&
+                                                    !editForm.endMonth
+                                                        ? editForm.month
+                                                        : editForm.endMonth,
+                                                endDate:
+                                                    e.target.checked &&
+                                                    !editForm.endDate
+                                                        ? editForm.date
+                                                        : editForm.endDate,
                                             })
                                         }
                                     />
@@ -2402,56 +2534,32 @@ export default function CalendarPage() {
                                         <span className="text-error">*</span>
                                     </span>
                                 </label>
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="number"
-                                        placeholder="年"
-                                        min="2020"
-                                        max="2100"
-                                        className="input input-bordered w-24"
-                                        value={editForm.year}
-                                        onChange={(e) =>
-                                            setEditForm({
-                                                ...editForm,
-                                                year: e.target.value,
-                                            })
-                                        }
-                                        required
-                                    />
-                                    <span>年</span>
-                                    <input
-                                        type="number"
-                                        placeholder="月"
-                                        min="1"
-                                        max="12"
-                                        className="input input-bordered w-20"
-                                        value={editForm.month}
-                                        onChange={(e) =>
-                                            setEditForm({
-                                                ...editForm,
-                                                month: e.target.value,
-                                            })
-                                        }
-                                        required
-                                    />
-                                    <span>月</span>
-                                    <input
-                                        type="number"
-                                        placeholder="日"
-                                        min="1"
-                                        max="31"
-                                        className="input input-bordered w-20"
-                                        value={editForm.date}
-                                        onChange={(e) =>
-                                            setEditForm({
-                                                ...editForm,
-                                                date: e.target.value,
-                                            })
-                                        }
-                                        required
-                                    />
-                                    <span>日</span>
-                                </div>
+                                <input
+                                    type="date"
+                                    className="input input-bordered w-full"
+                                    value={buildDateInput(
+                                        editForm.year,
+                                        editForm.month,
+                                        editForm.date
+                                    )}
+                                    onChange={(e) => {
+                                        const next = splitDateInput(
+                                            e.target.value
+                                        );
+                                        setEditForm({
+                                            ...editForm,
+                                            year: next.year,
+                                            month: next.month,
+                                            date: next.date,
+                                            attendanceDeadline:
+                                                editForm.attendanceDeadline ||
+                                                getDefaultAttendanceDeadline(
+                                                    e.target.value
+                                                ),
+                                        });
+                                    }}
+                                    required
+                                />
                             </div>
                             {editForm.isAllDay ? (
                                 <div className="form-control">
@@ -2463,56 +2571,27 @@ export default function CalendarPage() {
                                             </span>
                                         </span>
                                     </label>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            placeholder="年"
-                                            min="2020"
-                                            max="2100"
-                                            className="input input-bordered w-24"
-                                            value={editForm.endYear}
-                                            onChange={(e) =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    endYear: e.target.value,
-                                                })
-                                            }
-                                            required
-                                        />
-                                        <span>年</span>
-                                        <input
-                                            type="number"
-                                            placeholder="月"
-                                            min="1"
-                                            max="12"
-                                            className="input input-bordered w-20"
-                                            value={editForm.endMonth}
-                                            onChange={(e) =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    endMonth: e.target.value,
-                                                })
-                                            }
-                                            required
-                                        />
-                                        <span>月</span>
-                                        <input
-                                            type="number"
-                                            placeholder="日"
-                                            min="1"
-                                            max="31"
-                                            className="input input-bordered w-20"
-                                            value={editForm.endDate}
-                                            onChange={(e) =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    endDate: e.target.value,
-                                                })
-                                            }
-                                            required
-                                        />
-                                        <span>日</span>
-                                    </div>
+                                    <input
+                                        type="date"
+                                        className="input input-bordered w-full"
+                                        value={buildDateInput(
+                                            editForm.endYear,
+                                            editForm.endMonth,
+                                            editForm.endDate
+                                        )}
+                                        onChange={(e) => {
+                                            const next = splitDateInput(
+                                                e.target.value
+                                            );
+                                            setEditForm({
+                                                ...editForm,
+                                                endYear: next.year,
+                                                endMonth: next.month,
+                                                endDate: next.date,
+                                            });
+                                        }}
+                                        required
+                                    />
                                 </div>
                             ) : (
                                 <div className="grid gap-4 sm:grid-cols-2">
@@ -2533,8 +2612,7 @@ export default function CalendarPage() {
                                                 onChange={(e) =>
                                                     setEditForm({
                                                         ...editForm,
-                                                        timeHH:
-                                                            e.target.value,
+                                                        timeHH: e.target.value,
                                                     })
                                                 }
                                             />
@@ -2549,8 +2627,7 @@ export default function CalendarPage() {
                                                 onChange={(e) =>
                                                     setEditForm({
                                                         ...editForm,
-                                                        timeMM:
-                                                            e.target.value,
+                                                        timeMM: e.target.value,
                                                     })
                                                 }
                                             />
@@ -2598,6 +2675,27 @@ export default function CalendarPage() {
                                     </div>
                                 </div>
                             )}
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text">
+                                        出欠入力期限
+                                    </span>
+                                </label>
+                                <input
+                                    type="date"
+                                    className="input input-bordered w-full"
+                                    value={editForm.attendanceDeadline}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            attendanceDeadline: e.target.value,
+                                        })
+                                    }
+                                />
+                                <p className="mt-1 text-xs text-base-content/60">
+                                    期限後でも、当日5:00からイベント終了までは入力できます。
+                                </p>
+                            </div>
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">場所</span>

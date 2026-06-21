@@ -25,6 +25,7 @@ describe("Hello World worker", () => {
 				description TEXT,
 				color TEXT NOT NULL DEFAULT 'primary',
 				attendance_mode TEXT NOT NULL DEFAULT 'ABSENCE',
+				attendance_deadline TEXT,
 				created_by TEXT,
 				updated_by TEXT,
 				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -122,6 +123,7 @@ describe("Hello World worker", () => {
 			TIME_HH: "18",
 			TIME_MM: "0",
 			WHERE: "Discord",
+			ATTENDANCE_DEADLINE: "2099-01-21",
 		});
 	});
 
@@ -141,6 +143,7 @@ describe("Hello World worker", () => {
 				detail: "終日イベント",
 				color: "green",
 				attendanceMode: "ABSENCE",
+				attendanceDeadline: "2099-02-08",
 				createdBy: "test",
 			}),
 		});
@@ -184,6 +187,7 @@ describe("Hello World worker", () => {
 			END_YYYY: "2099",
 			END_MM: "2",
 			END_DD: "12",
+			ATTENDANCE_DEADLINE: "2099-02-08",
 			IS_PAST: false,
 		});
 	});

@@ -11,6 +11,7 @@ import {
 } from "@/src/shared/lib/validation";
 import { validateOrigin, validateContentType } from "@/src/shared/lib/csrf";
 import { sendDiscordWebhook } from "@/src/shared/lib/discord";
+import { isAttendanceResponseAllowed } from "@/src/shared/lib/schedule-deadline";
 
 import { getBackendApiHeaders, getBackendApiUrl } from "@/src/shared/lib/server-env";
 
@@ -72,6 +73,81 @@ const postToBackend = async (path: string, body: unknown) => {
             error: `Backend API returned non-JSON response: ${response.status}`,
         };
     }
+};
+
+const fetchScheduleByEventId = async (eventId: string) => {
+    if (!BACKEND_API_URL || !eventId) return null;
+
+    const url = new URL(BACKEND_API_URL);
+    url.searchParams.append("path", "schedules");
+
+    const response = await fetch(url.toString(), {
+        method: "GET",
+        cache: "no-store",
+        headers: getBackendApiHeaders(),
+    });
+    const data = (await response.json()) as {
+        success?: boolean;
+        data?: Array<Record<string, unknown>>;
+    };
+    if (!response.ok || !data.success || !Array.isArray(data.data)) {
+        return null;
+    }
+
+    return (
+        data.data.find(
+            (schedule) => String(schedule.EVENT_ID ?? "") === eventId
+        ) || null
+    );
+};
+
+const getScheduleResponseWindow = (schedule: Record<string, unknown>) => ({
+    startDate:
+        schedule.YYYY && schedule.MM && schedule.DD
+            ? `${String(schedule.YYYY).padStart(4, "0")}-${String(
+                  schedule.MM
+              ).padStart(2, "0")}-${String(schedule.DD).padStart(2, "0")}`
+            : "",
+    endDate:
+        schedule.END_YYYY && schedule.END_MM && schedule.END_DD
+            ? `${String(schedule.END_YYYY).padStart(4, "0")}-${String(
+                  schedule.END_MM
+              ).padStart(2, "0")}-${String(schedule.END_DD).padStart(2, "0")}`
+            : "",
+    startTime:
+        schedule.TIME_HH !== "" &&
+        schedule.TIME_HH !== null &&
+        schedule.TIME_HH !== undefined
+            ? `${String(schedule.TIME_HH).padStart(2, "0")}:${String(
+                  schedule.TIME_MM || "0"
+              ).padStart(2, "0")}`
+            : "",
+    endTime:
+        schedule.END_TIME_HH !== "" &&
+        schedule.END_TIME_HH !== null &&
+        schedule.END_TIME_HH !== undefined
+            ? `${String(schedule.END_TIME_HH).padStart(2, "0")}:${String(
+                  schedule.END_TIME_MM || "0"
+              ).padStart(2, "0")}`
+            : "",
+    deadlineDate: String(schedule.ATTENDANCE_DEADLINE ?? ""),
+});
+
+const validateAttendanceDeadline = async (eventId: string) => {
+    const schedule = await fetchScheduleByEventId(eventId);
+    if (!schedule) return null;
+
+    if (isAttendanceResponseAllowed(getScheduleResponseWindow(schedule))) {
+        return null;
+    }
+
+    return NextResponse.json(
+        {
+            success: false,
+            error: "この予定の出欠連絡期限を過ぎています",
+        },
+        { status: 403 }
+    );
 };
 
 const getAbsenceColor = (type: AbsenceSubmitData["type"]) => {
@@ -231,6 +307,11 @@ export async function POST(request: NextRequest) {
         }
 
         const validatedData = validationResult.data;
+        const deadlineError = await validateAttendanceDeadline(
+            validatedData.eventId
+        );
+        if (deadlineError) return deadlineError;
+
         const data = await postToBackend("absences", validatedData);
 
         if (data?.success === true) {
@@ -296,6 +377,11 @@ export async function PUT(request: NextRequest) {
                 { status: 400 }
             );
         }
+
+        const deadlineError = await validateAttendanceDeadline(
+            validationResult.data.eventId
+        );
+        if (deadlineError) return deadlineError;
 
         const data = await postToBackend("absences/update", validationResult.data);
 

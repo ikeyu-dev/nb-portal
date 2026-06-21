@@ -171,6 +171,9 @@ export default async function HomePage() {
                                             const rawTimeMM = values[5]; // F列 (TIME_MM)
                                             const rawEndTimeHH = values[18]; // S列 (END_TIME_HH)
                                             const rawEndTimeMM = values[19]; // T列 (END_TIME_MM)
+                                            const rawEndYear = values[9];
+                                            const rawEndMonth = values[10];
+                                            const rawEndDate = values[11];
                                             const title = String(
                                                 values[6] ?? "予定"
                                             ); // G列 (TITLE)
@@ -231,6 +234,13 @@ export default async function HomePage() {
                                                 timeLabel && endTimeLabel
                                                     ? `${timeLabel}-${endTimeLabel}`
                                                     : timeLabel;
+                                            const startDateInput = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
+                                            const endDateInput =
+                                                rawEndYear &&
+                                                rawEndMonth &&
+                                                rawEndDate
+                                                    ? `${String(rawEndYear).padStart(4, "0")}-${String(rawEndMonth).padStart(2, "0")}-${String(rawEndDate).padStart(2, "0")}`
+                                                    : undefined;
 
                                             // このイベントの欠席者をフィルタリング
                                             // absence_data シートの列構成: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名...
@@ -264,6 +274,14 @@ export default async function HomePage() {
                                                     }
                                                     dateLabel={dateLabel}
                                                     timeLabel={timeRangeLabel}
+                                                    startDate={startDateInput}
+                                                    endDate={endDateInput}
+                                                    startTime={timeLabel}
+                                                    endTime={endTimeLabel}
+                                                    attendanceDeadline={String(
+                                                        schedule.ATTENDANCE_DEADLINE ??
+                                                            ""
+                                                    )}
                                                 />
                                             );
                                         }

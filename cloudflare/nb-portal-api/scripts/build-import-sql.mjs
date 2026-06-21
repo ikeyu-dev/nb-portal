@@ -108,6 +108,14 @@ const buildDate = (year, month, day) => {
 	return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
 };
 
+const addDays = (dateString, days) => {
+	const match = String(dateString ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (!match) return "";
+	const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+	date.setDate(date.getDate() + days);
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
 const buildTime = (hour, minute) => {
 	const h = String(hour ?? "").trim();
 	const m = String(minute ?? "").trim();
@@ -158,14 +166,15 @@ for (const member of readCsv(files.members)) {
 for (const schedule of readCsv(files.schedules)) {
 	const eventId = schedule.EVENT_ID;
 	if (!eventId) continue;
+	const startDate = buildDate(schedule.YYYY, schedule.MM, schedule.DD);
 
 	statements.push(`INSERT INTO schedules (
-  id, title, date, end_date, start_time, end_time, location, description, color, attendance_mode,
+  id, title, date, end_date, start_time, end_time, location, description, color, attendance_mode, attendance_deadline,
   is_past, created_by, created_at, updated_by, updated_at
 ) VALUES (
   ${sqlString(eventId)},
   ${sqlString(schedule.TITLE)},
-  ${sqlString(buildDate(schedule.YYYY, schedule.MM, schedule.DD))},
+  ${sqlString(startDate)},
   ${sqlNullableString(buildDate(schedule.END_YYYY, schedule.END_MM, schedule.END_DD))},
   ${sqlNullableString(buildTime(schedule.TIME_HH, schedule.TIME_MM))},
   ${sqlNullableString(buildTime(schedule.END_TIME_HH, schedule.END_TIME_MM))},
@@ -173,7 +182,8 @@ for (const schedule of readCsv(files.schedules)) {
   ${sqlNullableString(schedule.DETAIL)},
   ${sqlString(schedule.COLOR || "primary")},
   ${sqlString(schedule.ATTENDANCE_MODE || "ABSENCE")},
-  ${buildDate(schedule.YYYY, schedule.MM, schedule.DD) < todayJst ? "1" : "0"},
+  ${sqlString(schedule.ATTENDANCE_DEADLINE || addDays(startDate, -2))},
+  ${startDate < todayJst ? "1" : "0"},
   ${sqlNullableString(schedule.CREATED_BY)},
   ${sqlString(parseSpreadsheetDateTime(schedule.CREATED_AT) || new Date().toISOString())},
   ${sqlNullableString(schedule.UPDATED_BY)},
