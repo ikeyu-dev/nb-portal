@@ -200,7 +200,9 @@ export default function ScheduleCard({
         deadlineDate: attendanceDeadline,
     });
     const responseClosedMessage = attendanceDeadlineLabel
-        ? `出欠入力期限は${attendanceDeadlineLabel}です。期限後は当日5:00からイベント終了まで入力できます。`
+        ? isAttendanceEvent
+            ? `出席申告の期限は${attendanceDeadlineLabel}です。`
+            : `出欠入力期限は${attendanceDeadlineLabel}です。期限後は当日5:00からイベント終了まで入力できます。`
         : "現在は出欠入力の受付時間外です。";
     const normalizedStudentNumber = profile.studentNumber.trim().toLowerCase();
     const displayedAbsences = dedupeAbsencesByStudent(localAbsences);
@@ -1106,25 +1108,29 @@ export default function ScheduleCard({
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div>
                                                                     <div
-                                                                        className="font-medium text-base-content"
+                                                                        className="grid items-center gap-2 text-base-content [grid-template-columns:minmax(7rem,12rem)_auto_minmax(0,1fr)]"
                                                                         style={{
                                                                             fontSize:
                                                                                 "clamp(0.875rem, 2vw, 1rem)",
                                                                         }}
                                                                     >
-                                                                        {
-                                                                            values.name
-                                                                        }{" "}
-                                                                        <span className="badge badge-primary badge-sm ml-2">
+                                                                        <span className="font-medium break-words">
                                                                             {
-                                                                                values.type
+                                                                                values.name
                                                                             }
                                                                         </span>
-                                                                        {isOwnResponse && (
-                                                                            <span className="badge badge-outline badge-sm ml-2">
-                                                                                自分
+                                                                        <span className="flex flex-wrap items-center gap-2">
+                                                                            <span className="badge badge-primary badge-sm">
+                                                                                {
+                                                                                    values.type
+                                                                                }
                                                                             </span>
-                                                                        )}
+                                                                            {isOwnResponse && (
+                                                                                <span className="badge badge-outline badge-sm">
+                                                                                    自分
+                                                                                </span>
+                                                                            )}
+                                                                        </span>
                                                                     </div>
                                                                     {values.reasonDetail && (
                                                                         <p className="mt-1 text-sm text-base-content/70 whitespace-pre-wrap break-words">
