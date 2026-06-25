@@ -4,8 +4,8 @@ import { MeetingMemoForm } from "@/features/meeting-memo";
 
 export default function MemoPage() {
     return (
-        <div className="p-4 lg:p-6 w-full">
-            <div className="max-w-4xl mx-auto">
+        <div className="w-full px-4 py-5 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-5xl">
                 {/* ヘッダー */}
                 <div className="flex items-center gap-3 mb-6">
                     <FontAwesomeIcon
