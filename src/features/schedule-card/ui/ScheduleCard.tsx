@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
@@ -13,8 +13,15 @@ import {
 import type {
     ApiResponse,
     Absence,
+    EventAttendance,
+    MembersData,
     ScheduleAttendanceMode,
 } from "@/src/shared/types/api";
+import {
+    getEventAttendance,
+    getMembers,
+    updateEventAttendance,
+} from "@/src/shared/api/client";
 import { AppModal } from "@/src/shared/ui/AppModal";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import {
@@ -54,6 +61,14 @@ type SessionResponse = {
 };
 
 type AbsenceMutationData = Partial<AbsenceRecordValues>;
+
+type AttendanceMemberOption = {
+    studentNumber: string;
+    displayName: string;
+    name: string;
+    nickname: string;
+    permission: string;
+};
 
 const emptyAbsenceForm: AbsenceFormState = {
     type: "",
@@ -101,6 +116,38 @@ const dedupeAbsencesByStudent = (records: Absence[]) => {
         recordMap.set(key, record);
     });
     return Array.from(recordMap.values());
+};
+
+const resolveAttendanceMembers = (
+    data: MembersData | undefined
+): AttendanceMemberOption[] => {
+    if (!data) return [];
+
+    return data.members
+        .map((member) => {
+            const studentNumber = String(member.values[0] ?? "")
+                .trim()
+                .toLowerCase();
+            const name = String(member.values[1] ?? "").trim();
+            const nickname = String(member.values[2] ?? "").trim();
+            const permission = String(member.values[7] ?? "").trim();
+            const displayName =
+                nickname && nickname !== "---" ? nickname : name || studentNumber;
+
+            return {
+                studentNumber,
+                displayName,
+                name,
+                nickname,
+                permission,
+            };
+        })
+        .filter(
+            (member) =>
+                member.studentNumber &&
+                member.displayName &&
+                member.permission.toUpperCase() !== "OBOG"
+        );
 };
 
 interface ScheduleCardProps {
@@ -155,15 +202,34 @@ export default function ScheduleCard({
         useState(false);
     const [isAbsenceFormOpen, setIsAbsenceFormOpen] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+    const [isEventAttendanceOpen, setIsEventAttendanceOpen] = useState(false);
     const [isAttendanceSubmitting, setIsAttendanceSubmitting] = useState(false);
     const [isAbsenceSubmitting, setIsAbsenceSubmitting] = useState(false);
     const [isDeletingResponse, setIsDeletingResponse] = useState(false);
+    const [isEventAttendanceLoading, setIsEventAttendanceLoading] =
+        useState(false);
+    const [isEventAttendanceSaving, setIsEventAttendanceSaving] =
+        useState(false);
     const [attendanceSubmitMessage, setAttendanceSubmitMessage] = useState<
         string | null
     >(null);
     const [absenceSubmitMessage, setAbsenceSubmitMessage] = useState<
         string | null
     >(null);
+    const [eventAttendanceMessage, setEventAttendanceMessage] = useState<
+        string | null
+    >(null);
+    const [eventAttendanceMembers, setEventAttendanceMembers] = useState<
+        AttendanceMemberOption[]
+    >([]);
+    const [eventAttendanceRecords, setEventAttendanceRecords] = useState<
+        EventAttendance[]
+    >([]);
+    const [checkedAttendanceMembers, setCheckedAttendanceMembers] = useState<
+        Set<string>
+    >(() => new Set());
+    const [eventAttendanceSearch, setEventAttendanceSearch] = useState("");
+    const [canSaveEventAttendance, setCanSaveEventAttendance] = useState(true);
     const [attendanceNote, setAttendanceNote] = useState("");
     const [localAbsences, setLocalAbsences] = useState(absences);
     const [profile, setProfile] = useState({
@@ -206,6 +272,52 @@ export default function ScheduleCard({
         : "現在は出欠入力の受付時間外です。";
     const normalizedStudentNumber = profile.studentNumber.trim().toLowerCase();
     const displayedAbsences = dedupeAbsencesByStudent(localAbsences);
+    const checkedAttendanceCount = checkedAttendanceMembers.size;
+    const checkedAttendanceRecordsCount = eventAttendanceRecords.length;
+    const attendanceMembersById = useMemo(
+        () =>
+            new Map(
+                eventAttendanceMembers.map((member) => [
+                    member.studentNumber,
+                    member,
+                ])
+            ),
+        [eventAttendanceMembers]
+    );
+    const checkedAttendanceOnlyMembers = useMemo(
+        () =>
+            eventAttendanceRecords.map((record) => {
+                const studentNumber = record.studentNumber
+                    .trim()
+                    .toLowerCase();
+                const member = attendanceMembersById.get(studentNumber);
+                return {
+                    studentNumber,
+                    displayName:
+                        member?.displayName ||
+                        record.displayName ||
+                        record.name ||
+                        studentNumber,
+                };
+            }),
+        [attendanceMembersById, eventAttendanceRecords]
+    );
+    const filteredAttendanceMembers = useMemo(() => {
+        const query = eventAttendanceSearch.trim().toLowerCase();
+        if (!query) return eventAttendanceMembers;
+
+        return eventAttendanceMembers.filter((member) =>
+            [
+                member.studentNumber,
+                member.displayName,
+                member.name,
+                member.nickname,
+            ]
+                .join(" ")
+                .toLowerCase()
+                .includes(query)
+        );
+    }, [eventAttendanceMembers, eventAttendanceSearch]);
     const ownResponse =
         normalizedStudentNumber
             ? displayedAbsences
@@ -263,34 +375,109 @@ export default function ScheduleCard({
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(false);
+            setIsEventAttendanceOpen(false);
         }
         if (modal === "response-confirm") {
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(true);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(false);
+            setIsEventAttendanceOpen(false);
         }
         if (modal === "response-form") {
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(true);
             setIsDeleteConfirmOpen(false);
+            setIsEventAttendanceOpen(false);
         }
         if (modal === "response-delete") {
             setIsModalOpen(true);
             setIsAttendanceConfirmOpen(false);
             setIsAbsenceFormOpen(false);
             setIsDeleteConfirmOpen(true);
+            setIsEventAttendanceOpen(false);
+        }
+        if (modal === "event-attendance") {
+            setIsModalOpen(true);
+            setIsAttendanceConfirmOpen(false);
+            setIsAbsenceFormOpen(false);
+            setIsDeleteConfirmOpen(false);
+            setIsEventAttendanceOpen(true);
         }
     }, [eventId, urlModalQuery]);
+
+    useEffect(() => {
+        if (!isEventAttendanceOpen) return;
+
+        const loadEventAttendance = async () => {
+            setIsEventAttendanceLoading(true);
+            setEventAttendanceMessage(null);
+            setCanSaveEventAttendance(true);
+
+            try {
+                const [membersResult, attendanceResult] =
+                    await Promise.allSettled([
+                        getMembers(),
+                        getEventAttendance(eventId),
+                    ]);
+
+                if (membersResult.status === "rejected") {
+                    throw membersResult.reason;
+                }
+
+                const membersResponse = membersResult.value;
+                if (!membersResponse.success || !membersResponse.data) {
+                    throw new Error(
+                        membersResponse.error || "名簿の取得に失敗しました"
+                    );
+                }
+
+                const members = resolveAttendanceMembers(membersResponse.data);
+                const attendanceRecords =
+                    attendanceResult.status === "fulfilled"
+                        ? attendanceResult.value.data || []
+                        : [];
+                const checked = new Set(
+                    attendanceRecords.map((record) =>
+                        record.studentNumber.trim().toLowerCase()
+                    )
+                );
+
+                setEventAttendanceMembers(members);
+                setEventAttendanceRecords(attendanceRecords);
+                setCheckedAttendanceMembers(checked);
+
+                if (attendanceResult.status === "rejected") {
+                    setCanSaveEventAttendance(false);
+                    setEventAttendanceMessage(
+                        "出席チェックAPIが未反映です。Backend APIの更新とD1マイグレーション後に保存できます。"
+                    );
+                }
+            } catch (error) {
+                setEventAttendanceMessage(
+                    error instanceof Error
+                        ? error.message
+                        : "出席チェックの取得に失敗しました"
+                );
+            } finally {
+                setIsEventAttendanceLoading(false);
+            }
+        };
+
+        void loadEventAttendance();
+    }, [eventId, isEventAttendanceOpen]);
 
     const handleClose = () => {
         setIsModalOpen(false);
         setIsAttendanceConfirmOpen(false);
         setIsAbsenceFormOpen(false);
         setIsDeleteConfirmOpen(false);
+        setIsEventAttendanceOpen(false);
         setAttendanceSubmitMessage(null);
         setAbsenceSubmitMessage(null);
+        setEventAttendanceMessage(null);
+        setEventAttendanceSearch("");
         setAttendanceNote("");
         onClose?.();
         clearUrlModal(["event"]);
@@ -355,6 +542,103 @@ export default function ScheduleCard({
         if (isDeletingResponse) return;
         setIsDeleteConfirmOpen(false);
         updateUrlModal({ modal: "schedule-response", event: eventId });
+    };
+
+    const openEventAttendance = () => {
+        setEventAttendanceMessage(null);
+        setIsEventAttendanceOpen(true);
+        updateUrlModal({ modal: "event-attendance", event: eventId });
+    };
+
+    const closeEventAttendance = () => {
+        if (isEventAttendanceSaving) return;
+        setIsEventAttendanceOpen(false);
+        setEventAttendanceMessage(null);
+        setEventAttendanceSearch("");
+        updateUrlModal({ modal: "schedule-response", event: eventId });
+    };
+
+    const toggleEventAttendanceMember = (studentNumber: string) => {
+        setCheckedAttendanceMembers((current) => {
+            const next = new Set(current);
+            if (next.has(studentNumber)) {
+                next.delete(studentNumber);
+            } else {
+                next.add(studentNumber);
+            }
+            return next;
+        });
+    };
+
+    const checkFilteredAttendanceMembers = () => {
+        setCheckedAttendanceMembers((current) => {
+            const next = new Set(current);
+            filteredAttendanceMembers.forEach((member) =>
+                next.add(member.studentNumber)
+            );
+            return next;
+        });
+    };
+
+    const uncheckFilteredAttendanceMembers = () => {
+        setCheckedAttendanceMembers((current) => {
+            const next = new Set(current);
+            filteredAttendanceMembers.forEach((member) =>
+                next.delete(member.studentNumber)
+            );
+            return next;
+        });
+    };
+
+    const saveEventAttendance = async () => {
+        if (!canSaveEventAttendance) {
+            setEventAttendanceMessage(
+                "出席チェックAPIが未反映です。Backend APIの更新とD1マイグレーション後に保存できます。"
+            );
+            return;
+        }
+
+        setIsEventAttendanceSaving(true);
+        setEventAttendanceMessage(null);
+
+        try {
+            const studentNumbers = Array.from(checkedAttendanceMembers).sort();
+            await updateEventAttendance({ eventId, studentNumbers });
+
+            const membersMap = new Map(
+                eventAttendanceMembers.map((member) => [
+                    member.studentNumber,
+                    member,
+                ])
+            );
+            setEventAttendanceRecords(
+                studentNumbers.map((studentNumber) => {
+                    const member = membersMap.get(studentNumber);
+                    const now = new Date().toISOString();
+                    return {
+                        eventId,
+                        studentNumber,
+                        name: member?.name || member?.displayName || studentNumber,
+                        nickname: member?.nickname || null,
+                        displayName:
+                            member?.displayName || member?.name || studentNumber,
+                        permission: member?.permission || "",
+                        checkedBy: normalizedStudentNumber || null,
+                        checkedAt: now,
+                        updatedAt: now,
+                    };
+                })
+            );
+            setEventAttendanceMessage("出席チェックを保存しました");
+        } catch (error) {
+            setEventAttendanceMessage(
+                error instanceof Error
+                    ? error.message
+                    : "出席チェックの保存に失敗しました"
+            );
+        } finally {
+            setIsEventAttendanceSaving(false);
+        }
     };
 
     const openAttendanceForm = () => {
@@ -647,7 +931,9 @@ export default function ScheduleCard({
                     onClose={handleClose}
                     ariaLabel={title}
                     boxClassName={`max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)] ${
-                            isAttendanceConfirmOpen || isDeleteConfirmOpen
+                            isEventAttendanceOpen
+                                ? "w-[min(calc(100vw-2rem),46rem)] max-w-none"
+                            : isAttendanceConfirmOpen || isDeleteConfirmOpen
                                 ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
                                 : "max-w-2xl"
                         }`}
@@ -668,6 +954,8 @@ export default function ScheduleCard({
                                   ? "出欠連絡の削除"
                                 : isAbsenceFormOpen
                                   ? "欠席連絡"
+                                : isEventAttendanceOpen
+                                  ? "出席チェック"
                                   : title}
                         </h3>
                         {isAttendanceConfirmOpen ? (
@@ -758,6 +1046,192 @@ export default function ScheduleCard({
                                     </button>
                                 </div>
                             </>
+                        ) : isEventAttendanceOpen ? (
+                            <div className="space-y-5">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                    <div>
+                                        <p className="font-semibold text-base-content">
+                                            {title}
+                                        </p>
+                                        {attendanceDateTimeLabel && (
+                                            <p className="mt-1 text-sm text-base-content/70">
+                                                {attendanceDateTimeLabel}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm">
+                                        <span className="text-base-content/60">
+                                            出席者
+                                        </span>
+                                        <span className="font-semibold tabular-nums">
+                                            {checkedAttendanceCount}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {eventAttendanceMessage && (
+                                    <div
+                                        className={`alert ${
+                                            eventAttendanceMessage.includes(
+                                                "保存しました"
+                                            )
+                                                ? "alert-success"
+                                                : eventAttendanceMessage.includes(
+                                                        "未反映"
+                                                    )
+                                                  ? "alert-warning"
+                                                : "alert-error"
+                                        }`}
+                                    >
+                                        <span>{eventAttendanceMessage}</span>
+                                    </div>
+                                )}
+
+                                {isEventAttendanceLoading ? (
+                                    <div className="flex items-center justify-center py-12 text-base-content/70">
+                                        <span className="loading loading-spinner loading-md mr-3" />
+                                        読み込み中
+                                    </div>
+                                ) : eventAttendanceMembers.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col gap-2 sm:flex-row">
+                                            <input
+                                                type="search"
+                                                className="input input-bordered w-full"
+                                                value={eventAttendanceSearch}
+                                                onChange={(event) =>
+                                                    setEventAttendanceSearch(
+                                                        event.target.value
+                                                    )
+                                                }
+                                                placeholder="名前・学籍番号で検索"
+                                                disabled={
+                                                    isEventAttendanceSaving
+                                                }
+                                            />
+                                            <div className="flex shrink-0 gap-2">
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-outline"
+                                                    onClick={
+                                                        checkFilteredAttendanceMembers
+                                                    }
+                                                    disabled={
+                                                        filteredAttendanceMembers.length ===
+                                                            0 ||
+                                                        isEventAttendanceSaving
+                                                    }
+                                                >
+                                                    表示中を全選択
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost"
+                                                    onClick={
+                                                        uncheckFilteredAttendanceMembers
+                                                    }
+                                                    disabled={
+                                                        filteredAttendanceMembers.length ===
+                                                            0 ||
+                                                        isEventAttendanceSaving
+                                                    }
+                                                >
+                                                    解除
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {filteredAttendanceMembers.length >
+                                        0 ? (
+                                            <div className="max-h-[42dvh] overflow-y-auto rounded-lg border border-base-300">
+                                                <div className="divide-y divide-base-300">
+                                                    {filteredAttendanceMembers.map(
+                                                        (member) => {
+                                                            const checked =
+                                                                checkedAttendanceMembers.has(
+                                                                    member.studentNumber
+                                                                );
+
+                                                            return (
+                                                                <label
+                                                                    key={
+                                                                        member.studentNumber
+                                                                    }
+                                                                    className="flex cursor-pointer items-center gap-3 px-3 py-3 transition-colors hover:bg-base-200/60 sm:px-4"
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="checkbox checkbox-primary"
+                                                                        checked={
+                                                                            checked
+                                                                        }
+                                                                        onChange={() =>
+                                                                            toggleEventAttendanceMember(
+                                                                                member.studentNumber
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            isEventAttendanceSaving
+                                                                        }
+                                                                    />
+                                                                    <span className="min-w-0 flex-1">
+                                                                        <span className="block truncate font-medium">
+                                                                            {
+                                                                                member.displayName
+                                                                            }
+                                                                        </span>
+                                                                        <span className="block truncate text-sm text-base-content/60">
+                                                                            {
+                                                                                member.studentNumber
+                                                                            }
+                                                                        </span>
+                                                                    </span>
+                                                                </label>
+                                                            );
+                                                        }
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="rounded-lg border border-base-300 bg-base-200/40 p-4 text-base-content/70">
+                                                条件に一致する部員が見つかりません。
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="rounded-lg border border-base-300 bg-base-200/40 p-4 text-base-content/70">
+                                        出席チェック対象の部員が見つかりません。
+                                    </p>
+                                )}
+
+                                <div className="modal-action">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={closeEventAttendance}
+                                        disabled={isEventAttendanceSaving}
+                                    >
+                                        閉じる
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() =>
+                                            void saveEventAttendance()
+                                        }
+                                        disabled={
+                                            isEventAttendanceLoading ||
+                                            isEventAttendanceSaving ||
+                                            !canSaveEventAttendance
+                                        }
+                                    >
+                                        {isEventAttendanceSaving && (
+                                            <span className="loading loading-spinner loading-sm" />
+                                        )}
+                                        保存
+                                    </button>
+                                </div>
+                            </div>
                         ) : isAbsenceFormOpen ? (
                             <form
                                 onSubmit={(event) => void submitAbsence(event)}
@@ -1071,6 +1545,57 @@ export default function ScheduleCard({
                                         </p>
                                     </div>
                                 )}
+
+                                <div className="py-4 border-t border-base-300">
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h4
+                                                className="font-semibold"
+                                                style={{
+                                                    fontSize:
+                                                        "clamp(1rem, 2.5vw, 1.125rem)",
+                                                }}
+                                            >
+                                                出席チェック
+                                            </h4>
+                                            <p className="mt-1 text-sm text-base-content/70">
+                                                イベント当日の出席者をチェックして集計します。
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline btn-primary"
+                                            onClick={openEventAttendance}
+                                        >
+                                            閲覧・編集
+                                        </button>
+                                    </div>
+                                    {checkedAttendanceRecordsCount > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2">
+                                            {checkedAttendanceOnlyMembers
+                                                .slice(0, 6)
+                                                .map((member) => (
+                                                    <span
+                                                        key={
+                                                            member.studentNumber
+                                                        }
+                                                        className="badge badge-outline"
+                                                    >
+                                                        {member.displayName}
+                                                    </span>
+                                                ))}
+                                            {checkedAttendanceRecordsCount >
+                                                6 && (
+                                                <span className="badge badge-ghost">
+                                                    他
+                                                    {checkedAttendanceRecordsCount -
+                                                        6}
+                                                    人
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="py-4 border-t border-base-300">
                                     <h4

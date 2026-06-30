@@ -3,6 +3,7 @@ import type {
     Item,
     Schedule,
     Absence,
+    EventAttendance,
     MembersData,
     NextMeetingSettings,
     NextMeetingMode,
@@ -76,6 +77,66 @@ export async function getEventAbsences(
     eventId: string
 ): Promise<ApiResponse<Absence[]>> {
     return fetchFromBackend<Absence[]>("event-absences", { eventId });
+}
+
+export async function getEventAttendance(
+    eventId: string
+): Promise<ApiResponse<EventAttendance[]>> {
+    try {
+        const response = await fetch(
+            `/api/event-attendance?${new URLSearchParams({ eventId })}`,
+            {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                cache: "no-store",
+            }
+        );
+        const result = (await response.json()) as ApiResponse<EventAttendance[]>;
+        if (!response.ok || result.success !== true) {
+            throw new Error(result.error || "出席者の取得に失敗しました");
+        }
+        return result;
+    } catch (error) {
+        console.error("Event attendance fetch error:", error);
+        throw error;
+    }
+}
+
+export async function updateEventAttendance(data: {
+    eventId: string;
+    studentNumbers: string[];
+}): Promise<
+    ApiResponse<{
+        eventId: string;
+        studentNumbers: string[];
+        checkedBy: string;
+        updatedAt: string;
+    }>
+> {
+    try {
+        const response = await fetch("/api/event-attendance", {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
+        });
+        const result = (await response.json()) as ApiResponse<{
+            eventId: string;
+            studentNumbers: string[];
+            checkedBy: string;
+            updatedAt: string;
+        }>;
+        if (!response.ok || result.success !== true) {
+            throw new Error(result.error || "出席者の保存に失敗しました");
+        }
+        return result;
+    } catch (error) {
+        console.error("Event attendance update error:", error);
+        throw error;
+    }
 }
 
 // Health check API

@@ -3,6 +3,7 @@ export const CACHE_TAGS = {
     schedules: "schedules",
     members: "members",
     absences: "absences",
+    eventAttendance: "event-attendance",
     notifications: "notifications",
     nextMeeting: "next-meeting",
     tasks: "tasks",
