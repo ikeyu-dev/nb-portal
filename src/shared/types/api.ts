@@ -135,6 +135,18 @@ export interface Task {
     assignees: TaskAssignee[];
 }
 
+export interface EventAttendance {
+    eventId: string;
+    studentNumber: string;
+    name: string;
+    nickname?: string | null;
+    displayName: string;
+    permission: string;
+    checkedBy?: string | null;
+    checkedAt: string;
+    updatedAt: string;
+}
+
 // Items型（スプレッドシートのヘッダーに応じて調整してください）
 export interface Item {
     [key: string]: string | number | boolean | Date;

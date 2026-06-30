@@ -56,6 +56,31 @@ describe("Hello World worker", () => {
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`
 		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS event_attendance (
+				event_id TEXT NOT NULL,
+				student_number TEXT NOT NULL,
+				checked_by TEXT,
+				checked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (event_id, student_number)
+			)`
+		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS members (
+				student_number TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				nickname TEXT,
+				is_joined_line INTEGER NOT NULL DEFAULT 0,
+				line_name TEXT,
+				is_joined_discord INTEGER NOT NULL DEFAULT 0,
+				is_signed INTEGER NOT NULL DEFAULT 0,
+				permission TEXT NOT NULL DEFAULT 'NORMAL',
+				is_active INTEGER NOT NULL DEFAULT 1,
+				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`
+		).run();
 	});
 
 	it("responds with health status (unit style)", async () => {
@@ -190,6 +215,81 @@ describe("Hello World worker", () => {
 			ATTENDANCE_DEADLINE: "2099-02-08",
 			IS_PAST: false,
 		});
+	});
+
+	it("replaces and returns event attendance", async () => {
+		await env.DB.prepare(
+			`INSERT INTO members (
+				student_number, name, nickname, permission, is_active
+			)
+			VALUES ('25d0001', '山田 太郎', 'やまだ', 'NORMAL', 1)
+			ON CONFLICT(student_number) DO UPDATE SET
+				name = excluded.name,
+				nickname = excluded.nickname,
+				permission = excluded.permission,
+				is_active = excluded.is_active`
+		).run();
+		await env.DB.prepare(
+			`INSERT INTO members (
+				student_number, name, nickname, permission, is_active
+			)
+			VALUES ('25d9999', '卒業 花子', 'OB', 'OBOG', 1)
+			ON CONFLICT(student_number) DO UPDATE SET
+				name = excluded.name,
+				nickname = excluded.nickname,
+				permission = excluded.permission,
+				is_active = excluded.is_active`
+		).run();
+
+		const updateRequest = new IncomingRequest(
+			"http://example.com/event-attendance",
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					eventId: "event-attendance-test",
+					studentNumbers: ["25D0001", "25d0001", "25d9999"],
+					checkedBy: "25D9999",
+				}),
+			}
+		);
+		const ctx = createExecutionContext();
+		const updateResponse = await worker.fetch(updateRequest, env, ctx);
+		await waitOnExecutionContext(ctx);
+		expect(updateResponse.status).toBe(200);
+		expect(await updateResponse.json()).toMatchObject({
+			success: true,
+			count: 1,
+			data: {
+				eventId: "event-attendance-test",
+				studentNumbers: ["25d0001"],
+				checkedBy: "25d9999",
+			},
+		});
+
+		const response = await worker.fetch(
+			new IncomingRequest(
+				"http://example.com/event-attendance?eventId=event-attendance-test"
+			),
+			env,
+			createExecutionContext()
+		);
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as {
+			success?: boolean;
+			data?: Array<Record<string, unknown>>;
+		};
+		expect(body.success).toBe(true);
+		expect(body.data).toEqual([
+			expect.objectContaining({
+				eventId: "event-attendance-test",
+				studentNumber: "25d0001",
+				name: "山田 太郎",
+				displayName: "やまだ",
+				permission: "NORMAL",
+				checkedBy: "25d9999",
+			}),
+		]);
 	});
 
 	it("skips scheduled Discord sends when there is no event today", async () => {

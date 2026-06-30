@@ -63,6 +63,26 @@ export const absenceDeleteSchema = z.object({
 
 export type AbsenceDeleteData = z.infer<typeof absenceDeleteSchema>;
 
+export const eventAttendanceUpdateSchema = z.object({
+    eventId: z
+        .string()
+        .min(1, "イベントIDは必須です")
+        .max(100, "イベントIDが長すぎます"),
+    studentNumbers: z
+        .array(
+            z
+                .string()
+                .min(1, "学籍番号が空です")
+                .max(20, "学籍番号が長すぎます")
+                .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です")
+        )
+        .max(300, "出席者が多すぎます"),
+});
+
+export type EventAttendanceUpdateData = z.infer<
+    typeof eventAttendanceUpdateSchema
+>;
+
 /**
  * Backend APIパスのバリデーションスキーマ
  */
@@ -72,6 +92,7 @@ export const backendApiPathSchema = z.enum([
     "members",
     "absences",
     "event-absences",
+    "event-attendance",
     "next-meeting",
     "tasks",
     "dashboard-data",

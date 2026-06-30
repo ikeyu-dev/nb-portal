@@ -71,6 +71,17 @@ type AbsenceRow = {
 	submitted_at: string;
 };
 
+type EventAttendanceRow = {
+	event_id: string;
+	student_number: string;
+	name: string | null;
+	nickname: string | null;
+	permission: string | null;
+	checked_by: string | null;
+	checked_at: string;
+	updated_at: string;
+};
+
 type NextMeetingRow = {
 	event_id: string | null;
 	date: string;
@@ -323,6 +334,22 @@ const toAbsenceResponse = (row: AbsenceRow) => ({
 	TimeStepOut: row.time_step_out || "",
 	TimeReturn: row.time_return || "",
 });
+
+const toEventAttendanceResponse = (row: EventAttendanceRow) => {
+	const nickname = row.nickname || "";
+	const name = row.name || row.student_number;
+	return {
+		eventId: row.event_id,
+		studentNumber: row.student_number,
+		name,
+		nickname: nickname || null,
+		displayName: nickname && nickname !== "---" ? nickname : name,
+		permission: row.permission || "",
+		checkedBy: row.checked_by || null,
+		checkedAt: row.checked_at,
+		updatedAt: row.updated_at,
+	};
+};
 
 const toTaskResponse = (row: TaskRow, assignees: TaskAssigneeRow[]) => ({
 	id: row.id,
@@ -733,6 +760,89 @@ const deleteAbsence = async (request: Request, env: Env) => {
 		.bind(String(body.eventId ?? "").trim(), normalizeStudentId(body.studentNumber))
 		.run();
 	return ok(null, { message: "Absence deleted" });
+};
+
+const getEventAttendance = async (url: URL, env: Env) => {
+	const eventId = String(url.searchParams.get("eventId") ?? "").trim();
+	if (!eventId) return error("eventId is required", 400);
+
+	const rows = await env.DB.prepare(
+		`SELECT ea.event_id, ea.student_number, m.name, m.nickname, m.permission,
+			ea.checked_by, ea.checked_at, ea.updated_at
+		FROM event_attendance ea
+		LEFT JOIN members m ON lower(m.student_number) = lower(ea.student_number)
+		WHERE ea.event_id = ?
+			AND COALESCE(m.permission, '') <> 'OBOG'
+		ORDER BY m.student_number, ea.student_number`
+	)
+		.bind(eventId)
+		.all<EventAttendanceRow>();
+
+	return ok((rows.results || []).map(toEventAttendanceResponse), {
+		count: rows.results?.length || 0,
+	});
+};
+
+const replaceEventAttendance = async (request: Request, env: Env) => {
+	const body = await getBody(request);
+	const eventId = String(body.eventId ?? "").trim();
+	const checkedBy = normalizeStudentId(body.checkedBy).toLowerCase();
+	const studentNumbers = Array.isArray(body.studentNumbers)
+		? body.studentNumbers
+				.map((value) => normalizeStudentId(value))
+				.map((value) => value.toLowerCase())
+				.filter(Boolean)
+		: [];
+	const uniqueStudentNumbers = Array.from(new Set(studentNumbers));
+
+	if (!eventId) return error("eventId is required", 400);
+
+	const activeRows = uniqueStudentNumbers.length
+		? await env.DB.prepare(
+				`SELECT lower(student_number) AS student_number
+				FROM members
+				WHERE is_active = 1
+					AND permission <> 'OBOG'
+					AND lower(student_number) IN (${uniqueStudentNumbers
+						.map(() => "?")
+						.join(",")})`
+			)
+				.bind(...uniqueStudentNumbers)
+				.all<{ student_number: string }>()
+		: { results: [] };
+	const allowedStudentNumbers = new Set(
+		(activeRows.results || []).map((row) => row.student_number)
+	);
+	const filteredStudentNumbers = uniqueStudentNumbers.filter((studentNumber) =>
+		allowedStudentNumbers.has(studentNumber)
+	);
+
+	const deleteStatement = env.DB.prepare(
+		"DELETE FROM event_attendance WHERE event_id = ?"
+	).bind(eventId);
+	const insertStatement = env.DB.prepare(
+		`INSERT INTO event_attendance (
+			event_id, student_number, checked_by, checked_at, updated_at
+		)
+		VALUES (?, ?, ?, ${JST_SQL_TIMESTAMP}, ${JST_SQL_TIMESTAMP})`
+	);
+
+	await env.DB.batch([
+		deleteStatement,
+		...filteredStudentNumbers.map((studentNumber) =>
+			insertStatement.bind(eventId, studentNumber, checkedBy)
+		),
+	]);
+
+	return ok(
+		{
+			eventId,
+			studentNumbers: filteredStudentNumbers,
+			checkedBy,
+			updatedAt: getJstTimestamp(),
+		},
+		{ count: filteredStudentNumbers.length }
+	);
 };
 
 const getNextMeeting = async (env: Env) => {
@@ -1533,6 +1643,8 @@ const routeGet = (url: URL, env: Env) => {
 			return getAbsences(url, env);
 		case "event-absences":
 			return getEventAbsences(url, env);
+		case "event-attendance":
+			return getEventAttendance(url, env);
 		case "next-meeting":
 			return getNextMeeting(env);
 		case "dashboard-data":
@@ -1571,6 +1683,9 @@ const routePost = (request: Request, url: URL, env: Env) => {
 			return upsertAbsence(request, env);
 		case "absences/delete":
 			return deleteAbsence(request, env);
+		case "event-attendance":
+		case "event-attendance/update":
+			return replaceEventAttendance(request, env);
 		case "next-meeting":
 			return updateNextMeeting(request, env);
 		case "tasks":
