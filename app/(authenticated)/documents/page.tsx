@@ -385,6 +385,12 @@ const weatherFlowChart = `flowchart TD
 
 const documents: Document[] = [
     {
+        id: "nb-pa-plan-v3.0.1",
+        title: "NBC_PA-PLAN_2026_07_04-05",
+        category: "機材構成表",
+        content: <PdfViewer src="/documents/NBC_PA-PLAN_2026_07_04-05.pdf" />,
+    },
+    {
         id: "nb-daigakusai-rain-manual",
         title: "大学祭 雨天時対応マニュアル",
         category: "大学祭",
@@ -842,13 +848,7 @@ const documents: Document[] = [
                 </div>
             </div>
         ),
-    },
-    {
-        id: "nb-pa-plan-v3.0.1",
-        title: "機材構成表 v3.0.1",
-        category: "機材構成表",
-        content: <PdfViewer src="/documents/機材構成表v3.0.1.pdf" />,
-    },
+    }
 ];
 
 function DocumentsContent() {
