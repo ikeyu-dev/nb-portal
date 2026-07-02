@@ -370,6 +370,8 @@ interface Document {
     title: string;
     category: string;
     content: React.ReactNode;
+    hidden?: boolean;
+    hideDetailTitle?: boolean;
 }
 
 const weatherFlowChart = `flowchart TD
@@ -389,6 +391,7 @@ const documents: Document[] = [
         id: "nb-training-materials",
         title: "NB講習会資料",
         category: "講習会",
+        hideDetailTitle: true,
         content: <TrainingDocument />,
     },
     {
@@ -401,6 +404,7 @@ const documents: Document[] = [
         id: "nb-daigakusai-rain-manual",
         title: "大学祭 雨天時対応マニュアル",
         category: "大学祭",
+        hidden: true,
         content: (
             <div className="space-y-6">
                 {/* 目次 */}
@@ -858,13 +862,15 @@ const documents: Document[] = [
     }
 ];
 
+const visibleDocuments = documents.filter((doc) => !doc.hidden);
+
 function DocumentsContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const docId = searchParams.get("doc");
 
     const selectedDoc = docId
-        ? documents.find((doc) => doc.id === docId) || null
+        ? visibleDocuments.find((doc) => doc.id === docId) || null
         : null;
 
     const setSelectedDoc = (doc: Document | null) => {
@@ -875,7 +881,7 @@ function DocumentsContent() {
         }
     };
 
-    const categories = [...new Set(documents.map((doc) => doc.category))];
+    const categories = [...new Set(visibleDocuments.map((doc) => doc.category))];
 
     return (
         <div className="p-4 lg:p-6 w-full">
@@ -906,7 +912,7 @@ function DocumentsContent() {
                                     {category}
                                 </h2>
                                 <div className="grid gap-3">
-                                    {documents
+                                    {visibleDocuments
                                         .filter(
                                             (doc) => doc.category === category
                                         )
@@ -970,9 +976,11 @@ function DocumentsContent() {
 
                         <div className="card bg-base-100 shadow-xl border border-base-300">
                             <div className="card-body">
-                                <h2 className="card-title text-xl mb-4">
-                                    {selectedDoc.title}
-                                </h2>
+                                {!selectedDoc.hideDetailTitle && (
+                                    <h2 className="card-title text-xl mb-4">
+                                        {selectedDoc.title}
+                                    </h2>
+                                )}
                                 {selectedDoc.content}
                             </div>
                         </div>

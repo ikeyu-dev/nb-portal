@@ -316,16 +316,16 @@ export default function TrainingDocument() {
             <section className="space-y-8">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                    src="/icons/NBClogotype1.png"
+                    src="/nb_logo.png"
                     alt="日本工業大学 放送研究部 NBC"
-                    className="h-auto w-40"
+                    className="h-auto w-[150px]"
                 />
                 <div className="space-y-3 text-center">
                     <h2 className="text-3xl font-bold leading-tight">
                         NB講習会 資料
                     </h2>
                     <p className="text-right text-sm text-base-content/60">
-                        20260628版
+                        20260702版
                     </p>
                 </div>
 
