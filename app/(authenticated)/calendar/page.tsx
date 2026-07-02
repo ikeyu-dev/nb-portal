@@ -2052,11 +2052,9 @@ export default function CalendarPage() {
                                         })
                                     }
                                 />
-                                {addForm.attendanceMode === "ABSENCE" && (
-                                    <p className="mt-1 text-xs text-base-content/60">
-                                        期限後でも、当日5:00からイベント終了までは入力できます。
-                                    </p>
-                                )}
+                                <p className="mt-1 text-xs text-base-content/60">
+                                    入力は期限日の8:00まで受け付けます。通常はイベント当日の8:00です。
+                                </p>
                             </div>
                             {addForm.isAllDay ? (
                                 <>
@@ -2694,11 +2692,9 @@ export default function CalendarPage() {
                                         })
                                     }
                                 />
-                                {editForm.attendanceMode === "ABSENCE" && (
-                                    <p className="mt-1 text-xs text-base-content/60">
-                                        期限後でも、当日5:00からイベント終了までは入力できます。
-                                    </p>
-                                )}
+                                <p className="mt-1 text-xs text-base-content/60">
+                                    入力は期限日の8:00まで受け付けます。通常はイベント当日の8:00です。
+                                </p>
                             </div>
                             <div className="form-control">
                                 <label className="label">

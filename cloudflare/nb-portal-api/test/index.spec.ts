@@ -244,7 +244,7 @@ describe("Hello World worker", () => {
 			TIME_HH: "18",
 			TIME_MM: "0",
 			WHERE: "Discord",
-			ATTENDANCE_DEADLINE: "2099-01-21",
+			ATTENDANCE_DEADLINE: "2099-01-23",
 		});
 	});
 
@@ -604,7 +604,7 @@ describe("Hello World worker", () => {
 		const ctx = createExecutionContext();
 		await worker.scheduled(
 			{
-				cron: "50 23 * * *",
+				cron: "0 23 * * *",
 				scheduledTime: Date.now(),
 				noRetry: () => {},
 			} as ScheduledController,
