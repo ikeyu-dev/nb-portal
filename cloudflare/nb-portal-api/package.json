@@ -1,10 +1,11 @@
 {
   "name": "nb-portal-api",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
+    "discord:register": "node scripts/register-discord-commands.mjs",
     "start": "wrangler dev",
     "test": "vitest",
     "cf-typegen": "wrangler types"

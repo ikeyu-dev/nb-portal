@@ -11,6 +11,8 @@ import worker from "../src/index";
 // `Request` to pass to `worker.fetch()`.
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 const BACKEND_API_KEY = "test-backend-api-key";
+const DISCORD_MEMBER_ROLE_ID = "585047138942189603";
+const DISCORD_GUILD_ID = "1415328783333986430";
 const authorizedEnv = {
 	...env,
 	D1_BACKEND_API_KEY: BACKEND_API_KEY,
@@ -19,9 +21,58 @@ const authorizedHeaders = (headers?: HeadersInit) => ({
 	...headers,
 	"x-nb-portal-api-key": BACKEND_API_KEY,
 });
+let discordPrivateKey: CryptoKey;
+let discordPublicKeyHex = "";
+
+const bytesToHex = (bytes: ArrayBuffer) =>
+	Array.from(new Uint8Array(bytes))
+		.map((byte) => byte.toString(16).padStart(2, "0"))
+		.join("");
+
+const signedDiscordRequest = async (body: Record<string, unknown>) => {
+	const bodyText = JSON.stringify(body);
+	const timestamp = "1700000000";
+	const signature = await crypto.subtle.sign(
+		"Ed25519",
+		discordPrivateKey,
+		new TextEncoder().encode(`${timestamp}${bodyText}`)
+	);
+
+	return new IncomingRequest("http://example.com/discord/interactions", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			"X-Signature-Ed25519": bytesToHex(signature),
+			"X-Signature-Timestamp": timestamp,
+		},
+		body: bodyText,
+	});
+};
+
+const discordEnv = () => ({
+	...authorizedEnv,
+	DISCORD_PUBLIC_KEY: discordPublicKeyHex,
+	DISCORD_GUILD_ID,
+	DISCORD_MEMBER_ROLE_ID,
+});
+const fetchWorker = worker.fetch as unknown as (
+	request: Request,
+	testEnv: Env,
+	ctx: ExecutionContext
+) => Promise<Response>;
 
 describe("Hello World worker", () => {
 	beforeAll(async () => {
+		const discordKeyPair = (await crypto.subtle.generateKey(
+			"Ed25519",
+			true,
+			["sign", "verify"]
+		)) as CryptoKeyPair;
+		discordPrivateKey = discordKeyPair.privateKey;
+		discordPublicKeyHex = bytesToHex(
+			(await crypto.subtle.exportKey("raw", discordKeyPair.publicKey)) as ArrayBuffer
+		);
+
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS schedules (
 				id TEXT PRIMARY KEY,
@@ -40,6 +91,27 @@ describe("Hello World worker", () => {
 				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				is_past INTEGER NOT NULL DEFAULT 0
+			)`
+		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS absences (
+				id TEXT PRIMARY KEY,
+				event_id TEXT NOT NULL,
+				student_number TEXT NOT NULL,
+				name TEXT NOT NULL,
+				type TEXT NOT NULL,
+				reason TEXT,
+				reason_detail TEXT,
+				time_step_out TEXT,
+				time_return TEXT,
+				time_leaving_early TEXT,
+				event_title TEXT,
+				event_date_label TEXT,
+				event_time_label TEXT,
+				event_where TEXT,
+				submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE(event_id, student_number)
 			)`
 		).run();
 		await env.DB.prepare(
@@ -96,7 +168,7 @@ describe("Hello World worker", () => {
 		const request = new IncomingRequest("http://example.com/health");
 		// Create an empty context to pass to `worker.fetch()`.
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
+		const response = await fetchWorker(request, env, ctx);
 		// Wait for all `Promise`s passed to `ctx.waitUntil()` to settle before running test assertions
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
@@ -114,7 +186,7 @@ describe("Hello World worker", () => {
 	});
 
 	it("rejects non-health requests without backend API key", async () => {
-		const response = await worker.fetch(
+		const response = await fetchWorker(
 			new IncomingRequest("http://example.com/members"),
 			authorizedEnv,
 			createExecutionContext()
@@ -138,7 +210,7 @@ describe("Hello World worker", () => {
 			}),
 		});
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, authorizedEnv, ctx);
+		const response = await fetchWorker(request, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
 
@@ -149,7 +221,7 @@ describe("Hello World worker", () => {
 		expect(responseBody.success).toBe(true);
 		expect(responseBody.data?.eventId).toBeTruthy();
 
-		const schedulesResponse = await worker.fetch(
+		const schedulesResponse = await fetchWorker(
 			new IncomingRequest("http://example.com/schedules", {
 				headers: authorizedHeaders(),
 			}),
@@ -197,7 +269,7 @@ describe("Hello World worker", () => {
 			}),
 		});
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, authorizedEnv, ctx);
+		const response = await fetchWorker(request, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
 
@@ -217,7 +289,7 @@ describe("Hello World worker", () => {
 			endDate: "12",
 		});
 
-		const schedulesResponse = await worker.fetch(
+		const schedulesResponse = await fetchWorker(
 			new IncomingRequest("http://example.com/schedules", {
 				headers: authorizedHeaders(),
 			}),
@@ -280,7 +352,7 @@ describe("Hello World worker", () => {
 			}
 		);
 		const ctx = createExecutionContext();
-		const updateResponse = await worker.fetch(updateRequest, authorizedEnv, ctx);
+		const updateResponse = await fetchWorker(updateRequest, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(updateResponse.status).toBe(200);
 		expect(await updateResponse.json()).toMatchObject({
@@ -293,7 +365,7 @@ describe("Hello World worker", () => {
 			},
 		});
 
-		const response = await worker.fetch(
+		const response = await fetchWorker(
 			new IncomingRequest(
 				"http://example.com/event-attendance?eventId=event-attendance-test",
 				{ headers: authorizedHeaders() }
@@ -317,6 +389,212 @@ describe("Hello World worker", () => {
 				checkedBy: "25d9999",
 			}),
 		]);
+	});
+
+	it("handles Discord interaction ping without backend API key", async () => {
+		const request = await signedDiscordRequest({ type: 1 });
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ type: 1 });
+	});
+
+	it("rejects Discord commands without the member role", async () => {
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [] },
+			data: { name: "schedule", options: [] },
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			type: 4,
+			data: {
+				content: "このコマンドを実行する権限がありません。",
+				flags: 64,
+			},
+		});
+	});
+
+	it("rejects Discord commands when the guild is not configured", async () => {
+		const envWithoutGuild = discordEnv();
+		delete (envWithoutGuild as Record<string, unknown>).DISCORD_GUILD_ID;
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: { name: "schedule", options: [] },
+		});
+		const response = await fetchWorker(
+			request,
+			envWithoutGuild,
+			createExecutionContext()
+		);
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			type: 4,
+			data: {
+				content: "このサーバーでは利用できません。",
+				flags: 64,
+			},
+		});
+	});
+
+	it("returns Discord schedule results for multi-day date matches", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'discord-multiday-schedule', '合宿', '2099-07-03', '2099-07-05',
+				NULL, NULL, '校外', '複数日イベント', 'green', 'ABSENCE', '2099-07-01', 0
+			)
+			ON CONFLICT(id) DO UPDATE SET
+				title = excluded.title,
+				date = excluded.date,
+				end_date = excluded.end_date`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "schedule",
+				options: [{ name: "date", type: 3, value: "2099-07-04" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		expect(response.status).toBe(200);
+		const body = (await response.json()) as {
+			type?: number;
+			data?: { embeds?: Array<{ title?: string; fields?: Array<{ value?: string }> }> };
+		};
+		expect(body.type).toBe(4);
+		expect(body.data?.embeds?.[0]?.title).toBe("2099/07/04(土) の予定");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**合宿**");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("時間: 終日");
+	});
+
+	it("returns only upcoming schedules by default for Discord schedule command", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES
+				('discord-past-schedule', '過去予定', '2000-01-01', NULL, NULL, NULL, '', '', 'primary', 'ABSENCE', NULL, 1),
+				('discord-future-schedule', '未来予定', '2099-08-01', NULL, '18:00', NULL, 'Discord', '', 'primary', 'ABSENCE', NULL, 0)
+			ON CONFLICT(id) DO UPDATE SET
+				title = excluded.title,
+				date = excluded.date,
+				end_date = excluded.end_date`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: { name: "schedule", options: [] },
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: { embeds?: Array<{ fields?: Array<{ value?: string }> }> };
+		};
+		const values = body.data?.embeds
+			?.flatMap((embed) => embed.fields || [])
+			.map((field) => field.value || "")
+			.join("\n");
+		expect(values).toContain("未来予定");
+		expect(values).not.toContain("過去予定");
+	});
+
+	it("omits excess Discord schedule results with a footer note", async () => {
+		for (let index = 1; index <= 22; index += 1) {
+			await env.DB.prepare(
+				`INSERT INTO schedules (
+					id, title, date, end_date, start_time, end_time, location, description,
+					color, attendance_mode, attendance_deadline, is_past
+				)
+				VALUES (?, ?, '2099-10-01', NULL, NULL, NULL, '', '', 'primary', 'ABSENCE', NULL, 0)
+				ON CONFLICT(id) DO UPDATE SET title = excluded.title`
+			)
+				.bind(`discord-many-schedule-${index}`, `多数予定${index}`)
+				.run();
+		}
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "schedule",
+				options: [{ name: "date", type: 3, value: "2099-10-01" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				embeds?: Array<{
+					fields?: Array<{ value?: string }>;
+					footer?: { text?: string };
+				}>;
+			};
+		};
+		const embeds = body.data?.embeds || [];
+		const fields = embeds.flatMap((embed) => embed.fields || []);
+		expect(fields).toHaveLength(20);
+		expect(embeds.at(-1)?.footer?.text).toBe(
+			"Discordの表示制限により、ほか 2 件を省略しました"
+		);
+	});
+
+	it("returns Discord absence command using the daily absence embed", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'discord-absence-schedule', '部会', '2099-09-01', NULL,
+				'18:00', NULL, 'Discord', '', 'primary', 'ABSENCE', '2099-08-30', 0
+			)
+			ON CONFLICT(id) DO UPDATE SET title = excluded.title`
+		).run();
+		await env.DB.prepare(
+			`INSERT INTO absences (
+				id, event_id, student_number, name, type, reason, reason_detail,
+				time_leaving_early, time_step_out, time_return, submitted_at, updated_at
+			)
+			VALUES (
+				'discord-absence-row', 'discord-absence-schedule', '25d0002',
+				'佐藤 次郎', '早退', '', '', '19:00', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+			)
+			ON CONFLICT(id) DO UPDATE SET
+				name = excluded.name,
+				type = excluded.type,
+				time_leaving_early = excluded.time_leaving_early`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-09-01" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: { embeds?: Array<{ title?: string; fields?: Array<{ name?: string; value?: string }> }> };
+		};
+		expect(body.data?.embeds?.[0]?.title).toBe("2099/09/01(火) 欠席者一覧");
+		expect(body.data?.embeds?.[0]?.fields?.[0]).toMatchObject({
+			name: "佐藤 次郎",
+			value: "早退（19:00）",
+		});
 	});
 
 	it("skips scheduled Discord sends when there is no event today", async () => {
