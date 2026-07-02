@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import AnchorLink from "./AnchorLink";
+import TrainingDocument from "./TrainingDocument";
 
 // mermaid/react-pdfはサーバーサイドで実行できないため、動的インポートを使用
 const MermaidChart = dynamic(() => import("./MermaidChart"), {
@@ -384,6 +385,12 @@ const weatherFlowChart = `flowchart TD
 `;
 
 const documents: Document[] = [
+    {
+        id: "nb-training-materials",
+        title: "NB講習会資料",
+        category: "講習会",
+        content: <TrainingDocument />,
+    },
     {
         id: "nb-pa-plan-v3.0.1",
         title: "NBC_PA-PLAN_2026_07_04-05",
