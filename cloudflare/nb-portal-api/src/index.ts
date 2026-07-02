@@ -8,6 +8,7 @@ type ApiResponse<T> = {
 };
 
 type RuntimeEnv = Env & {
+	D1_BACKEND_API_KEY?: string;
 	PUSH_API_SECRET?: string;
 	APP_DISCORD_SEND_URL?: string;
 	DISCORD_MEETING_ROLE_MENTION?: string;
@@ -381,6 +382,48 @@ const getBody = async (request: Request) => {
 	} catch {
 		return {};
 	}
+};
+
+const getRequestPath = (url: URL) =>
+	url.searchParams.get("path") || url.pathname.replace(/^\//, "");
+
+const timingSafeEqual = async (a: string, b: string) => {
+	const encoder = new TextEncoder();
+	const [aHash, bHash] = await Promise.all([
+		crypto.subtle.digest("SHA-256", encoder.encode(a)),
+		crypto.subtle.digest("SHA-256", encoder.encode(b)),
+	]);
+	const aBytes = new Uint8Array(aHash);
+	const bBytes = new Uint8Array(bHash);
+	let diff = aBytes.length ^ bBytes.length;
+
+	for (let index = 0; index < Math.max(aBytes.length, bBytes.length); index += 1) {
+		diff |= (aBytes[index] || 0) ^ (bBytes[index] || 0);
+	}
+
+	return diff === 0;
+};
+
+const authorizeBackendRequest = async (
+	request: Request,
+	url: URL,
+	env: RuntimeEnv
+) => {
+	const path = getRequestPath(url);
+	if (request.method === "GET" && path === "health") {
+		return null;
+	}
+
+	if (!env.D1_BACKEND_API_KEY) {
+		return error("Backend API key is not configured", 503);
+	}
+
+	const providedKey = request.headers.get("x-nb-portal-api-key") || "";
+	if (!(await timingSafeEqual(providedKey, env.D1_BACKEND_API_KEY))) {
+		return error("Unauthorized", 401);
+	}
+
+	return null;
 };
 
 const getMembers = async (env: Env) => {
@@ -1628,7 +1671,7 @@ const health = async (env: Env) => {
 };
 
 const routeGet = (url: URL, env: Env) => {
-	const path = url.searchParams.get("path") || url.pathname.replace(/^\//, "");
+	const path = getRequestPath(url);
 
 	switch (path) {
 		case "health":
@@ -1663,7 +1706,7 @@ const routeGet = (url: URL, env: Env) => {
 };
 
 const routePost = (request: Request, url: URL, env: Env) => {
-	const path = url.searchParams.get("path") || url.pathname.replace(/^\//, "");
+	const path = getRequestPath(url);
 
 	switch (path) {
 		case "members":
@@ -1709,6 +1752,13 @@ export default {
 		const url = new URL(request.url);
 
 		try {
+			const authorizationError = await authorizeBackendRequest(
+				request,
+				url,
+				env as RuntimeEnv
+			);
+			if (authorizationError) return authorizationError;
+
 			if (request.method === "GET") {
 				return routeGet(url, env);
 			}

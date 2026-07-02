@@ -10,6 +10,15 @@ import worker from "../src/index";
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
+const BACKEND_API_KEY = "test-backend-api-key";
+const authorizedEnv = {
+	...env,
+	D1_BACKEND_API_KEY: BACKEND_API_KEY,
+};
+const authorizedHeaders = (headers?: HeadersInit) => ({
+	...headers,
+	"x-nb-portal-api-key": BACKEND_API_KEY,
+});
 
 describe("Hello World worker", () => {
 	beforeAll(async () => {
@@ -104,10 +113,23 @@ describe("Hello World worker", () => {
 		expect(response.status).toBe(200);
 	});
 
+	it("rejects non-health requests without backend API key", async () => {
+		const response = await worker.fetch(
+			new IncomingRequest("http://example.com/members"),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(response.status).toBe(401);
+		expect(await response.json()).toMatchObject({
+			success: false,
+			error: "Unauthorized",
+		});
+	});
+
 	it("creates a schedule when next meeting is updated", async () => {
 		const request = new IncomingRequest("http://example.com/next-meeting", {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: authorizedHeaders({ "Content-Type": "application/json" }),
 			body: JSON.stringify({
 				date: "2099-01-23",
 				time: "18:00",
@@ -116,7 +138,7 @@ describe("Hello World worker", () => {
 			}),
 		});
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
+		const response = await worker.fetch(request, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
 
@@ -128,8 +150,10 @@ describe("Hello World worker", () => {
 		expect(responseBody.data?.eventId).toBeTruthy();
 
 		const schedulesResponse = await worker.fetch(
-			new IncomingRequest("http://example.com/schedules"),
-			env,
+			new IncomingRequest("http://example.com/schedules", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
 			createExecutionContext()
 		);
 		const schedulesBody = (await schedulesResponse.json()) as {
@@ -155,7 +179,7 @@ describe("Hello World worker", () => {
 	it("stores and returns schedule end date", async () => {
 		const request = new IncomingRequest("http://example.com/schedules", {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: authorizedHeaders({ "Content-Type": "application/json" }),
 			body: JSON.stringify({
 				year: "2099",
 				month: "2",
@@ -173,7 +197,7 @@ describe("Hello World worker", () => {
 			}),
 		});
 		const ctx = createExecutionContext();
-		const response = await worker.fetch(request, env, ctx);
+		const response = await worker.fetch(request, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(response.status).toBe(200);
 
@@ -194,8 +218,10 @@ describe("Hello World worker", () => {
 		});
 
 		const schedulesResponse = await worker.fetch(
-			new IncomingRequest("http://example.com/schedules"),
-			env,
+			new IncomingRequest("http://example.com/schedules", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
 			createExecutionContext()
 		);
 		const schedulesBody = (await schedulesResponse.json()) as {
@@ -245,7 +271,7 @@ describe("Hello World worker", () => {
 			"http://example.com/event-attendance",
 			{
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
 				body: JSON.stringify({
 					eventId: "event-attendance-test",
 					studentNumbers: ["25D0001", "25d0001", "25d9999"],
@@ -254,7 +280,7 @@ describe("Hello World worker", () => {
 			}
 		);
 		const ctx = createExecutionContext();
-		const updateResponse = await worker.fetch(updateRequest, env, ctx);
+		const updateResponse = await worker.fetch(updateRequest, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
 		expect(updateResponse.status).toBe(200);
 		expect(await updateResponse.json()).toMatchObject({
@@ -269,9 +295,10 @@ describe("Hello World worker", () => {
 
 		const response = await worker.fetch(
 			new IncomingRequest(
-				"http://example.com/event-attendance?eventId=event-attendance-test"
+				"http://example.com/event-attendance?eventId=event-attendance-test",
+				{ headers: authorizedHeaders() }
 			),
-			env,
+			authorizedEnv,
 			createExecutionContext()
 		);
 		expect(response.status).toBe(200);
