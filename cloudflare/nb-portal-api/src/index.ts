@@ -1427,17 +1427,12 @@ const formatScheduleTimeRange = (row: ScheduleRow) => {
 	return row.start_time || row.end_time || "終日";
 };
 
-const truncateText = (value: string, maxLength: number) =>
-	value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
-
 const buildScheduleField = (row: ScheduleRow) => {
 	const values = [
 		`**${row.title || "無題"}**`,
 		`時間: ${formatScheduleTimeRange(row)}`,
-		row.location ? `場所: ${row.location}` : null,
-		row.attendance_deadline ? `出欠締切: ${row.attendance_deadline}` : null,
-		row.description ? `詳細: ${truncateText(row.description, 100)}` : null,
-	].filter(Boolean);
+		`場所: ${row.location || "未定"}`,
+	];
 
 	return {
 		name: formatScheduleDateRange(row),
@@ -1934,6 +1929,7 @@ const handleDiscordApplicationCommand = async (
 	const commandName = interaction.data?.name;
 	switch (commandName) {
 		case "absences":
+		case "欠席者":
 		case "欠席":
 			return handleDiscordAbsencesCommand(interaction.data?.options, env);
 		case "schedule":
