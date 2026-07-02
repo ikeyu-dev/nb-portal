@@ -184,7 +184,7 @@ Recommended Phase 1 approach:
   - `/absences`
   - `/schedule`
 - Add Japanese localizations at launch:
-  - `/欠席`
+  - `/欠席者`
   - `/予定`
 - Keep handler logic keyed by the stable English names.
 
@@ -193,7 +193,7 @@ display for users whose Discord client locale supports the localization.
 
 ## Phase 1 Commands
 
-### `/absences`
+### `/absences` (`/欠席者`)
 
 Show absence-related submissions for a date.
 
@@ -247,8 +247,7 @@ Initial response:
   - title `YYYY/MM/DD(曜) の予定` when `date` is provided.
   - schedule entries as fields.
   - field name as the schedule date or date range.
-  - field value containing title, time, location, attendance deadline, and a
-    truncated detail.
+  - field value containing only title, time, and location.
   - color `0x0ea5e9` for normal results.
   - color `0x94a3b8` and `該当する予定はありません` when no schedules match.
 
@@ -481,12 +480,12 @@ https://nb-portal-api-production.nit-housouken.workers.dev/discord/interactions
 Manual verification checklist:
 
 - Developer Portal endpoint validation succeeds.
-- `/欠席` and `/予定` are visible in the development guild.
+- `/欠席者` and `/予定` are visible in the development guild.
 - Command responses are visible only to the command runner.
 - A member without role `585047138942189603` receives the permission error.
 - `/予定` without a date returns upcoming schedules only.
 - `/予定` with a date includes multi-day events that overlap that date.
-- `/欠席` uses the same daily absence embed style as the scheduled webhook.
+- `/欠席者` uses the same daily absence embed style as the scheduled webhook.
 
 ## Open Questions
 

@@ -13,7 +13,7 @@ const commands = [
 	{
 		name: "absences",
 		name_localizations: {
-			ja: "欠席",
+			ja: "欠席者",
 		},
 		description: "Show absence information for a date",
 		description_localizations: {

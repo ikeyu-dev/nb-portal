@@ -475,6 +475,9 @@ describe("Hello World worker", () => {
 		expect(body.data?.embeds?.[0]?.title).toBe("2099/07/04(土) の予定");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**合宿**");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("時間: 終日");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("場所: 校外");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("詳細:");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("出欠締切:");
 	});
 
 	it("returns only upcoming schedules by default for Discord schedule command", async () => {
