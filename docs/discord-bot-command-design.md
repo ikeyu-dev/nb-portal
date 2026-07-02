@@ -126,10 +126,11 @@ Development and production command registration should target different guilds:
 
 ### Response Visibility
 
-All Phase 1 command responses must be ephemeral so only the command invoker can
-see the result. This is required for both `/absences` and `/schedule`.
-
-Public channel responses are out of scope for Phase 1.
+Phase 1 command responses are ephemeral by default so only the command invoker
+can see the result. `/absences` and `/schedule` both accept a `public` boolean
+option. When `public=true`, successful command results are posted to the channel
+instead of being ephemeral. Authorization and validation errors remain
+ephemeral.
 
 ### Authorization
 
@@ -200,6 +201,7 @@ Show absence-related submissions for a date.
 Options:
 
 - `date`: optional string in `YYYY-MM-DD`; defaults to today's JST date.
+- `public`: optional boolean; when `true`, post the result to the channel.
 - `event`: optional event selector or event ID, deferred until autocomplete is
   needed.
 
@@ -219,7 +221,8 @@ Initial response:
   - `本日の予定はありません`
   - `本日の欠席者はいません`
 
-Default visibility: ephemeral.
+Default visibility: ephemeral. `public=true` makes successful results visible to
+the channel.
 Required role: `585047138942189603`.
 
 ### `/schedule`
@@ -230,6 +233,7 @@ Options:
 
 - `date`: optional string in `YYYY-MM-DD`; when omitted, return upcoming
   schedules only.
+- `public`: optional boolean; when `true`, post the result to the channel.
 
 Initial response:
 
@@ -251,7 +255,8 @@ Initial response:
   - color `0x0ea5e9` for normal results.
   - color `0x94a3b8` and `該当する予定はありません` when no schedules match.
 
-Default visibility: ephemeral.
+Default visibility: ephemeral. `public=true` makes successful results visible to
+the channel.
 Required role: `585047138942189603`.
 
 ## Deferred Commands

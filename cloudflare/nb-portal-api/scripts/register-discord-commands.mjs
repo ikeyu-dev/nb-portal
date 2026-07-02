@@ -33,6 +33,15 @@ const commands = [
 				type: 3,
 				required: false,
 			},
+			{
+				name: "public",
+				description: "Show the result in the channel",
+				description_localizations: {
+					ja: "結果をチャンネル全体に表示する",
+				},
+				type: 5,
+				required: false,
+			},
 		],
 	},
 	{
@@ -56,6 +65,15 @@ const commands = [
 					ja: "YYYY-MM-DD形式の日付",
 				},
 				type: 3,
+				required: false,
+			},
+			{
+				name: "public",
+				description: "Show the result in the channel",
+				description_localizations: {
+					ja: "結果をチャンネル全体に表示する",
+				},
+				type: 5,
 				required: false,
 			},
 		],
