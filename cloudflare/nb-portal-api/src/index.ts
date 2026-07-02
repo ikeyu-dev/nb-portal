@@ -12,6 +12,11 @@ type RuntimeEnv = Env & {
 	PUSH_API_SECRET?: string;
 	APP_DISCORD_SEND_URL?: string;
 	DISCORD_MEETING_ROLE_MENTION?: string;
+	DISCORD_PUBLIC_KEY?: string;
+	DISCORD_MEMBER_ROLE_ID?: string;
+	DISCORD_GUILD_ID?: string;
+	DISCORD_DEVELOPMENT_GUILD_ID?: string;
+	DISCORD_PRODUCTION_GUILD_ID?: string;
 	NEXT_MEETING_ROLE_MENTION?: string;
 };
 
@@ -28,6 +33,27 @@ type DiscordEmbed = {
 		text: string;
 	};
 };
+
+type DiscordInteractionOption = {
+	name: string;
+	type: number;
+	value?: string | number | boolean;
+	options?: DiscordInteractionOption[];
+};
+
+type DiscordInteraction = {
+	type: number;
+	guild_id?: string;
+	member?: {
+		roles?: string[];
+	};
+	data?: {
+		name?: string;
+		options?: DiscordInteractionOption[];
+	};
+};
+
+const DISCORD_MAX_SCHEDULE_FIELDS = 20;
 
 type MemberRow = {
 	student_number: string;
@@ -403,6 +429,81 @@ const timingSafeEqual = async (a: string, b: string) => {
 
 	return diff === 0;
 };
+
+const hexToBytes = (hex: string) => {
+	if (!/^[0-9a-f]+$/i.test(hex) || hex.length % 2 !== 0) return null;
+
+	const bytes = new Uint8Array(hex.length / 2);
+	for (let index = 0; index < bytes.length; index += 1) {
+		bytes[index] = Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16);
+	}
+	return bytes;
+};
+
+const verifyDiscordSignature = async (
+	request: Request,
+	bodyText: string,
+	env: RuntimeEnv
+) => {
+	if (!env.DISCORD_PUBLIC_KEY) return false;
+
+	const signature = request.headers.get("x-signature-ed25519") || "";
+	const timestamp = request.headers.get("x-signature-timestamp") || "";
+	const signatureBytes = hexToBytes(signature);
+	const publicKeyBytes = hexToBytes(env.DISCORD_PUBLIC_KEY);
+	if (!signatureBytes || !publicKeyBytes || !timestamp) return false;
+
+	const publicKey = await crypto.subtle.importKey(
+		"raw",
+		publicKeyBytes,
+		"Ed25519",
+		false,
+		["verify"]
+	);
+
+	return crypto.subtle.verify(
+		"Ed25519",
+		publicKey,
+		signatureBytes,
+		new TextEncoder().encode(`${timestamp}${bodyText}`)
+	);
+};
+
+const discordResponse = (body: unknown, status = 200) => json(body, { status });
+
+const discordMessage = ({
+	content,
+	embeds,
+	ephemeral = true,
+}: {
+	content?: string;
+	embeds?: DiscordEmbed[];
+	ephemeral?: boolean;
+}) =>
+	discordResponse({
+		type: 4,
+		data: {
+			...(content ? { content } : {}),
+			...(embeds ? { embeds } : {}),
+			...(ephemeral ? { flags: 64 } : {}),
+			allowed_mentions: { parse: [] },
+		},
+	});
+
+const isAllowedDiscordGuild = (interaction: DiscordInteraction, env: RuntimeEnv) => {
+	const allowedGuildId = String(env.DISCORD_GUILD_ID ?? "").trim();
+	return Boolean(allowedGuildId && interaction.guild_id === allowedGuildId);
+};
+
+const hasDiscordMemberRole = (interaction: DiscordInteraction, env: RuntimeEnv) => {
+	const memberRoleId = env.DISCORD_MEMBER_ROLE_ID || "585047138942189603";
+	return Boolean(interaction.member?.roles?.includes(memberRoleId));
+};
+
+const getDiscordOptionValue = (
+	options: DiscordInteractionOption[] | undefined,
+	name: string
+) => options?.find((option) => option.name === name)?.value;
 
 const authorizeBackendRequest = async (
 	request: Request,
@@ -1300,11 +1401,57 @@ const formatDateTime = (value: string | null) => {
 	});
 };
 
+const getDateLabel = (dateString: string) => {
+	const date = parseDateInput(dateString);
+	const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
+	const weekday = date ? `(${weekdays[date.getDay()]})` : "";
+	return `${dateString.replace(/-/g, "/")}${weekday}`;
+};
+
 const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
 	const date = parseDateInput(dateString);
 	const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
 	const weekday = date ? `(${weekdays[date.getDay()]})` : "";
 	return `${dateString.replace(/-/g, "/")}${weekday} ${timeString}`;
+};
+
+const formatScheduleDateRange = (row: ScheduleRow) => {
+	const start = getDateLabel(row.date);
+	const end = row.end_date ? getDateLabel(row.end_date) : "";
+	return end && end !== start ? `${start} - ${end}` : start;
+};
+
+const formatScheduleTimeRange = (row: ScheduleRow) => {
+	if (!row.start_time && !row.end_time) return "終日";
+	if (row.start_time && row.end_time) return `${row.start_time} - ${row.end_time}`;
+	return row.start_time || row.end_time || "終日";
+};
+
+const truncateText = (value: string, maxLength: number) =>
+	value.length > maxLength ? `${value.slice(0, maxLength - 1)}…` : value;
+
+const buildScheduleField = (row: ScheduleRow) => {
+	const values = [
+		`**${row.title || "無題"}**`,
+		`時間: ${formatScheduleTimeRange(row)}`,
+		row.location ? `場所: ${row.location}` : null,
+		row.attendance_deadline ? `出欠締切: ${row.attendance_deadline}` : null,
+		row.description ? `詳細: ${truncateText(row.description, 100)}` : null,
+	].filter(Boolean);
+
+	return {
+		name: formatScheduleDateRange(row),
+		value: values.join("\n"),
+		inline: false,
+	};
+};
+
+const chunkArray = <T>(items: T[], size: number) => {
+	const chunks: T[][] = [];
+	for (let index = 0; index < items.length; index += size) {
+		chunks.push(items.slice(index, index + size));
+	}
+	return chunks;
 };
 
 const formatAbsenceTypeWithTime = (row: DailyAbsenceSummaryRow) => {
@@ -1461,15 +1608,15 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 	});
 };
 
-const sendTodayAbsences = async (env: RuntimeEnv) => {
-	const { date, dateLabel } = getJstDateParts();
+const buildDailyAbsenceEmbed = async (env: Env, date: string) => {
+	const dateLabel = getDateLabel(date);
 	const todayScheduleCount = await env.DB.prepare(
 		"SELECT COUNT(*) AS count FROM schedules WHERE date = ?"
 	)
 		.bind(date)
 		.first<{ count: number }>();
 	if ((todayScheduleCount?.count || 0) === 0) {
-		return;
+		return null;
 	}
 
 	const rows = await env.DB.prepare(
@@ -1503,15 +1650,21 @@ const sendTodayAbsences = async (env: RuntimeEnv) => {
 					},
 				];
 
+	return {
+		title: `${dateLabel} 欠席者一覧`,
+		color: 0x5865f2,
+		fields,
+	} satisfies DiscordEmbed;
+};
+
+const sendTodayAbsences = async (env: RuntimeEnv) => {
+	const { date } = getJstDateParts();
+	const embed = await buildDailyAbsenceEmbed(env, date);
+	if (!embed) return;
+
 	await sendDiscordViaApp(env, {
 		target: "attendance",
-		embeds: [
-			{
-				title: `${dateLabel} 欠席者一覧`,
-				color: 0x5865f2,
-				fields,
-			},
-		],
+		embeds: [embed],
 	});
 };
 
@@ -1661,6 +1814,159 @@ const runScheduledWithState = async (
 	}
 };
 
+const parseDiscordDateOption = (value: unknown) => {
+	const date = String(value ?? "").trim();
+	return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+};
+
+const getScheduleRowsForDiscord = async (env: Env, date: string | null) => {
+	const query = date
+		? `SELECT id, title, date, end_date, start_time, end_time, location, description,
+			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
+		FROM schedules
+		WHERE date <= ?
+			AND COALESCE(end_date, date) >= ?
+		ORDER BY date, start_time, id`
+		: `SELECT id, title, date, end_date, start_time, end_time, location, description,
+			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
+		FROM schedules
+		WHERE COALESCE(end_date, date) >= ?
+		ORDER BY date, start_time, id`;
+	const statement = env.DB.prepare(query);
+	const rows = date
+		? await statement.bind(date, date).all<ScheduleRow>()
+		: await statement.bind(getJstDateParts().date).all<ScheduleRow>();
+	return rows.results || [];
+};
+
+const buildScheduleEmbeds = (rows: ScheduleRow[], date: string | null) => {
+	const title = date ? `${getDateLabel(date)} の予定` : "今後の予定";
+	if (rows.length === 0) {
+		return [
+			{
+				title,
+				description: "該当する予定はありません",
+				color: 0x94a3b8,
+			},
+		] satisfies DiscordEmbed[];
+	}
+
+	const fields = rows.slice(0, DISCORD_MAX_SCHEDULE_FIELDS).map(buildScheduleField);
+	const chunks = chunkArray(fields, 10);
+	const omittedCount = Math.max(rows.length - DISCORD_MAX_SCHEDULE_FIELDS, 0);
+
+	return chunks.map((chunk, index) => ({
+		title: index === 0 ? title : `${title} (${index + 1})`,
+		description:
+			index === 0 && !date ? "直近の予定を日付順に表示します" : undefined,
+		color: 0x0ea5e9,
+		fields: chunk,
+		...(omittedCount > 0 && index === chunks.length - 1
+			? { footer: { text: `Discordの表示制限により、ほか ${omittedCount} 件を省略しました` } }
+			: {}),
+	})) satisfies DiscordEmbed[];
+};
+
+const handleDiscordAbsencesCommand = async (
+	options: DiscordInteractionOption[] | undefined,
+	env: RuntimeEnv
+) => {
+	const dateValue =
+		getDiscordOptionValue(options, "date") ?? getDiscordOptionValue(options, "日付");
+	const date = dateValue ? parseDiscordDateOption(dateValue) : getJstDateParts().date;
+	if (!date) {
+		return discordMessage({
+			content: "日付は YYYY-MM-DD 形式で指定してください。",
+		});
+	}
+
+	const embed = await buildDailyAbsenceEmbed(env, date);
+	return discordMessage({
+		embeds: [
+			embed || {
+				title: `${getDateLabel(date)} 欠席者一覧`,
+				color: 0x94a3b8,
+				fields: [
+					{
+						name: "情報",
+						value: "本日の予定はありません",
+						inline: false,
+					},
+				],
+			},
+		],
+	});
+};
+
+const handleDiscordScheduleCommand = async (
+	options: DiscordInteractionOption[] | undefined,
+	env: RuntimeEnv
+) => {
+	const dateValue =
+		getDiscordOptionValue(options, "date") ?? getDiscordOptionValue(options, "日付");
+	const date = dateValue ? parseDiscordDateOption(dateValue) : null;
+	if (dateValue && !date) {
+		return discordMessage({
+			content: "日付は YYYY-MM-DD 形式で指定してください。",
+		});
+	}
+
+	const rows = await getScheduleRowsForDiscord(env, date);
+	return discordMessage({
+		embeds: buildScheduleEmbeds(rows, date),
+	});
+};
+
+const handleDiscordApplicationCommand = async (
+	interaction: DiscordInteraction,
+	env: RuntimeEnv
+) => {
+	if (!isAllowedDiscordGuild(interaction, env)) {
+		return discordMessage({ content: "このサーバーでは利用できません。" });
+	}
+
+	if (!hasDiscordMemberRole(interaction, env)) {
+		return discordMessage({
+			content: "このコマンドを実行する権限がありません。",
+		});
+	}
+
+	const commandName = interaction.data?.name;
+	switch (commandName) {
+		case "absences":
+		case "欠席":
+			return handleDiscordAbsencesCommand(interaction.data?.options, env);
+		case "schedule":
+		case "予定":
+			return handleDiscordScheduleCommand(interaction.data?.options, env);
+		default:
+			return discordMessage({ content: "未対応のコマンドです。" });
+	}
+};
+
+const handleDiscordInteraction = async (request: Request, env: RuntimeEnv) => {
+	if (request.method !== "POST") return error("Method not allowed", 405);
+
+	const bodyText = await request.text();
+	const verified = await verifyDiscordSignature(request, bodyText, env);
+	if (!verified) return error("Invalid Discord request signature", 401);
+
+	try {
+		const interaction = JSON.parse(bodyText) as DiscordInteraction;
+		if (interaction.type === 1) return discordResponse({ type: 1 });
+		if (interaction.type === 2) {
+			return await handleDiscordApplicationCommand(interaction, env);
+		}
+
+		return discordMessage({ content: "未対応のInteractionです。" });
+	} catch (caught) {
+		console.error("Discord interaction error:", caught);
+		return discordMessage({
+			content: "コマンドの処理中にエラーが発生しました。時間をおいて再実行してください。",
+		});
+	}
+};
+
 const health = async (env: Env) => {
 	await env.DB.prepare("SELECT 1").first();
 
@@ -1752,6 +2058,10 @@ export default {
 		const url = new URL(request.url);
 
 		try {
+			if (url.pathname === "/discord/interactions") {
+				return handleDiscordInteraction(request, env as RuntimeEnv);
+			}
+
 			const authorizationError = await authorizeBackendRequest(
 				request,
 				url,
