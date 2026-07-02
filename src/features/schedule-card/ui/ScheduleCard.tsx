@@ -1664,9 +1664,9 @@ export default function ScheduleCard({
                                                             className="p-3 bg-base-200/50 rounded-lg border border-base-300"
                                                         >
                                                             <div className="flex items-start justify-between gap-3">
-                                                                <div>
+                                                                <div className="min-w-0 flex-1">
                                                                     <div
-                                                                        className="grid items-center gap-2 text-base-content [grid-template-columns:minmax(7rem,12rem)_auto_minmax(0,1fr)]"
+                                                                        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base-content"
                                                                         style={{
                                                                             fontSize:
                                                                                 "clamp(0.875rem, 2vw, 1rem)",
@@ -1677,14 +1677,14 @@ export default function ScheduleCard({
                                                                                 values.name
                                                                             }
                                                                         </span>
-                                                                        <span className="flex flex-wrap items-center gap-2">
+                                                                        <span className="flex flex-wrap items-center gap-1.5">
                                                                             <span className="badge badge-primary badge-sm">
                                                                                 {
                                                                                     values.type
                                                                                 }
                                                                             </span>
                                                                             {absenceTimeLabel && (
-                                                                                <span className="badge badge-outline badge-sm whitespace-nowrap">
+                                                                                <span className="badge badge-sm whitespace-nowrap border border-base-content/20 bg-base-100 text-base-content/70">
                                                                                     {
                                                                                         absenceTimeLabel
                                                                                     }
