@@ -501,6 +501,9 @@ const getDiscordOptionValue = (
 	name: string
 ) => options?.find((option) => option.name === name)?.value;
 
+const getDiscordPublicOption = (options: DiscordInteractionOption[] | undefined) =>
+	getDiscordOptionValue(options, "public") === true;
+
 const authorizeBackendRequest = async (
 	request: Request,
 	url: URL,
@@ -1873,6 +1876,7 @@ const handleDiscordAbsencesCommand = async (
 
 	const embed = await buildDailyAbsenceEmbed(env, date);
 	return discordMessage({
+		ephemeral: !getDiscordPublicOption(options),
 		embeds: [
 			embed || {
 				title: `${getDateLabel(date)} 欠席者一覧`,
@@ -1904,6 +1908,7 @@ const handleDiscordScheduleCommand = async (
 
 	const rows = await getScheduleRowsForDiscord(env, date);
 	return discordMessage({
+		ephemeral: !getDiscordPublicOption(options),
 		embeds: buildScheduleEmbeds(rows, date),
 	});
 };

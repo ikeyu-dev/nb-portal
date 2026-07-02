@@ -469,15 +469,57 @@ describe("Hello World worker", () => {
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as {
 			type?: number;
-			data?: { embeds?: Array<{ title?: string; fields?: Array<{ value?: string }> }> };
+			data?: {
+				flags?: number;
+				embeds?: Array<{ title?: string; fields?: Array<{ value?: string }> }>;
+			};
 		};
 		expect(body.type).toBe(4);
+		expect(body.data?.flags).toBe(64);
 		expect(body.data?.embeds?.[0]?.title).toBe("2099/07/04(土) の予定");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**合宿**");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("時間: 終日");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("場所: 校外");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("詳細:");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("出欠締切:");
+	});
+
+	it("returns Discord schedule results publicly when public option is true", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'discord-public-schedule', '公開予定', '2099-07-06', NULL,
+				'10:00', NULL, '部室', '', 'primary', 'ABSENCE', '2099-07-06', 0
+			)
+			ON CONFLICT(id) DO UPDATE SET
+				title = excluded.title,
+				date = excluded.date`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "schedule",
+				options: [
+					{ name: "date", type: 3, value: "2099-07-06" },
+					{ name: "public", type: 5, value: true },
+				],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				flags?: number;
+				embeds?: Array<{ fields?: Array<{ value?: string }> }>;
+			};
+		};
+		expect(body.data?.flags).toBeUndefined();
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**公開予定**");
 	});
 
 	it("returns only upcoming schedules by default for Discord schedule command", async () => {
@@ -591,12 +633,68 @@ describe("Hello World worker", () => {
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
 		const body = (await response.json()) as {
-			data?: { embeds?: Array<{ title?: string; fields?: Array<{ name?: string; value?: string }> }> };
+			data?: {
+				flags?: number;
+				embeds?: Array<{ title?: string; fields?: Array<{ name?: string; value?: string }> }>;
+			};
 		};
+		expect(body.data?.flags).toBe(64);
 		expect(body.data?.embeds?.[0]?.title).toBe("2099/09/01(火) 欠席者一覧");
 		expect(body.data?.embeds?.[0]?.fields?.[0]).toMatchObject({
 			name: "佐藤 次郎",
 			value: "早退（19:00）",
+		});
+	});
+
+	it("returns Discord absence command publicly when public option is true", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'discord-public-absence-schedule', '公開部会', '2099-09-02', NULL,
+				'18:00', NULL, 'Discord', '', 'primary', 'ABSENCE', '2099-09-02', 0
+			)
+			ON CONFLICT(id) DO UPDATE SET title = excluded.title`
+		).run();
+		await env.DB.prepare(
+			`INSERT INTO absences (
+				id, event_id, student_number, name, type, reason, reason_detail,
+				time_leaving_early, time_step_out, time_return, submitted_at, updated_at
+			)
+			VALUES (
+				'discord-public-absence-row', 'discord-public-absence-schedule', '25d0003',
+				'公開 太郎', '欠席', '', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+			)
+			ON CONFLICT(id) DO UPDATE SET
+				name = excluded.name,
+				type = excluded.type`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [
+					{ name: "date", type: 3, value: "2099-09-02" },
+					{ name: "public", type: 5, value: true },
+				],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				flags?: number;
+				embeds?: Array<{ fields?: Array<{ name?: string; value?: string }> }>;
+			};
+		};
+		expect(body.data?.flags).toBeUndefined();
+		expect(body.data?.embeds?.[0]?.fields?.[0]).toMatchObject({
+			name: "公開 太郎",
+			value: "欠席",
 		});
 	});
 
