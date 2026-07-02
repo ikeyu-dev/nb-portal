@@ -108,6 +108,37 @@ const buildAbsenceRecord = (values: Partial<AbsenceRecordValues>): Absence => ({
     戻る時間: values.timeReturn || "",
 });
 
+const formatAbsenceTime = (time: string) => {
+    if (!time) return "";
+
+    if (time.includes("T")) {
+        const date = new Date(time);
+        if (Number.isNaN(date.getTime())) return time;
+
+        const hours = String((date.getUTCHours() + 9) % 24).padStart(2, "0");
+        const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+        return `${hours}:${minutes}`;
+    }
+
+    return time;
+};
+
+const getAbsenceTimeLabel = (values: AbsenceRecordValues) => {
+    if (values.type === "早退" && values.timeLeavingEarly) {
+        return formatAbsenceTime(values.timeLeavingEarly);
+    }
+
+    if (values.type === "中抜け") {
+        const timeStepOut = formatAbsenceTime(values.timeStepOut);
+        const timeReturn = formatAbsenceTime(values.timeReturn);
+
+        if (timeStepOut && timeReturn) return `${timeStepOut} 〜 ${timeReturn}`;
+        return timeStepOut || timeReturn;
+    }
+
+    return "";
+};
+
 const dedupeAbsencesByStudent = (records: Absence[]) => {
     const recordMap = new Map<string, Absence>();
     records.forEach((record, index) => {
@@ -1618,6 +1649,8 @@ export default function ScheduleCard({
                                                 (absence, index) => {
                                                     const values =
                                                         getAbsenceValues(absence);
+                                                    const absenceTimeLabel =
+                                                        getAbsenceTimeLabel(values);
                                                     const isOwnResponse =
                                                         normalizedStudentNumber &&
                                                         values.studentNumber
@@ -1650,6 +1683,13 @@ export default function ScheduleCard({
                                                                                     values.type
                                                                                 }
                                                                             </span>
+                                                                            {absenceTimeLabel && (
+                                                                                <span className="badge badge-outline badge-sm whitespace-nowrap">
+                                                                                    {
+                                                                                        absenceTimeLabel
+                                                                                    }
+                                                                                </span>
+                                                                            )}
                                                                             {isOwnResponse && (
                                                                                 <span className="badge badge-outline badge-sm">
                                                                                     自分
