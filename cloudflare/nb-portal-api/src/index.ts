@@ -285,11 +285,7 @@ const toScheduleIsPast = (date: string, endDate?: string | null) =>
 const getDefaultAttendanceDeadline = (date: string) => {
 	const parsed = parseDateInput(date);
 	if (!parsed) return null;
-	parsed.setDate(parsed.getDate() - 2);
-	const year = parsed.getFullYear();
-	const month = String(parsed.getMonth() + 1).padStart(2, "0");
-	const day = String(parsed.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
+	return date;
 };
 
 const normalizeAttendanceDeadline = (value: unknown, date: string) => {
@@ -1768,11 +1764,11 @@ const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEn
 		return;
 	}
 
-	if (controller.cron === "50 23 * * *") {
+	if (controller.cron === "0 23 * * *") {
 		await Promise.all([
 			sendTodayAbsences(env),
 			sendNextMeetingInPersonReminder(env, {
-				title: "本日8:50 対面部会リマインド",
+				title: "本日8:00 対面部会リマインド",
 			}),
 		]);
 		return;

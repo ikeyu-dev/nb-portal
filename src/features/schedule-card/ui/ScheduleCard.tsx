@@ -299,7 +299,7 @@ export default function ScheduleCard({
     const responseClosedMessage = attendanceDeadlineLabel
         ? isAttendanceEvent
             ? `出席申告の期限は${attendanceDeadlineLabel}です。`
-            : `出欠入力期限は${attendanceDeadlineLabel}です。期限後は当日5:00からイベント終了まで入力できます。`
+            : `出欠入力期限は${attendanceDeadlineLabel}です。`
         : "現在は出欠入力の受付時間外です。";
     const normalizedStudentNumber = profile.studentNumber.trim().toLowerCase();
     const displayedAbsences = dedupeAbsencesByStudent(localAbsences);

@@ -108,14 +108,6 @@ const buildDate = (year, month, day) => {
 	return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
 };
 
-const addDays = (dateString, days) => {
-	const match = String(dateString ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-	if (!match) return "";
-	const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-	date.setDate(date.getDate() + days);
-	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-
 const buildTime = (hour, minute) => {
 	const h = String(hour ?? "").trim();
 	const m = String(minute ?? "").trim();
@@ -182,7 +174,7 @@ for (const schedule of readCsv(files.schedules)) {
   ${sqlNullableString(schedule.DETAIL)},
   ${sqlString(schedule.COLOR || "primary")},
   ${sqlString(schedule.ATTENDANCE_MODE || "ABSENCE")},
-  ${sqlString(schedule.ATTENDANCE_DEADLINE || addDays(startDate, -2))},
+  ${sqlString(schedule.ATTENDANCE_DEADLINE || startDate)},
   ${startDate < todayJst ? "1" : "0"},
   ${sqlNullableString(schedule.CREATED_BY)},
   ${sqlString(parseSpreadsheetDateTime(schedule.CREATED_AT) || new Date().toISOString())},
