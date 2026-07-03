@@ -22,6 +22,7 @@ import { ProfileImageSaver } from "@/features/profile-image";
 import { NextMeetingCard } from "@/src/features/next-meeting";
 import { MobilePWAInstallBanner } from "@/src/features/pwa-install";
 import { auth } from "@/src/auth";
+import { formatJstDateInput, parseDateInput } from "@/src/shared/lib/jst-date";
 
 const getScheduleAttendanceMode = (
     schedule: Schedule
@@ -29,6 +30,80 @@ const getScheduleAttendanceMode = (
     normalizeScheduleAttendanceMode(
         schedule.ATTENDANCE_MODE ?? schedule.attendanceMode
     );
+
+const getScheduleValue = (
+    schedule: Schedule,
+    key: string,
+    fallbackIndex: number
+) => schedule[key] ?? Object.values(schedule)[fallbackIndex] ?? "";
+
+const getAbsenceValue = (
+    absence: Absence,
+    key: string,
+    fallbackIndex: number
+) => absence[key] ?? Object.values(absence)[fallbackIndex] ?? "";
+
+const buildDateInput = (
+    yearValue: unknown,
+    monthValue: unknown,
+    dateValue: unknown
+) => {
+    const year = String(yearValue ?? "").trim();
+    const month = String(monthValue ?? "").trim();
+    const date = String(dateValue ?? "").trim();
+    if (!year || !month || !date) return "";
+
+    return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${date.padStart(
+        2,
+        "0"
+    )}`;
+};
+
+const getScheduleEventId = (schedule: Schedule) =>
+    String(getScheduleValue(schedule, "EVENT_ID", 0));
+
+const getScheduleStartDateInput = (schedule: Schedule) =>
+    buildDateInput(
+        getScheduleValue(schedule, "YYYY", 1),
+        getScheduleValue(schedule, "MM", 2),
+        getScheduleValue(schedule, "DD", 3)
+    );
+
+const getScheduleEndDateInput = (schedule: Schedule) =>
+    buildDateInput(
+        getScheduleValue(schedule, "END_YYYY", 9),
+        getScheduleValue(schedule, "END_MM", 10),
+        getScheduleValue(schedule, "END_DD", 11)
+    );
+
+const getScheduleEndOrStartDateInput = (schedule: Schedule) =>
+    getScheduleEndDateInput(schedule) || getScheduleStartDateInput(schedule);
+
+const isScheduleActiveOnDate = (schedule: Schedule, dateInput: string) => {
+    const startDate = getScheduleStartDateInput(schedule);
+    const endDate = getScheduleEndOrStartDateInput(schedule);
+    if (!startDate || !endDate) return false;
+
+    return startDate <= dateInput && dateInput <= endDate;
+};
+
+const isScheduleUpcomingOnDate = (schedule: Schedule, dateInput: string) => {
+    const endDate = getScheduleEndOrStartDateInput(schedule);
+    if (!endDate) return false;
+
+    return endDate >= dateInput;
+};
+
+const getScheduleStartTimestamp = (schedule: Schedule) => {
+    const date = parseDateInput(getScheduleStartDateInput(schedule));
+    return date?.getTime() ?? Number.MAX_SAFE_INTEGER;
+};
+
+const getAbsenceEventId = (absence: Absence) =>
+    String(getAbsenceValue(absence, "EVENT_ID", 1));
+
+const getAbsenceType = (absence: Absence) =>
+    String(getAbsenceValue(absence, "TYPE", 4));
 
 export default async function HomePage() {
     const session = await auth();
@@ -48,66 +123,29 @@ export default async function HomePage() {
             err instanceof Error ? err.message : "データの取得に失敗しました";
     }
 
-    // 今日の日付を取得（スケジュールフィルタ用）
-    const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = today.getMonth() + 1;
-    const todayDate = today.getDate();
+    const todayDateInput = formatJstDateInput();
 
-    // 今後のスケジュールをフィルタリング（今日以降）
-    // スプレッドシートの形式: A=EVENT_ID, B=YYYY, C=MM, D=DD, E=TITLE, F=WHERE, G=DETAIL
-    const todayTimestamp = new Date(
-        todayYear,
-        todayMonth - 1,
-        todayDate
-    ).getTime();
-
-    // 今日のスケジュールのEVENT_IDを取得
-    const todayEventIds = schedules
-        .filter((schedule) => {
-            const values = Object.values(schedule);
-            const year = Number(values[1]);
-            const month = Number(values[2]);
-            const date = Number(values[3]);
-            return (
-                year === todayYear && month === todayMonth && date === todayDate
-            );
-        })
-        .map((schedule) => String(Object.values(schedule)[0]));
+    const todayEventIds = new Set(
+        schedules
+            .filter((schedule) =>
+                isScheduleActiveOnDate(schedule, todayDateInput)
+            )
+            .map(getScheduleEventId)
+    );
 
     // 本日の欠席者をフィルタリング（出席申告は除外）
     const todayAbsences = absences.filter((absence) => {
-        const values = Object.values(absence);
-        const absenceEventId = String(values[1]); // B列のEVENT_ID
-        const type = String(values[4] ?? ""); // E列の種別
-        return todayEventIds.includes(absenceEventId) && type !== "出席";
+        const absenceEventId = getAbsenceEventId(absence);
+        const type = getAbsenceType(absence);
+        return todayEventIds.has(absenceEventId) && type !== "出席";
     });
 
     const upcomingSchedules = schedules
-        .filter((schedule) => {
-            const values = Object.values(schedule);
-            const year = Number(values[1]);
-            const month = Number(values[2]);
-            const date = Number(values[3]);
-            const scheduleTimestamp = new Date(year, month - 1, date).getTime();
-            // 今日以降のスケジュールのみ
-            return scheduleTimestamp >= todayTimestamp;
-        })
-        .sort((a, b) => {
-            const valuesA = Object.values(a);
-            const valuesB = Object.values(b);
-            const timestampA = new Date(
-                Number(valuesA[1]),
-                Number(valuesA[2]) - 1,
-                Number(valuesA[3])
-            ).getTime();
-            const timestampB = new Date(
-                Number(valuesB[1]),
-                Number(valuesB[2]) - 1,
-                Number(valuesB[3])
-            ).getTime();
-            return timestampA - timestampB; // 日付順にソート
-        });
+        .filter((schedule) => isScheduleUpcomingOnDate(schedule, todayDateInput))
+        .sort(
+            (a, b) =>
+                getScheduleStartTimestamp(a) - getScheduleStartTimestamp(b)
+        );
 
     return (
         <>
@@ -159,30 +197,89 @@ export default async function HomePage() {
                                 <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
                                     {upcomingSchedules.map(
                                         (schedule: Schedule) => {
-                                            const values =
-                                                Object.values(schedule);
                                             const eventId = String(
-                                                values[0] ?? ""
-                                            ); // A列 (EVENT_ID)
-                                            const year = Number(values[1]); // B列 (YYYY)
-                                            const month = Number(values[2]); // C列 (MM)
-                                            const date = Number(values[3]); // D列 (DD)
-                                            const rawTimeHH = values[4]; // E列 (TIME_HH)
-                                            const rawTimeMM = values[5]; // F列 (TIME_MM)
-                                            const rawEndTimeHH = values[18]; // S列 (END_TIME_HH)
-                                            const rawEndTimeMM = values[19]; // T列 (END_TIME_MM)
-                                            const rawEndYear = values[9];
-                                            const rawEndMonth = values[10];
-                                            const rawEndDate = values[11];
+                                                getScheduleEventId(schedule)
+                                            );
+                                            const year = Number(
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "YYYY",
+                                                    1
+                                                )
+                                            );
+                                            const month = Number(
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "MM",
+                                                    2
+                                                )
+                                            );
+                                            const date = Number(
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "DD",
+                                                    3
+                                                )
+                                            );
+                                            const rawTimeHH = getScheduleValue(
+                                                schedule,
+                                                "TIME_HH",
+                                                4
+                                            );
+                                            const rawTimeMM = getScheduleValue(
+                                                schedule,
+                                                "TIME_MM",
+                                                5
+                                            );
+                                            const rawEndTimeHH =
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "END_TIME_HH",
+                                                    18
+                                                );
+                                            const rawEndTimeMM =
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "END_TIME_MM",
+                                                    19
+                                                );
+                                            const rawEndYear = getScheduleValue(
+                                                schedule,
+                                                "END_YYYY",
+                                                9
+                                            );
+                                            const rawEndMonth =
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "END_MM",
+                                                    10
+                                                );
+                                            const rawEndDate = getScheduleValue(
+                                                schedule,
+                                                "END_DD",
+                                                11
+                                            );
                                             const title = String(
-                                                values[6] ?? "予定"
-                                            ); // G列 (TITLE)
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "TITLE",
+                                                    6
+                                                ) || "予定"
+                                            );
                                             const where = String(
-                                                values[7] ?? ""
-                                            ); // H列 (WHERE)
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "WHERE",
+                                                    7
+                                                )
+                                            );
                                             const detail = String(
-                                                values[8] ?? ""
-                                            ); // I列 (DETAIL)
+                                                getScheduleValue(
+                                                    schedule,
+                                                    "DETAIL",
+                                                    8
+                                                )
+                                            );
                                             const attendanceMode =
                                                 getScheduleAttendanceMode(
                                                     schedule
