@@ -1666,13 +1666,13 @@ export default function ScheduleCard({
                                                             <div className="flex items-start justify-between gap-3">
                                                                 <div className="min-w-0 flex-1">
                                                                     <div
-                                                                        className="flex flex-wrap items-center gap-x-2 gap-y-1 text-base-content"
+                                                                        className="grid items-center gap-x-2 gap-y-1 text-base-content [grid-template-columns:minmax(5rem,8rem)_minmax(0,1fr)]"
                                                                         style={{
                                                                             fontSize:
                                                                                 "clamp(0.875rem, 2vw, 1rem)",
                                                                         }}
                                                                     >
-                                                                        <span className="font-medium break-words">
+                                                                        <span className="min-w-0 font-medium break-words">
                                                                             {
                                                                                 values.name
                                                                             }
