@@ -283,7 +283,7 @@ export default function WeatherWidget() {
                 setLoading(false);
             })
             .catch(() => {
-                setError("天気情報の取得に失敗しました");
+                setError("天気情報を取得できませんでした");
                 setLoading(false);
             });
     }, []);

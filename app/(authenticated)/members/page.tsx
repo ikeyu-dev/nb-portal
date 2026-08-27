@@ -278,7 +278,7 @@ export default function MembersPage() {
             };
 
             if (!data.success || !data.data) {
-                setError(data.error || "名簿の取得に失敗しました");
+                setError(data.error || "名簿を取得できませんでした");
                 return;
             }
 
@@ -296,7 +296,7 @@ export default function MembersPage() {
                 setError(
                     fetchError instanceof Error
                         ? fetchError.message
-                        : "名簿の取得に失敗しました"
+                        : "名簿を取得できませんでした"
                 );
             }
         } finally {
@@ -601,7 +601,7 @@ export default function MembersPage() {
             };
 
             if (!data.success) {
-                setModalError(data.error || "名簿の追加に失敗しました");
+                setModalError(data.error || "部員を追加できませんでした");
                 return;
             }
 
@@ -613,7 +613,7 @@ export default function MembersPage() {
             updateMembers([...members, newMember]);
             closeCreateModal(true);
         } catch {
-            setModalError("名簿の追加に失敗しました");
+            setModalError("部員を追加できませんでした");
         } finally {
             setIsSubmitting(false);
         }
@@ -642,7 +642,7 @@ export default function MembersPage() {
             const data = (await response.json()) as ApiResponse<null>;
 
             if (!data.success) {
-                setModalError(data.error || "名簿の更新に失敗しました");
+                setModalError(data.error || "部員情報を更新できませんでした");
                 return;
             }
 
@@ -655,7 +655,7 @@ export default function MembersPage() {
             );
             closeEditModal(true);
         } catch {
-            setModalError("名簿の更新に失敗しました");
+            setModalError("部員情報を更新できませんでした");
         } finally {
             setIsSubmitting(false);
         }
@@ -676,7 +676,7 @@ export default function MembersPage() {
             const data = (await response.json()) as ApiResponse<null>;
 
             if (!data.success) {
-                setModalError(data.error || "名簿の削除に失敗しました");
+                setModalError(data.error || "部員を削除できませんでした");
                 return;
             }
 
@@ -694,7 +694,7 @@ export default function MembersPage() {
             );
             closeDeleteModal(true);
         } catch {
-            setModalError("名簿の削除に失敗しました");
+            setModalError("部員を削除できませんでした");
         } finally {
             setIsSubmitting(false);
         }
@@ -1234,7 +1234,7 @@ export default function MembersPage() {
                         <h2 className="font-bold text-lg">名簿から削除</h2>
                         <p className="mt-3">
                             {getPrimaryValue(deletingMember, headers)}
-                            を削除します。
+                            を名簿から削除しますか？
                         </p>
 
                         {modalError && (

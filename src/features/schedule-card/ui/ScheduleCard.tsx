@@ -272,11 +272,11 @@ export default function ScheduleCard({
     const normalizedAttendanceMode =
         normalizeScheduleAttendanceMode(attendanceMode);
     const isAttendanceEvent = normalizedAttendanceMode === "ATTENDANCE";
-    const responseSectionTitle = isAttendanceEvent ? "出席申告" : "欠席申請";
+    const responseSectionTitle = isAttendanceEvent ? "参加者" : "欠席者";
     const emptyResponseText = isAttendanceEvent
-        ? "出席申告者はいません"
+        ? "参加者はいません"
         : "欠席者はいません";
-    const actionLabel = isAttendanceEvent ? "出席申告" : "欠席連絡";
+    const actionLabel = isAttendanceEvent ? "参加登録" : "欠席連絡";
     const attendanceModeBadgeClass =
         "border-base-content/35 bg-base-200/70 text-base-content/70";
     const attendanceDateTimeLabel = [dateLabel, timeLabel]
@@ -298,9 +298,11 @@ export default function ScheduleCard({
     });
     const responseClosedMessage = attendanceDeadlineLabel
         ? isAttendanceEvent
-            ? `出席申告の期限は${attendanceDeadlineLabel}です。`
-            : `出欠入力期限は${attendanceDeadlineLabel}です。`
-        : "現在は出欠入力の受付時間外です。";
+            ? `参加登録期限は${attendanceDeadlineLabel}です。`
+            : `出欠連絡期限は${attendanceDeadlineLabel}です。`
+        : isAttendanceEvent
+          ? "現在は参加登録を受け付けていません。"
+          : "現在は出欠連絡を受け付けていません。";
     const normalizedStudentNumber = profile.studentNumber.trim().toLowerCase();
     const displayedAbsences = dedupeAbsencesByStudent(localAbsences);
     const checkedAttendanceCount = checkedAttendanceMembers.size;
@@ -460,7 +462,7 @@ export default function ScheduleCard({
                 const membersResponse = membersResult.value;
                 if (!membersResponse.success || !membersResponse.data) {
                     throw new Error(
-                        membersResponse.error || "名簿の取得に失敗しました"
+                        membersResponse.error || "名簿を取得できませんでした"
                     );
                 }
 
@@ -482,14 +484,14 @@ export default function ScheduleCard({
                 if (attendanceResult.status === "rejected") {
                     setCanSaveEventAttendance(false);
                     setEventAttendanceMessage(
-                        "出席チェックAPIが未反映です。Backend APIの更新とD1マイグレーション後に保存できます。"
+                        "現在、出席確認を保存できません。"
                     );
                 }
             } catch (error) {
                 setEventAttendanceMessage(
                     error instanceof Error
                         ? error.message
-                        : "出席チェックの取得に失敗しました"
+                        : "出席確認を取得できませんでした"
                 );
             } finally {
                 setIsEventAttendanceLoading(false);
@@ -624,7 +626,7 @@ export default function ScheduleCard({
     const saveEventAttendance = async () => {
         if (!canSaveEventAttendance) {
             setEventAttendanceMessage(
-                "出席チェックAPIが未反映です。Backend APIの更新とD1マイグレーション後に保存できます。"
+                "現在、出席確認を保存できません。"
             );
             return;
         }
@@ -660,12 +662,12 @@ export default function ScheduleCard({
                     };
                 })
             );
-            setEventAttendanceMessage("出席チェックを保存しました");
+            setEventAttendanceMessage("出席確認を保存しました");
         } catch (error) {
             setEventAttendanceMessage(
                 error instanceof Error
                     ? error.message
-                    : "出席チェックの保存に失敗しました"
+                    : "出席確認を保存できませんでした"
             );
         } finally {
             setIsEventAttendanceSaving(false);
@@ -733,7 +735,7 @@ export default function ScheduleCard({
                 (await response.json()) as ApiResponse<AbsenceMutationData>;
 
             if (!response.ok || result?.success !== true) {
-                throw new Error(result?.error || "出席申告に失敗しました");
+                throw new Error(result?.error || "参加登録できませんでした");
             }
 
             updateLocalResponse({
@@ -748,7 +750,7 @@ export default function ScheduleCard({
                 timeReturn: "",
             });
             setAttendanceSubmitMessage(
-                ownResponse ? "出席申告を更新しました" : "出席申告を送信しました"
+                ownResponse ? "参加登録を更新しました" : "参加登録しました"
             );
             setIsAttendanceConfirmOpen(false);
             setAttendanceNote("");
@@ -756,7 +758,7 @@ export default function ScheduleCard({
             setAttendanceSubmitMessage(
                 error instanceof Error
                     ? error.message
-                    : "出席申告に失敗しました"
+                    : "参加登録できませんでした"
             );
         } finally {
             setIsAttendanceSubmitting(false);
@@ -799,7 +801,7 @@ export default function ScheduleCard({
                 (await response.json()) as ApiResponse<AbsenceMutationData>;
 
             if (!response.ok || result?.success !== true) {
-                throw new Error(result?.error || "欠席連絡に失敗しました");
+                throw new Error(result?.error || "欠席連絡を送信できませんでした");
             }
 
             updateLocalResponse({
@@ -825,7 +827,7 @@ export default function ScheduleCard({
             setAbsenceSubmitMessage(
                 error instanceof Error
                     ? error.message
-                    : "欠席連絡に失敗しました"
+                    : "欠席連絡を送信できませんでした"
             );
         } finally {
             setIsAbsenceSubmitting(false);
@@ -850,13 +852,13 @@ export default function ScheduleCard({
             const result = (await response.json()) as ApiResponse<null>;
 
             if (!response.ok || result?.success !== true) {
-                throw new Error(result?.error || "出欠連絡の削除に失敗しました");
+                throw new Error(result?.error || "出欠連絡を削除できませんでした");
             }
 
             removeLocalResponse();
             setIsDeleteConfirmOpen(false);
             if (isAttendanceEvent) {
-                setAttendanceSubmitMessage("出席申告を削除しました");
+                setAttendanceSubmitMessage("参加登録を削除しました");
             } else {
                 setAbsenceSubmitMessage("欠席連絡を削除しました");
             }
@@ -864,7 +866,7 @@ export default function ScheduleCard({
             const message =
                 error instanceof Error
                     ? error.message
-                    : "出欠連絡の削除に失敗しました";
+                    : "出欠連絡を削除できませんでした";
             if (isAttendanceEvent) {
                 setAttendanceSubmitMessage(message);
             } else {
@@ -980,13 +982,15 @@ export default function ScheduleCard({
                             style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
                         >
                             {isAttendanceConfirmOpen
-                                ? "出席申告"
+                                ? "参加登録"
                                 : isDeleteConfirmOpen
-                                  ? "出欠連絡の削除"
+                                  ? isAttendanceEvent
+                                      ? "参加登録の削除"
+                                      : "欠席連絡の削除"
                                 : isAbsenceFormOpen
                                   ? "欠席連絡"
                                 : isEventAttendanceOpen
-                                  ? "出席チェック"
+                                  ? "出席確認"
                                   : title}
                         </h3>
                         {isAttendanceConfirmOpen ? (
@@ -1049,7 +1053,7 @@ export default function ScheduleCard({
                             <>
                                 <div className="space-y-3">
                                     <p className="text-base font-medium">
-                                        自分の出欠連絡を削除しますか？
+                                        {`自分の${isAttendanceEvent ? "参加登録" : "欠席連絡"}を削除しますか？`}
                                     </p>
                                     <p className="text-sm text-base-content/70">
                                         この操作は取り消せません。
@@ -1231,7 +1235,7 @@ export default function ScheduleCard({
                                     </div>
                                 ) : (
                                     <p className="rounded-lg border border-base-300 bg-base-200/40 p-4 text-base-content/70">
-                                        出席チェック対象の部員が見つかりません。
+                                        出席確認の対象となる部員が見つかりません。
                                     </p>
                                 )}
 
@@ -1296,7 +1300,7 @@ export default function ScheduleCard({
                                     <div className="form-control">
                                         <label className="label">
                                             <span className="label-text font-semibold">
-                                                氏名 または あだ名
+                                                氏名・あだ名
                                                 <span className="text-error">
                                                     *
                                                 </span>
@@ -1587,10 +1591,10 @@ export default function ScheduleCard({
                                                         "clamp(1rem, 2.5vw, 1.125rem)",
                                                 }}
                                             >
-                                                出席チェック
+                                                出席確認
                                             </h4>
                                             <p className="mt-1 text-sm text-base-content/70">
-                                                イベント当日の出席者をチェックして集計します。
+                                                当日の出席者を確認して集計します。
                                             </p>
                                         </div>
                                         <button
@@ -1618,7 +1622,7 @@ export default function ScheduleCard({
                                             {checkedAttendanceRecordsCount >
                                                 6 && (
                                                 <span className="badge badge-ghost">
-                                                    他
+                                                    ほか
                                                     {checkedAttendanceRecordsCount -
                                                         6}
                                                     人
@@ -1787,7 +1791,7 @@ export default function ScheduleCard({
                                             }
                                         >
                                             {ownResponse
-                                                ? "申告済み"
+                                                ? "登録済み"
                                                 : canSubmitResponse
                                                   ? actionLabel
                                                   : "受付時間外"}

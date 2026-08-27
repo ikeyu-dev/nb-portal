@@ -88,7 +88,7 @@ export function PWANotificationPrompt({
             );
         } catch (error) {
             console.error("Error enabling notifications:", error);
-            setMessage("通知の設定に失敗しました。時間をおいて再度お試しください。");
+            setMessage("通知を設定できませんでした。時間をおいて、もう一度お試しください。");
         } finally {
             setIsSubmitting(false);
         }
