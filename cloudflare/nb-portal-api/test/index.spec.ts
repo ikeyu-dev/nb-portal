@@ -1,6 +1,7 @@
 import {
 	env,
 	createExecutionContext,
+	fetchMock,
 	waitOnExecutionContext,
 	SELF,
 } from "cloudflare:test";
@@ -639,11 +640,214 @@ describe("Hello World worker", () => {
 			};
 		};
 		expect(body.data?.flags).toBe(64);
-		expect(body.data?.embeds?.[0]?.title).toBe("2099/09/01(火) 欠席者一覧");
+		expect(body.data?.embeds?.[0]?.title).toBe(
+			"2099/09/01(火) 部会 欠席者一覧"
+		);
 		expect(body.data?.embeds?.[0]?.fields?.[0]).toMatchObject({
 			name: "佐藤 次郎",
 			value: "早退（19:00）",
 		});
+	});
+
+	it("separates Discord summaries by attendance mode", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES
+				('discord-attendance-mode', '希望者参加イベント', '2099-09-03', NULL,
+					'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', '2099-09-03', 0),
+				('discord-absence-mode', '全員参加イベント', '2099-09-03', NULL,
+					'18:00', NULL, '部室', '', 'primary', 'ABSENCE', '2099-09-03', 0)`
+		).run();
+		await env.DB.prepare(
+			`INSERT INTO absences (
+				id, event_id, student_number, name, type, reason, reason_detail,
+				time_leaving_early, time_step_out, time_return, submitted_at, updated_at
+			)
+			VALUES
+				('discord-attendee', 'discord-attendance-mode', '25d0010',
+					'出席 太郎', '出席', '出席', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+				('discord-wrong-absence', 'discord-attendance-mode', '25d0011',
+					'欠席 花子', '欠席', '', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+				('discord-absentee', 'discord-absence-mode', '25d0012',
+					'欠席 次郎', '欠席', '', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+				('discord-wrong-attendee', 'discord-absence-mode', '25d0013',
+					'出席 四郎', '出席', '出席', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-09-03" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				embeds?: Array<{
+					title?: string;
+					fields?: Array<{ name?: string; value?: string }>;
+				}>;
+			};
+		};
+
+		const attendanceEmbed = body.data?.embeds?.find((embed) =>
+			embed.title?.includes("希望者参加イベント 出席者一覧")
+		);
+		const absenceEmbed = body.data?.embeds?.find((embed) =>
+			embed.title?.includes("全員参加イベント 欠席者一覧")
+		);
+
+		expect(attendanceEmbed?.fields).toEqual([
+			expect.objectContaining({ name: "出席 太郎", value: "出席" }),
+		]);
+		expect(absenceEmbed?.fields).toEqual([
+			expect.objectContaining({ name: "欠席 次郎", value: "欠席" }),
+		]);
+	});
+
+	it("shows an attendee-specific empty state for attendance events", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'discord-empty-attendance', '申告なしイベント', '2099-09-04', NULL,
+				'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', '2099-09-04', 0
+			)`
+		).run();
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-09-04" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				embeds?: Array<{
+					title?: string;
+					fields?: Array<{ name?: string; value?: string }>;
+				}>;
+			};
+		};
+
+		expect(body.data?.embeds?.[0]?.title).toContain(
+			"申告なしイベント 出席者一覧"
+		);
+		expect(body.data?.embeds?.[0]?.fields).toEqual([
+			expect.objectContaining({
+				name: "情報",
+				value: "本日の出席者はいません",
+			}),
+		]);
+	});
+
+	it("splits attendance summaries at the Discord embed field limit", async () => {
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'discord-many-attendees', '大人数イベント', '2099-09-05', NULL,
+				'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', '2099-09-05', 0
+			)`
+		).run();
+		await env.DB.batch(
+			Array.from({ length: 26 }, (_, index) =>
+				env.DB.prepare(
+					`INSERT INTO absences (
+						id, event_id, student_number, name, type, reason, reason_detail,
+						time_leaving_early, time_step_out, time_return, submitted_at, updated_at
+					)
+					VALUES (?, 'discord-many-attendees', ?, ?, '出席', '出席', '', '', '', '', ?, ?)`
+				).bind(
+					`discord-many-attendee-${index}`,
+					`25d${String(index).padStart(4, "0")}`,
+					`出席者 ${String(index + 1).padStart(2, "0")}`,
+					`2099-08-01 00:00:${String(index).padStart(2, "0")}`,
+					`2099-08-01 00:00:${String(index).padStart(2, "0")}`
+				)
+			)
+		);
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-09-05" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				embeds?: Array<{
+					title?: string;
+					fields?: Array<{ name?: string; value?: string }>;
+				}>;
+			};
+		};
+
+		expect(body.data?.embeds).toHaveLength(2);
+		expect(body.data?.embeds?.[0]?.fields).toHaveLength(25);
+		expect(body.data?.embeds?.[1]?.fields).toHaveLength(1);
+		expect(body.data?.embeds?.[1]?.title).toContain(
+			"大人数イベント 出席者一覧 (2)"
+		);
+	});
+
+	it("limits Discord command embeds and reports omitted summaries", async () => {
+		await env.DB.batch(
+			Array.from({ length: 11 }, (_, index) =>
+				env.DB.prepare(
+					`INSERT INTO schedules (
+						id, title, date, end_date, start_time, end_time, location, description,
+						color, attendance_mode, attendance_deadline, is_past
+					)
+					VALUES (?, ?, '2099-09-06', NULL, ?, NULL, '部室', '',
+						'primary', 'ATTENDANCE', '2099-09-06', 0)`
+				).bind(
+					`discord-many-events-${index}`,
+					`希望者参加イベント ${index + 1}`,
+					`${String(index).padStart(2, "0")}:00`
+				)
+			)
+		);
+
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-09-06" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: {
+				content?: string;
+				embeds?: Array<{ title?: string }>;
+			};
+		};
+
+		expect(body.data?.embeds).toHaveLength(10);
+		expect(body.data?.content).toBe(
+			"Discordの表示制限により、ほか 1 件の一覧を省略しました。"
+		);
 	});
 
 	it("returns Discord absence command publicly when public option is true", async () => {
@@ -696,6 +900,161 @@ describe("Hello World worker", () => {
 			name: "公開 太郎",
 			value: "欠席",
 		});
+	});
+
+	it("sends the same attendance embeds from cron and the Discord command", async () => {
+		const today = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "Asia/Tokyo",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(new Date());
+		await env.DB.prepare(
+			`INSERT INTO schedules (
+				id, title, date, end_date, start_time, end_time, location, description,
+				color, attendance_mode, attendance_deadline, is_past
+			)
+			VALUES (
+				'cron-attendance-mode', 'Cron希望者参加', ?, NULL,
+				'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', ?, 0
+			)`
+		)
+			.bind(today, today)
+			.run();
+		await env.DB.prepare(
+			`INSERT INTO absences (
+				id, event_id, student_number, name, type, reason, reason_detail,
+				time_leaving_early, time_step_out, time_return, submitted_at, updated_at
+			)
+			VALUES (
+				'cron-attendee', 'cron-attendance-mode', '25d0020',
+				'Cron 出席者', '出席', '出席', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+			)`
+		).run();
+
+		const commandRequest = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: today }],
+			},
+		});
+		const commandResponse = await fetchWorker(
+			commandRequest,
+			discordEnv(),
+			createExecutionContext()
+		);
+		const commandBody = (await commandResponse.json()) as {
+			data?: { embeds?: Array<Record<string, unknown>> };
+		};
+
+		let cronRequestBody = "";
+		fetchMock.activate();
+		fetchMock.disableNetConnect();
+		fetchMock
+			.get("https://example.com")
+			.intercept({ path: "/api/discord-send", method: "POST" })
+			.reply(200, (options) => {
+				cronRequestBody = String(options.body || "");
+				return "ok";
+			});
+
+		try {
+			const ctx = createExecutionContext();
+			await worker.scheduled(
+				{
+					cron: "0 23 * * *",
+					scheduledTime: Date.now(),
+					noRetry: () => {},
+				} as ScheduledController,
+				{
+					...env,
+					PUSH_API_SECRET: "test-push-secret",
+					APP_DISCORD_SEND_URL: "https://example.com/api/discord-send",
+				},
+				ctx
+			);
+			await waitOnExecutionContext(ctx);
+			fetchMock.assertNoPendingInterceptors();
+		} finally {
+			fetchMock.deactivate();
+		}
+
+		const cronPayload = JSON.parse(cronRequestBody) as {
+			target?: string;
+			embeds?: Array<Record<string, unknown>>;
+		};
+		expect(cronPayload.target).toBe("attendance");
+		expect(cronPayload.embeds).toEqual(commandBody.data?.embeds);
+	});
+
+	it("splits cron attendance summaries across Discord messages", async () => {
+		const today = new Intl.DateTimeFormat("en-CA", {
+			timeZone: "Asia/Tokyo",
+			year: "numeric",
+			month: "2-digit",
+			day: "2-digit",
+		}).format(new Date());
+		await env.DB.batch(
+			Array.from({ length: 11 }, (_, index) =>
+				env.DB.prepare(
+					`INSERT INTO schedules (
+						id, title, date, end_date, start_time, end_time, location, description,
+						color, attendance_mode, attendance_deadline, is_past
+					)
+					VALUES (?, ?, ?, NULL, ?, NULL, '部室', '',
+						'primary', 'ATTENDANCE', ?, 0)`
+				).bind(
+					`cron-many-events-${index}`,
+					`Cron希望者参加 ${index + 1}`,
+					today,
+					`${String(index).padStart(2, "0")}:00`,
+					today
+				)
+			)
+		);
+
+		const cronRequestBodies: string[] = [];
+		fetchMock.activate();
+		fetchMock.disableNetConnect();
+		const mockOrigin = fetchMock.get("https://example.com");
+		for (let index = 0; index < 2; index += 1) {
+			mockOrigin
+				.intercept({ path: "/api/discord-send", method: "POST" })
+				.reply(200, (options) => {
+					cronRequestBodies.push(String(options.body || ""));
+					return "ok";
+				});
+		}
+
+		try {
+			const ctx = createExecutionContext();
+			await worker.scheduled(
+				{
+					cron: "0 23 * * *",
+					scheduledTime: Date.now(),
+					noRetry: () => {},
+				} as ScheduledController,
+				{
+					...env,
+					PUSH_API_SECRET: "test-push-secret",
+					APP_DISCORD_SEND_URL: "https://example.com/api/discord-send",
+				},
+				ctx
+			);
+			await waitOnExecutionContext(ctx);
+			fetchMock.assertNoPendingInterceptors();
+		} finally {
+			fetchMock.deactivate();
+		}
+
+		const embedCounts = cronRequestBodies.map((body) => {
+			const payload = JSON.parse(body) as { embeds?: unknown[] };
+			return payload.embeds?.length || 0;
+		});
+		expect(embedCounts).toEqual([10, 1]);
 	});
 
 	it("skips scheduled Discord sends when there is no event today", async () => {
