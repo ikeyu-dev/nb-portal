@@ -54,6 +54,9 @@ type DiscordInteraction = {
 };
 
 const DISCORD_MAX_SCHEDULE_FIELDS = 20;
+const DISCORD_MAX_EMBED_FIELDS = 25;
+const DISCORD_MAX_EMBEDS_PER_MESSAGE = 10;
+const DISCORD_MAX_EMBED_CHARACTERS_PER_MESSAGE = 6000;
 
 type MemberRow = {
 	student_number: string;
@@ -118,9 +121,12 @@ type NextMeetingRow = {
 	updated_at: string | null;
 };
 
-type DailyAbsenceSummaryRow = {
-	name: string;
-	type: string;
+type DailyAttendanceSummaryRow = {
+	event_id: string;
+	event_title: string;
+	attendance_mode: string;
+	name: string | null;
+	type: string | null;
 	time_leaving_early: string | null;
 	time_step_out: string | null;
 	time_return: string | null;
@@ -1448,7 +1454,42 @@ const chunkArray = <T>(items: T[], size: number) => {
 	return chunks;
 };
 
-const formatAbsenceTypeWithTime = (row: DailyAbsenceSummaryRow) => {
+const getDiscordEmbedCharacterCount = (embed: DiscordEmbed) =>
+	(embed.title?.length || 0) +
+	(embed.description?.length || 0) +
+	(embed.footer?.text.length || 0) +
+	(embed.fields || []).reduce(
+		(total, field) => total + field.name.length + field.value.length,
+		0
+	);
+
+const chunkDiscordEmbedsForMessages = (embeds: DiscordEmbed[]) => {
+	const messages: DiscordEmbed[][] = [];
+	let currentMessage: DiscordEmbed[] = [];
+	let currentCharacterCount = 0;
+
+	for (const embed of embeds) {
+		const embedCharacterCount = getDiscordEmbedCharacterCount(embed);
+		const exceedsMessageLimit =
+			currentMessage.length >= DISCORD_MAX_EMBEDS_PER_MESSAGE ||
+			currentCharacterCount + embedCharacterCount >
+				DISCORD_MAX_EMBED_CHARACTERS_PER_MESSAGE;
+
+		if (currentMessage.length > 0 && exceedsMessageLimit) {
+			messages.push(currentMessage);
+			currentMessage = [];
+			currentCharacterCount = 0;
+		}
+
+		currentMessage.push(embed);
+		currentCharacterCount += embedCharacterCount;
+	}
+
+	if (currentMessage.length > 0) messages.push(currentMessage);
+	return messages;
+};
+
+const formatAbsenceTypeWithTime = (row: DailyAttendanceSummaryRow) => {
 	if (row.type === "早退" && row.time_leaving_early) {
 		return `${row.type}（${row.time_leaving_early}）`;
 	}
@@ -1459,7 +1500,7 @@ const formatAbsenceTypeWithTime = (row: DailyAbsenceSummaryRow) => {
 		}）`;
 	}
 
-	return row.type;
+	return row.type || "";
 };
 
 const sendDiscordViaApp = async (
@@ -1602,64 +1643,97 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 	});
 };
 
-const buildDailyAbsenceEmbed = async (env: Env, date: string) => {
+const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 	const dateLabel = getDateLabel(date);
-	const todayScheduleCount = await env.DB.prepare(
-		"SELECT COUNT(*) AS count FROM schedules WHERE date = ?"
-	)
-		.bind(date)
-		.first<{ count: number }>();
-	if ((todayScheduleCount?.count || 0) === 0) {
-		return null;
-	}
-
 	const rows = await env.DB.prepare(
 		`SELECT
+			s.id AS event_id,
+			s.title AS event_title,
+			s.attendance_mode,
 			a.name,
 			a.type,
 			a.time_leaving_early,
 			a.time_step_out,
 			a.time_return
-		FROM absences a
-		INNER JOIN schedules s ON s.id = a.event_id
+		FROM schedules s
+		LEFT JOIN absences a ON a.event_id = s.id
+			AND (
+				(UPPER(COALESCE(s.attendance_mode, 'ABSENCE')) = 'ATTENDANCE'
+					AND a.type = '出席')
+				OR
+				(UPPER(COALESCE(s.attendance_mode, 'ABSENCE')) != 'ATTENDANCE'
+					AND a.type IN ('欠席', '遅刻', '早退', '中抜け'))
+			)
 		WHERE s.date = ?
-			AND a.type IN ('欠席', '遅刻', '早退', '中抜け')
-		ORDER BY a.submitted_at`
+		ORDER BY s.start_time, s.id, a.submitted_at`
 	)
 		.bind(date)
-		.all<DailyAbsenceSummaryRow>();
+		.all<DailyAttendanceSummaryRow>();
 
-	const fields =
-		rows.results && rows.results.length > 0
-			? rows.results.map((row) => ({
-					name: row.name || "不明",
-					value: formatAbsenceTypeWithTime(row),
-					inline: true,
-				}))
-			: [
-					{
-						name: "情報",
-						value: "本日の欠席者はいません",
-						inline: false,
-					},
-				];
+	const groups = new Map<
+		string,
+		{
+			title: string;
+			isAttendanceEvent: boolean;
+			responses: DailyAttendanceSummaryRow[];
+		}
+	>();
 
-	return {
-		title: `${dateLabel} 欠席者一覧`,
-		color: 0x5865f2,
-		fields,
-	} satisfies DiscordEmbed;
+	for (const row of rows.results || []) {
+		const group = groups.get(row.event_id) || {
+			title: row.event_title,
+			isAttendanceEvent: row.attendance_mode?.toUpperCase() === "ATTENDANCE",
+			responses: [],
+		};
+		if (row.type) group.responses.push(row);
+		groups.set(row.event_id, group);
+	}
+
+	return Array.from(groups.values()).flatMap((group) => {
+		const responseLabel = group.isAttendanceEvent ? "出席者" : "欠席者";
+		const responseChunks = chunkArray(
+			group.responses,
+			DISCORD_MAX_EMBED_FIELDS
+		);
+		if (responseChunks.length === 0) responseChunks.push([]);
+
+		return responseChunks.map((responses, index) => {
+			const fields =
+				responses.length > 0
+					? responses.map((row) => ({
+							name: row.name || "不明",
+							value: formatAbsenceTypeWithTime(row),
+							inline: true,
+						}))
+					: [
+							{
+								name: "情報",
+								value: `本日の${responseLabel}はいません`,
+								inline: false,
+							},
+						];
+			const continuationLabel = index > 0 ? ` (${index + 1})` : "";
+
+			return {
+				title: `${dateLabel} ${group.title} ${responseLabel}一覧${continuationLabel}`,
+				color: 0x5865f2,
+				fields,
+			} satisfies DiscordEmbed;
+		});
+	});
 };
 
 const sendTodayAbsences = async (env: RuntimeEnv) => {
 	const { date } = getJstDateParts();
-	const embed = await buildDailyAbsenceEmbed(env, date);
-	if (!embed) return;
+	const embeds = await buildDailyAttendanceEmbeds(env, date);
+	if (embeds.length === 0) return;
 
-	await sendDiscordViaApp(env, {
-		target: "attendance",
-		embeds: [embed],
-	});
+	for (const messageEmbeds of chunkDiscordEmbedsForMessages(embeds)) {
+		await sendDiscordViaApp(env, {
+			target: "attendance",
+			embeds: messageEmbeds,
+		});
+	}
 };
 
 const getCronExecutionId = (controller: ScheduledController) =>
@@ -1874,22 +1948,32 @@ const handleDiscordAbsencesCommand = async (
 		});
 	}
 
-	const embed = await buildDailyAbsenceEmbed(env, date);
+	const attendanceEmbeds = await buildDailyAttendanceEmbeds(env, date);
+	const attendanceMessages = chunkDiscordEmbedsForMessages(attendanceEmbeds);
+	const displayedEmbeds = attendanceMessages[0] || [];
+	const omittedEmbedCount = attendanceEmbeds.length - displayedEmbeds.length;
 	return discordMessage({
 		ephemeral: !getDiscordPublicOption(options),
-		embeds: [
-			embed || {
-				title: `${getDateLabel(date)} 欠席者一覧`,
-				color: 0x94a3b8,
-				fields: [
-					{
-						name: "情報",
-						value: "本日の予定はありません",
-						inline: false,
-					},
-				],
-			},
-		],
+		content:
+			omittedEmbedCount > 0
+				? `Discordの表示制限により、ほか ${omittedEmbedCount} 件の一覧を省略しました。`
+				: undefined,
+		embeds:
+			displayedEmbeds.length > 0
+				? displayedEmbeds
+				: [
+						{
+							title: `${getDateLabel(date)} 欠席者一覧`,
+							color: 0x94a3b8,
+							fields: [
+								{
+									name: "情報",
+									value: "本日の予定はありません",
+									inline: false,
+								},
+							],
+						},
+					],
 	});
 };
 
