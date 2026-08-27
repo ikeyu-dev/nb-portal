@@ -84,7 +84,7 @@ export default function ItemsPage() {
                 setItems(fetchedItems);
                 setClientCache(CLIENT_CACHE_KEYS.items, fetchedItems);
             } else {
-                setError(data.error || "データの取得に失敗しました");
+                setError(data.error || "機材一覧を取得できませんでした");
             }
         } catch (err) {
             const cache = getStaleClientCacheEntry<Item[]>(
@@ -97,7 +97,7 @@ export default function ItemsPage() {
                 setError(
                     err instanceof Error
                         ? err.message
-                        : "データの取得に失敗しました"
+                        : "機材一覧を取得できませんでした"
                 );
             }
         } finally {
@@ -165,10 +165,10 @@ export default function ItemsPage() {
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
-                setModalError(data.error || "登録に失敗しました");
+                setModalError(data.error || "機材を登録できませんでした");
             }
         } catch {
-            setModalError("登録に失敗しました");
+            setModalError("機材を登録できませんでした");
         } finally {
             setIsSubmitting(false);
         }
@@ -202,10 +202,10 @@ export default function ItemsPage() {
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
-                setModalError(data.error || "更新に失敗しました");
+                setModalError(data.error || "機材を更新できませんでした");
             }
         } catch {
-            setModalError("更新に失敗しました");
+            setModalError("機材を更新できませんでした");
         } finally {
             setIsSubmitting(false);
         }
@@ -232,10 +232,10 @@ export default function ItemsPage() {
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
-                setModalError(data.error || "削除に失敗しました");
+                setModalError(data.error || "機材を削除できませんでした");
             }
         } catch {
-            setModalError("削除に失敗しました");
+            setModalError("機材を削除できませんでした");
         } finally {
             setIsSubmitting(false);
         }
@@ -728,7 +728,7 @@ export default function ItemsPage() {
                     )}
 
                     <p className="mb-4">
-                        以下の機材を削除してもよろしいですか？
+                        この機材を削除しますか？
                     </p>
 
                     <div className="bg-base-200 p-4 rounded-lg mb-4">

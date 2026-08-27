@@ -33,7 +33,7 @@ export default function MermaidChart({ chart }: { chart: string }) {
                     containerRef.current.innerHTML = svg;
                 } catch {
                     containerRef.current.innerHTML =
-                        '<p class="text-error text-sm">チャートの描画に失敗しました</p>';
+                        '<p class="text-error text-sm">チャートを表示できませんでした</p>';
                 }
             }
         };

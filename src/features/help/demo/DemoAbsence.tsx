@@ -86,7 +86,7 @@ export function DemoAbsence() {
                 <div className="form-control">
                     <label className="label">
                         <span className="label-text text-sm font-semibold">
-                            氏名 または あだ名{" "}
+                            氏名・あだ名{" "}
                             <span className="text-error">*</span>
                         </span>
                     </label>

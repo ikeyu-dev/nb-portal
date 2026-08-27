@@ -130,10 +130,10 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                 (await membersResponse.json()) as ApiResponse<MembersData>;
 
             if (!tasksData.success) {
-                throw new Error(tasksData.error || "タスクの取得に失敗しました");
+                throw new Error(tasksData.error || "タスクを取得できませんでした");
             }
             if (!membersData.success) {
-                throw new Error(membersData.error || "名簿の取得に失敗しました");
+                throw new Error(membersData.error || "名簿を取得できませんでした");
             }
 
             setTasks(tasksData.data || []);
@@ -142,7 +142,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             setError(
                 caught instanceof Error
                     ? caught.message
-                    : "データの取得に失敗しました"
+                    : "タスクを取得できませんでした"
             );
         } finally {
             setIsLoading(false);
@@ -254,7 +254,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             });
             const data = (await response.json()) as ApiResponse<Task[]>;
             if (!response.ok || !data.success) {
-                throw new Error(data.error || "タスクの保存に失敗しました");
+                throw new Error(data.error || "タスクを保存できませんでした");
             }
 
             setTasks(data.data || []);
@@ -266,7 +266,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             setError(
                 caught instanceof Error
                     ? caught.message
-                    : "タスクの保存に失敗しました"
+                    : "タスクを保存できませんでした"
             );
         } finally {
             setIsSubmitting(false);
@@ -310,7 +310,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
         if (data.success) {
             setTasks(data.data || []);
         } else {
-            setError(data.error || "ステータス更新に失敗しました");
+            setError(data.error || "タスクの状態を更新できませんでした");
         }
     };
 
@@ -328,7 +328,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             });
             const data = (await response.json()) as ApiResponse<null>;
             if (!response.ok || !data.success) {
-                throw new Error(data.error || "タスク削除に失敗しました");
+                throw new Error(data.error || "タスクを削除できませんでした");
             }
 
             setTasks((current) =>
@@ -341,7 +341,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             setError(
                 caught instanceof Error
                     ? caught.message
-                    : "タスク削除に失敗しました"
+                    : "タスクを削除できませんでした"
             );
         } finally {
             setIsDeleting(false);
@@ -688,7 +688,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                             <h2 className="font-bold text-lg">タスクを削除</h2>
                         </div>
                         <p className="mt-4 text-sm text-base-content/70">
-                            このタスクを削除します。削除したタスクは元に戻せません。
+                            このタスクを削除しますか？
                         </p>
                         <div className="mt-4 rounded-lg border border-base-300 bg-base-200/50 p-3">
                             <div className="font-semibold leading-snug">

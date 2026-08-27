@@ -7,23 +7,23 @@ export const absenceSubmitSchema = z
     .object({
         eventId: z
             .string()
-            .min(1, "イベントIDは必須です")
-            .max(100, "イベントIDが長すぎます"),
+            .min(1, "予定IDは必須です")
+            .max(100, "予定IDが長すぎます"),
         studentNumber: z
             .string()
             .min(1, "学籍番号は必須です")
             .max(20, "学籍番号が長すぎます")
-            .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です"),
+            .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式を確認してください"),
         name: z
             .string()
             .min(1, "名前は必須です")
             .max(50, "名前が長すぎます"),
         type: z.enum(["欠席", "遅刻", "中抜け", "早退", "出席"], {
-            error: "無効な欠席種別です",
+            error: "出欠の種別が正しくありません",
         }),
         reason: z
             .enum(["体調不良", "授業", "家庭の都合", "その他", "出席"], {
-                error: "無効な理由カテゴリです",
+                error: "理由が正しくありません",
             })
             .optional(),
         reasonDetail: z.string().max(500, "詳細が長すぎます").optional(),
@@ -52,13 +52,13 @@ export type AbsenceSubmitData = z.infer<typeof absenceSubmitSchema>;
 export const absenceDeleteSchema = z.object({
     eventId: z
         .string()
-        .min(1, "イベントIDは必須です")
-        .max(100, "イベントIDが長すぎます"),
+        .min(1, "予定IDは必須です")
+        .max(100, "予定IDが長すぎます"),
     studentNumber: z
         .string()
         .min(1, "学籍番号は必須です")
         .max(20, "学籍番号が長すぎます")
-        .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です"),
+        .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式を確認してください"),
 });
 
 export type AbsenceDeleteData = z.infer<typeof absenceDeleteSchema>;
@@ -66,15 +66,15 @@ export type AbsenceDeleteData = z.infer<typeof absenceDeleteSchema>;
 export const eventAttendanceUpdateSchema = z.object({
     eventId: z
         .string()
-        .min(1, "イベントIDは必須です")
-        .max(100, "イベントIDが長すぎます"),
+        .min(1, "予定IDは必須です")
+        .max(100, "予定IDが長すぎます"),
     studentNumbers: z
         .array(
             z
                 .string()
                 .min(1, "学籍番号が空です")
                 .max(20, "学籍番号が長すぎます")
-                .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式が不正です")
+                .regex(/^[A-Za-z0-9-]+$/, "学籍番号の形式を確認してください")
         )
         .max(300, "出席者が多すぎます"),
 });
@@ -109,7 +109,7 @@ export const queryParamSchema = z.object({
     eventId: z.string().max(100).optional(),
     date: z
         .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "日付形式はYYYY-MM-DDです")
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "日付はYYYY-MM-DD形式で指定してください")
         .optional(),
     limit: z.coerce.number().min(1).max(100).optional(),
 });
@@ -140,7 +140,7 @@ export const itemUpdateSchema = z.object({
         .string()
         .min(1, "機材IDは必須です")
         .max(10, "機材IDが長すぎます")
-        .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式が不正です"),
+        .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式を確認してください"),
     name: z.string().min(1, "機材名は必須です").max(100, "機材名が長すぎます"),
 });
 
@@ -154,7 +154,7 @@ export const itemDeleteSchema = z.object({
         .string()
         .min(1, "機材IDは必須です")
         .max(10, "機材IDが長すぎます")
-        .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式が不正です"),
+        .regex(/^[A-Z]{3}\d{3}$/, "機材IDの形式を確認してください"),
 });
 
 export type ItemDeleteData = z.infer<typeof itemDeleteSchema>;
@@ -197,8 +197,8 @@ export const memberDeleteSchema = z.object({
 export type MemberDeleteData = z.infer<typeof memberDeleteSchema>;
 
 export const nextMeetingUpdateSchema = z.object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付形式はYYYY-MM-DDです"),
-    time: z.string().regex(/^\d{2}:\d{2}$/, "時刻形式はHH:MMです"),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "日付はYYYY-MM-DD形式で指定してください"),
+    time: z.string().regex(/^\d{2}:\d{2}$/, "時刻はHH:MM形式で指定してください"),
     mode: z.enum(["IN_PERSON", "DISCORD"], {
         error: "開催形式はIN_PERSONまたはDISCORDです",
     }),
@@ -207,7 +207,7 @@ export const nextMeetingUpdateSchema = z.object({
 export type NextMeetingUpdateData = z.infer<typeof nextMeetingUpdateSchema>;
 
 export const taskStatusSchema = z.enum(["TODO", "IN_PROGRESS", "DONE"], {
-    error: "ステータスが不正です",
+    error: "タスクの状態が正しくありません",
 });
 
 export const taskUpsertSchema = z.object({
@@ -226,7 +226,7 @@ export const taskUpsertSchema = z.object({
                 .string()
                 .min(1, "担当者の学籍番号が空です")
                 .max(20, "担当者の学籍番号が長すぎます")
-                .regex(/^[A-Za-z0-9-]+$/, "担当者の学籍番号形式が不正です")
+                .regex(/^[A-Za-z0-9-]+$/, "担当者の学籍番号の形式を確認してください")
         )
         .max(30, "担当者が多すぎます")
         .optional()

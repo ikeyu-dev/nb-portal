@@ -22,7 +22,7 @@ export function AbsenceFormContent({
         searchParams.get("mode")
     );
     const isAttendanceEvent = attendanceMode === "ATTENDANCE";
-    const pageTitle = isAttendanceEvent ? "出席申告" : "欠席連絡";
+    const pageTitle = isAttendanceEvent ? "参加登録" : "欠席連絡";
 
     const [formData, setFormData] = useState({
         studentNumber: studentId || "",
@@ -73,7 +73,7 @@ export function AbsenceFormContent({
                 setSubmitStatus({
                     type: "success",
                     message: isAttendanceEvent
-                        ? "出席申告を送信しました"
+                        ? "参加登録しました"
                         : "欠席連絡を送信しました",
                 });
 
@@ -91,7 +91,11 @@ export function AbsenceFormContent({
                     timeLeavingEarly: "",
                 });
             } else {
-                throw new Error("送信に失敗しました");
+                throw new Error(
+                    isAttendanceEvent
+                        ? "参加登録できませんでした"
+                        : "欠席連絡を送信できませんでした"
+                );
             }
         } catch (error) {
             setSubmitStatus({
@@ -99,7 +103,7 @@ export function AbsenceFormContent({
                 message:
                     error instanceof Error
                         ? error.message
-                        : "送信に失敗しました。もう一度お試しください。",
+                        : "送信できませんでした。もう一度お試しください。",
             });
         } finally {
             setIsSubmitting(false);
@@ -164,7 +168,7 @@ export function AbsenceFormContent({
                             />
                         </div>
 
-                        {/* 氏名 または あだ名 */}
+                        {/* 氏名・あだ名 */}
                         <div className="form-control">
                             <label className="label">
                                 <span
@@ -173,7 +177,7 @@ export function AbsenceFormContent({
                                         fontSize: "clamp(0.875rem, 2vw, 1rem)",
                                     }}
                                 >
-                                    氏名 または あだ名{" "}
+                                    氏名・あだ名{" "}
                                     <span className="text-error">*</span>
                                 </span>
                             </label>
@@ -403,7 +407,7 @@ export function AbsenceFormContent({
                                 {isSubmitting
                                     ? "送信中..."
                                     : isAttendanceEvent
-                                      ? "出席申告を送信"
+                                      ? "参加登録"
                                       : "欠席連絡を送信"}
                             </button>
                             <a

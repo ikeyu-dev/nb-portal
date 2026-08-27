@@ -147,7 +147,7 @@ export function NextMeetingCard({
         try {
             const result = await updateNextMeeting({ date, time, mode });
             if (!result.success || !result.data) {
-                setError(result.error || "次回部会の更新に失敗しました");
+                setError(result.error || "次回部会を更新できませんでした");
                 return;
             }
 
@@ -159,7 +159,7 @@ export function NextMeetingCard({
             setError(
                 submitError instanceof Error
                     ? submitError.message
-                    : "次回部会の更新に失敗しました"
+                    : "次回部会を更新できませんでした"
             );
         } finally {
             setIsSubmitting(false);
@@ -174,7 +174,7 @@ export function NextMeetingCard({
         try {
             const result = await announceNextMeeting();
             if (!result.success) {
-                setError(result.error || "次回部会連絡の送信に失敗しました");
+                setError(result.error || "次回部会のお知らせを送信できませんでした");
                 return;
             }
 
@@ -185,7 +185,7 @@ export function NextMeetingCard({
             setError(
                 announceError instanceof Error
                     ? announceError.message
-                    : "次回部会連絡の送信に失敗しました"
+                    : "次回部会のお知らせを送信できませんでした"
             );
         } finally {
             setIsAnnouncing(false);

@@ -160,7 +160,7 @@ export async function subscribeToPushNotifications(userEmail: string) {
     });
 
     if (!response.ok) {
-        throw new Error("通知設定の保存に失敗しました");
+        throw new Error("通知設定を保存できませんでした");
     }
 
     return { subscribed: true, denied: false };

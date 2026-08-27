@@ -272,7 +272,7 @@ export default function CalendarPage() {
                     lastFetchAtRef.current = Date.now();
                 } else {
                     setError(
-                        schedulesData.error || "データの取得に失敗しました"
+                        schedulesData.error || "予定を取得できませんでした"
                     );
                 }
             } catch (err) {
@@ -291,7 +291,7 @@ export default function CalendarPage() {
                     setError(
                         err instanceof Error
                             ? err.message
-                            : "データの取得に失敗しました"
+                            : "予定を取得できませんでした"
                     );
                 }
             } finally {
@@ -752,13 +752,13 @@ export default function CalendarPage() {
                 // 登録後はカレンダーに戻る
                 closeModal();
             } else {
-                setError(data.error || "スケジュールの追加に失敗しました");
+                setError(data.error || "予定を追加できませんでした");
             }
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
-                    : "スケジュールの追加に失敗しました"
+                    : "予定を追加できませんでした"
             );
         } finally {
             setIsSubmitting(false);
@@ -870,13 +870,13 @@ export default function CalendarPage() {
                 // 削除後はカレンダーに戻る
                 closeModal();
             } else {
-                setError(data.error || "スケジュールの削除に失敗しました");
+                setError(data.error || "予定を削除できませんでした");
             }
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
-                    : "スケジュールの削除に失敗しました"
+                    : "予定を削除できませんでした"
             );
         } finally {
             setIsDeleting(false);
@@ -971,13 +971,13 @@ export default function CalendarPage() {
                 // 編集後はカレンダーに戻る（日付が変わった可能性があるため）
                 closeModal();
             } else {
-                setError(data.error || "スケジュールの更新に失敗しました");
+                setError(data.error || "予定を更新できませんでした");
             }
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
-                    : "スケジュールの更新に失敗しました"
+                    : "予定を更新できませんでした"
             );
         } finally {
             setIsSubmitting(false);
@@ -2038,7 +2038,7 @@ export default function CalendarPage() {
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
-                                        出欠入力期限
+                                        出欠連絡期限
                                     </span>
                                 </label>
                                 <input
@@ -2053,7 +2053,7 @@ export default function CalendarPage() {
                                     }
                                 />
                                 <p className="mt-1 text-xs text-base-content/60">
-                                    入力は期限日の8:00まで受け付けます。通常はイベント当日の8:00です。
+                                    連絡は期限日の8:00まで受け付けます。通常は予定当日の8:00です。
                                 </p>
                             </div>
                             {addForm.isAllDay ? (
@@ -2678,7 +2678,7 @@ export default function CalendarPage() {
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
-                                        出欠入力期限
+                                        出欠連絡期限
                                     </span>
                                 </label>
                                 <input
@@ -2693,7 +2693,7 @@ export default function CalendarPage() {
                                     }
                                 />
                                 <p className="mt-1 text-xs text-base-content/60">
-                                    入力は期限日の8:00まで受け付けます。通常はイベント当日の8:00です。
+                                    連絡は期限日の8:00まで受け付けます。通常は予定当日の8:00です。
                                 </p>
                             </div>
                             <div className="form-control">
@@ -2762,7 +2762,7 @@ export default function CalendarPage() {
                             {showDeleteConfirm ? (
                                 <div className="bg-error/10 border border-error rounded-lg p-4">
                                     <p className="text-sm text-error mb-3">
-                                        この予定を削除しますか？この操作は取り消せません。
+                                        この予定を削除しますか？
                                     </p>
                                     <div className="flex gap-2 justify-end">
                                         <button

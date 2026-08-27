@@ -9,7 +9,7 @@ import { parseDateInput } from "@/src/shared/lib/jst-date";
 const BACKEND_API_URL = getBackendApiUrl();
 
 const normalizeAnnounceError = (error?: string) => {
-    if (!error) return "次回部会連絡の送信に失敗しました";
+    if (!error) return "次回部会のお知らせを送信できませんでした";
     return error;
 };
 

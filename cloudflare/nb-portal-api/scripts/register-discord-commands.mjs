@@ -13,11 +13,11 @@ const commands = [
 	{
 		name: "absences",
 		name_localizations: {
-			ja: "欠席者",
+			ja: "出欠状況",
 		},
 		description: "Show absence information for a date",
 		description_localizations: {
-			ja: "指定日の欠席者情報を表示します",
+			ja: "今日または指定日の出欠状況を表示します",
 		},
 		type: 1,
 		options: [
@@ -35,9 +35,12 @@ const commands = [
 			},
 			{
 				name: "public",
+				name_localizations: {
+					ja: "公開",
+				},
 				description: "Show the result in the channel",
 				description_localizations: {
-					ja: "結果をチャンネル全体に表示する",
+					ja: "結果をチャンネルに公開します",
 				},
 				type: 5,
 				required: false,
@@ -69,9 +72,12 @@ const commands = [
 			},
 			{
 				name: "public",
+				name_localizations: {
+					ja: "公開",
+				},
 				description: "Show the result in the channel",
 				description_localizations: {
-					ja: "結果をチャンネル全体に表示する",
+					ja: "結果をチャンネルに公開します",
 				},
 				type: 5,
 				required: false,

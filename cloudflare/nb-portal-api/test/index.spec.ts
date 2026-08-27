@@ -477,10 +477,10 @@ describe("Hello World worker", () => {
 		};
 		expect(body.type).toBe(4);
 		expect(body.data?.flags).toBe(64);
-		expect(body.data?.embeds?.[0]?.title).toBe("2099/07/04(土) の予定");
+		expect(body.data?.embeds?.[0]?.title).toBe("2099/07/04(土)の予定");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**合宿**");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("時間: 終日");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("場所: 校外");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("時間：終日");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("場所：校外");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("詳細:");
 		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("出欠締切:");
 	});
@@ -592,8 +592,29 @@ describe("Hello World worker", () => {
 		const fields = embeds.flatMap((embed) => embed.fields || []);
 		expect(fields).toHaveLength(20);
 		expect(embeds.at(-1)?.footer?.text).toBe(
-			"Discordの表示制限により、ほか 2 件を省略しました"
+			"Discordの表示制限により、ほか2件を省略しました"
 		);
+	});
+
+	it("shows the requested date when no Discord attendance schedules exist", async () => {
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-12-31" }],
+			},
+		});
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = (await response.json()) as {
+			data?: { embeds?: Array<{ title?: string; description?: string }> };
+		};
+
+		expect(body.data?.embeds?.[0]).toMatchObject({
+			title: "2099/12/31(木) 出欠状況",
+			description: "2099/12/31(木)の予定はありません。",
+		});
 	});
 
 	it("returns Discord absence command using the daily absence embed", async () => {
@@ -697,7 +718,7 @@ describe("Hello World worker", () => {
 		};
 
 		const attendanceEmbed = body.data?.embeds?.find((embed) =>
-			embed.title?.includes("希望者参加イベント 出席者一覧")
+				embed.title?.includes("希望者参加イベント 参加者一覧")
 		);
 		const absenceEmbed = body.data?.embeds?.find((embed) =>
 			embed.title?.includes("全員参加イベント 欠席者一覧")
@@ -743,12 +764,12 @@ describe("Hello World worker", () => {
 		};
 
 		expect(body.data?.embeds?.[0]?.title).toContain(
-			"申告なしイベント 出席者一覧"
+			"申告なしイベント 参加者一覧"
 		);
 		expect(body.data?.embeds?.[0]?.fields).toEqual([
 			expect.objectContaining({
 				name: "情報",
-				value: "本日の出席者はいません",
+				value: "参加者はいません",
 			}),
 		]);
 	});
@@ -805,7 +826,7 @@ describe("Hello World worker", () => {
 		expect(body.data?.embeds?.[0]?.fields).toHaveLength(25);
 		expect(body.data?.embeds?.[1]?.fields).toHaveLength(1);
 		expect(body.data?.embeds?.[1]?.title).toContain(
-			"大人数イベント 出席者一覧 (2)"
+			"大人数イベント 参加者一覧（2）"
 		);
 	});
 
@@ -846,7 +867,7 @@ describe("Hello World worker", () => {
 
 		expect(body.data?.embeds).toHaveLength(10);
 		expect(body.data?.content).toBe(
-			"Discordの表示制限により、ほか 1 件の一覧を省略しました。"
+			"Discordの表示制限により、ほか1件の一覧を省略しました。"
 		);
 	});
 

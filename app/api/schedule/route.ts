@@ -86,7 +86,7 @@ const sendSchedulePushNotification = async (
     const eventId = getScheduleEventId(scheduleData);
 
     await sendPushNotification(origin, {
-        title: `${getScheduleKindLabel(scheduleData)}が${actionLabel}されました: ${getScheduleTitle(scheduleData)}`,
+        title: `${getScheduleKindLabel(scheduleData)}「${getScheduleTitle(scheduleData)}」が${actionLabel}されました`,
         body: buildSchedulePushBody(scheduleData),
         url: "/calendar",
         tag: eventId

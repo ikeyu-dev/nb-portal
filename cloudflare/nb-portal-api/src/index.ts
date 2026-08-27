@@ -1423,20 +1423,20 @@ const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
 const formatScheduleDateRange = (row: ScheduleRow) => {
 	const start = getDateLabel(row.date);
 	const end = row.end_date ? getDateLabel(row.end_date) : "";
-	return end && end !== start ? `${start} - ${end}` : start;
+	return end && end !== start ? `${start}〜${end}` : start;
 };
 
 const formatScheduleTimeRange = (row: ScheduleRow) => {
 	if (!row.start_time && !row.end_time) return "終日";
-	if (row.start_time && row.end_time) return `${row.start_time} - ${row.end_time}`;
+	if (row.start_time && row.end_time) return `${row.start_time}〜${row.end_time}`;
 	return row.start_time || row.end_time || "終日";
 };
 
 const buildScheduleField = (row: ScheduleRow) => {
 	const values = [
 		`**${row.title || "無題"}**`,
-		`時間: ${formatScheduleTimeRange(row)}`,
-		`場所: ${row.location || "未定"}`,
+		`時間：${formatScheduleTimeRange(row)}`,
+		`場所：${row.location || "未定"}`,
 	];
 
 	return {
@@ -1543,7 +1543,7 @@ const buildNextMeetingReminderEmbed = (
 	settings: NextMeetingRow,
 	{
 		title = "次回部会のお知らせ",
-		description = "次回の部会予定です。",
+		description = "次回の部会をお知らせします。",
 	}: {
 		title?: string;
 		description?: string;
@@ -1618,7 +1618,7 @@ const sendNextMeetingInPersonReminder = async (
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
 				title,
-				description: "本日の部会は対面開催です。",
+					description: "本日の部会は対面で行います。",
 			}),
 		],
 	});
@@ -1636,8 +1636,8 @@ const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 		content: getNextMeetingRoleMention(env),
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
-				title: "本日18:00 Discord部会リマインド",
-				description: "このあとの部会は Discord 開催です。",
+					title: "本日のDiscord部会のお知らせ",
+					description: "このあとの部会はDiscordで行います。",
 			}),
 		],
 	});
@@ -1690,7 +1690,7 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 	}
 
 	return Array.from(groups.values()).flatMap((group) => {
-		const responseLabel = group.isAttendanceEvent ? "出席者" : "欠席者";
+		const responseLabel = group.isAttendanceEvent ? "参加者" : "欠席者";
 		const responseChunks = chunkArray(
 			group.responses,
 			DISCORD_MAX_EMBED_FIELDS
@@ -1708,11 +1708,11 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 					: [
 							{
 								name: "情報",
-								value: `本日の${responseLabel}はいません`,
+								value: `${responseLabel}はいません`,
 								inline: false,
 							},
 						];
-			const continuationLabel = index > 0 ? ` (${index + 1})` : "";
+			const continuationLabel = index > 0 ? `（${index + 1}）` : "";
 
 			return {
 				title: `${dateLabel} ${group.title} ${responseLabel}一覧${continuationLabel}`,
@@ -1845,7 +1845,7 @@ const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEn
 		await Promise.all([
 			sendTodayAbsences(env),
 			sendNextMeetingInPersonReminder(env, {
-				title: "本日8:00 対面部会リマインド",
+				title: "本日の対面部会のお知らせ",
 			}),
 		]);
 		return;
@@ -1853,7 +1853,7 @@ const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEn
 
 	if (controller.cron === "30 3 * * *") {
 		await sendNextMeetingInPersonReminder(env, {
-			title: "本日12:30 対面部会リマインド",
+			title: "本日の対面部会のお知らせ",
 		});
 		return;
 	}
@@ -1908,7 +1908,7 @@ const getScheduleRowsForDiscord = async (env: Env, date: string | null) => {
 };
 
 const buildScheduleEmbeds = (rows: ScheduleRow[], date: string | null) => {
-	const title = date ? `${getDateLabel(date)} の予定` : "今後の予定";
+	const title = date ? `${getDateLabel(date)}の予定` : "今後の予定";
 	if (rows.length === 0) {
 		return [
 			{
@@ -1926,11 +1926,11 @@ const buildScheduleEmbeds = (rows: ScheduleRow[], date: string | null) => {
 	return chunks.map((chunk, index) => ({
 		title: index === 0 ? title : `${title} (${index + 1})`,
 		description:
-			index === 0 && !date ? "直近の予定を日付順に表示します" : undefined,
+				index === 0 && !date ? "今後の予定を日付順に表示します" : undefined,
 		color: 0x0ea5e9,
 		fields: chunk,
 		...(omittedCount > 0 && index === chunks.length - 1
-			? { footer: { text: `Discordの表示制限により、ほか ${omittedCount} 件を省略しました` } }
+				? { footer: { text: `Discordの表示制限により、ほか${omittedCount}件を省略しました` } }
 			: {}),
 	})) satisfies DiscordEmbed[];
 };
@@ -1944,7 +1944,7 @@ const handleDiscordAbsencesCommand = async (
 	const date = dateValue ? parseDiscordDateOption(dateValue) : getJstDateParts().date;
 	if (!date) {
 		return discordMessage({
-			content: "日付は YYYY-MM-DD 形式で指定してください。",
+				content: "日付はYYYY-MM-DD形式で指定してください。",
 		});
 	}
 
@@ -1956,22 +1956,16 @@ const handleDiscordAbsencesCommand = async (
 		ephemeral: !getDiscordPublicOption(options),
 		content:
 			omittedEmbedCount > 0
-				? `Discordの表示制限により、ほか ${omittedEmbedCount} 件の一覧を省略しました。`
+					? `Discordの表示制限により、ほか${omittedEmbedCount}件の一覧を省略しました。`
 				: undefined,
 		embeds:
 			displayedEmbeds.length > 0
 				? displayedEmbeds
 				: [
 						{
-							title: `${getDateLabel(date)} 欠席者一覧`,
+							title: `${getDateLabel(date)} 出欠状況`,
 							color: 0x94a3b8,
-							fields: [
-								{
-									name: "情報",
-									value: "本日の予定はありません",
-									inline: false,
-								},
-							],
+							description: `${getDateLabel(date)}の予定はありません。`,
 						},
 					],
 	});
@@ -1986,7 +1980,7 @@ const handleDiscordScheduleCommand = async (
 	const date = dateValue ? parseDiscordDateOption(dateValue) : null;
 	if (dateValue && !date) {
 		return discordMessage({
-			content: "日付は YYYY-MM-DD 形式で指定してください。",
+				content: "日付はYYYY-MM-DD形式で指定してください。",
 		});
 	}
 
@@ -2016,6 +2010,7 @@ const handleDiscordApplicationCommand = async (
 		case "absences":
 		case "欠席者":
 		case "欠席":
+		case "出欠状況":
 			return handleDiscordAbsencesCommand(interaction.data?.options, env);
 		case "schedule":
 		case "予定":
@@ -2039,11 +2034,11 @@ const handleDiscordInteraction = async (request: Request, env: RuntimeEnv) => {
 			return await handleDiscordApplicationCommand(interaction, env);
 		}
 
-		return discordMessage({ content: "未対応のInteractionです。" });
+		return discordMessage({ content: "未対応の操作です。" });
 	} catch (caught) {
 		console.error("Discord interaction error:", caught);
 		return discordMessage({
-			content: "コマンドの処理中にエラーが発生しました。時間をおいて再実行してください。",
+			content: "コマンドを実行できませんでした。時間をおいてもう一度お試しください。",
 		});
 	}
 };

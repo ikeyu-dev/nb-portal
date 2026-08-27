@@ -266,7 +266,7 @@ export default function PdfViewer({ src }: PdfViewerProps) {
                                 error={
                                     <div className="flex items-center justify-center h-64">
                                         <p className="text-error">
-                                            PDFの読み込みに失敗しました
+                                            PDFを読み込めませんでした
                                         </p>
                                     </div>
                                 }

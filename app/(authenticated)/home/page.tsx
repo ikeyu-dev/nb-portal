@@ -120,7 +120,7 @@ export default async function HomePage() {
         nextMeeting = dashboardRes.data?.nextMeeting || null;
     } catch (err) {
         error =
-            err instanceof Error ? err.message : "データの取得に失敗しました";
+            err instanceof Error ? err.message : "ダッシュボードを取得できませんでした";
     }
 
     const todayDateInput = formatJstDateInput();
@@ -133,7 +133,7 @@ export default async function HomePage() {
             .map(getScheduleEventId)
     );
 
-    // 本日の欠席者をフィルタリング（出席申告は除外）
+    // 本日の欠席者をフィルタリング（参加登録は除外）
     const todayAbsences = absences.filter((absence) => {
         const absenceEventId = getAbsenceEventId(absence);
         const type = getAbsenceType(absence);
@@ -185,7 +185,7 @@ export default async function HomePage() {
                                         fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
                                     }}
                                 >
-                                    今後のスケジュール
+                                    今後の予定
                                 </h2>
                                 {upcomingSchedules.length > 0 && (
                                     <span className="badge badge-primary badge-sm ml-auto">

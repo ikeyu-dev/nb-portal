@@ -64,7 +64,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                         nextNotifications
                     );
                 } else {
-                    setError(data.error || "データの取得に失敗しました");
+                    setError(data.error || "お知らせを取得できませんでした");
                 }
             } catch (err) {
                 const stale = getStaleClientCacheEntry<Notification[]>(
@@ -77,7 +77,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                     setError(
                         err instanceof Error
                             ? err.message
-                            : "データの取得に失敗しました"
+                            : "お知らせを取得できませんでした"
                     );
                 }
             } finally {

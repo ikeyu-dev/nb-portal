@@ -514,7 +514,7 @@ export function MeetingMemoForm() {
                         onClick={addScheduleItem}
                     >
                         <FontAwesomeIcon icon={faCirclePlus} />
-                        イベントを追加
+                        予定を追加
                     </button>
                 </div>
                 <div className="divide-y divide-base-300">
@@ -526,7 +526,7 @@ export function MeetingMemoForm() {
                             <div className="flex items-end gap-2">
                                 <div className="min-w-0 flex-1 space-y-2">
                                     <label className={FIELD_LABEL_CLASS}>
-                                        イベント {index + 1}（必須）
+                                        予定 {index + 1}（必須）
                                     </label>
                                     <input
                                         type="text"
@@ -549,7 +549,7 @@ export function MeetingMemoForm() {
                                         onClick={() =>
                                             removeScheduleItem(item.id)
                                         }
-                                        aria-label={`イベント ${
+                                        aria-label={`予定 ${
                                             index + 1
                                         } を削除`}
                                     >

@@ -95,7 +95,7 @@ export async function getEventAttendance(
         );
         const result = (await response.json()) as ApiResponse<EventAttendance[]>;
         if (!response.ok || result.success !== true) {
-            throw new Error(result.error || "出席者の取得に失敗しました");
+            throw new Error(result.error || "出席確認を取得できませんでした");
         }
         return result;
     } catch (error) {
@@ -130,7 +130,7 @@ export async function updateEventAttendance(data: {
             updatedAt: string;
         }>;
         if (!response.ok || result.success !== true) {
-            throw new Error(result.error || "出席者の保存に失敗しました");
+            throw new Error(result.error || "出席確認を保存できませんでした");
         }
         return result;
     } catch (error) {

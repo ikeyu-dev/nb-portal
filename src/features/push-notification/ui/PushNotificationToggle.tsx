@@ -49,7 +49,7 @@ export default function PushNotificationToggle({
         } catch (error) {
             console.error("Error subscribing:", error);
             alert(
-                "プッシュ通知の登録に失敗しました。ページを再読み込みしてもう一度お試しください。"
+                "プッシュ通知を登録できませんでした。ページを再読み込みして、もう一度お試しください。"
             );
         } finally {
             setIsProcessing(false);
@@ -65,7 +65,7 @@ export default function PushNotificationToggle({
             setState("unsubscribed");
         } catch (error) {
             console.error("Error unsubscribing:", error);
-            alert("プッシュ通知の解除に失敗しました");
+            alert("プッシュ通知を解除できませんでした");
         } finally {
             setIsProcessing(false);
         }
