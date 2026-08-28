@@ -47,9 +47,15 @@ export function AccessLogger() {
             }),
             cache: "no-store",
             keepalive: true,
-        }).catch(() => {
-            localStorage.removeItem(storageKey);
-        });
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    localStorage.removeItem(storageKey);
+                }
+            })
+            .catch(() => {
+                localStorage.removeItem(storageKey);
+            });
     }, [pathname]);
 
     return null;
