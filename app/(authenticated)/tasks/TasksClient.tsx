@@ -80,15 +80,16 @@ const resolveMembers = (data: MembersData | undefined): MemberOption[] => {
 };
 
 export default function TasksClient({ currentStudentId }: TasksClientProps) {
-    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
-    const urlModalQuery = searchParams.toString();
+    const { modal, getModalParam, openModal, closeModal } = useUrlModal();
+    const modalTaskId = getModalParam("task");
+    const isTaskModalOpen = modal === "task-create" || modal === "task-edit";
+    const isDeleteModalOpen = modal === "task-delete";
     const [tasks, setTasks] = useState<Task[]>([]);
     const [members, setMembers] = useState<MemberOption[]>([]);
     const [form, setForm] = useState<TaskFormState>(emptyForm);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
     const [deleteTargetTask, setDeleteTargetTask] = useState<Task | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -156,20 +157,19 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
     useEffect(() => {
         if (isLoading) return;
 
-        const params = new URLSearchParams(urlModalQuery);
-        const modal = params.get("modal");
-        const taskId = params.get("task");
         if (modal === "task-create") {
             setForm(emptyForm);
             setError(null);
             setSuccessMessage(null);
             setDeleteTargetTask(null);
-            setIsTaskModalOpen(true);
             return;
         }
 
-        if ((modal === "task-edit" || modal === "task-delete") && taskId) {
-            const task = tasks.find((item) => item.id === taskId);
+        if (
+            (modal === "task-edit" || modal === "task-delete") &&
+            modalTaskId
+        ) {
+            const task = tasks.find((item) => item.id === modalTaskId);
             if (!task) return;
 
             setError(null);
@@ -186,44 +186,33 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                         (assignee) => assignee.studentNumber
                     ),
                 });
-                setIsTaskModalOpen(true);
             } else {
-                setIsTaskModalOpen(false);
                 setDeleteTargetTask(task);
             }
         }
-    }, [isLoading, tasks, urlModalQuery]);
-
-    const resetForm = () => {
-        setForm(emptyForm);
-        setSuccessMessage(null);
-    };
+    }, [isLoading, tasks, modal, modalTaskId]);
 
     const openCreateTaskModal = () => {
         setForm(emptyForm);
         setError(null);
         setSuccessMessage(null);
-        setIsTaskModalOpen(true);
-        updateUrlModal({ modal: "task-create", task: null });
+        openModal("task-create", { task: null });
     };
 
     const closeTaskModal = () => {
-        setIsTaskModalOpen(false);
-        resetForm();
-        clearUrlModal(["task"]);
+        closeModal(["task"]);
     };
 
     const openDeleteTaskModal = (task: Task) => {
         setDeleteTargetTask(task);
         setError(null);
         setSuccessMessage(null);
-        updateUrlModal({ modal: "task-delete", task: task.id });
+        openModal("task-delete", { task: task.id });
     };
 
     const closeDeleteTaskModal = () => {
         if (isDeleting) return;
-        setDeleteTargetTask(null);
-        clearUrlModal(["task"]);
+        closeModal(["task"]);
     };
 
     const toggleAssignee = (studentNumber: string) => {
@@ -259,9 +248,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
 
             setTasks(data.data || []);
             setSuccessMessage(form.id ? "タスクを更新しました" : "タスクを追加しました");
-            setIsTaskModalOpen(false);
-            resetForm();
-            clearUrlModal(["task"]);
+            closeModal(["task"]);
         } catch (caught) {
             setError(
                 caught instanceof Error
@@ -286,8 +273,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
         });
         setSuccessMessage(null);
         setError(null);
-        setIsTaskModalOpen(true);
-        updateUrlModal({ modal: "task-edit", task: task.id });
+        openModal("task-edit", { task: task.id });
     };
 
     const updateTaskStatus = async (task: Task, status: TaskStatus) => {
@@ -334,9 +320,8 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
             setTasks((current) =>
                 current.filter((task) => task.id !== deleteTargetTask.id)
             );
-            setDeleteTargetTask(null);
             setSuccessMessage("タスクを削除しました");
-            clearUrlModal(["task"]);
+            closeModal(["task"]);
         } catch (caught) {
             setError(
                 caught instanceof Error
@@ -512,7 +497,8 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                 </div>
             </section>
 
-            {isTaskModalOpen && (
+            {isTaskModalOpen &&
+                (modal === "task-create" || form.id === modalTaskId) && (
                 <AppModal
                     onClose={closeTaskModal}
                     ariaLabel={form.id ? "タスクを編集" : "タスクを追加"}
@@ -674,7 +660,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                 </AppModal>
             )}
 
-            {deleteTargetTask && (
+            {isDeleteModalOpen && deleteTargetTask && (
                 <AppModal
                     onClose={closeDeleteTaskModal}
                     ariaLabel="タスクを削除"

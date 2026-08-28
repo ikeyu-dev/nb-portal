@@ -62,8 +62,7 @@ export function NextMeetingCard({
     permission,
     className = "",
 }: NextMeetingCardProps) {
-    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
-    const urlModalQuery = searchParams.toString();
+    const { modal, openModal, closeModal } = useUrlModal();
     const [meeting, setMeeting] = useState(initialMeeting);
     const [date, setDate] = useState(initialMeeting?.date || "");
     const [time, setTime] = useState(initialMeeting?.time || "21:00");
@@ -72,8 +71,6 @@ export function NextMeetingCard({
     );
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isAnnouncing, setIsAnnouncing] = useState(false);
-    const [isEditorOpen, setIsEditorOpen] = useState(false);
-    const [isAnnounceConfirmOpen, setIsAnnounceConfirmOpen] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -81,10 +78,11 @@ export function NextMeetingCard({
         () => canManageNextMeeting(permission),
         [permission]
     );
+    const isEditorOpen = canManage && modal === "next-meeting-edit";
+    const isAnnounceConfirmOpen =
+        canManage && modal === "next-meeting-announce";
 
     useEffect(() => {
-        const params = new URLSearchParams(urlModalQuery);
-        const modal = params.get("modal");
         if (!canManage) return;
         if (modal === "next-meeting-edit") {
             setDate(meeting?.date || "");
@@ -92,16 +90,12 @@ export function NextMeetingCard({
             setMode(meeting?.mode || "DISCORD");
             setError(null);
             setSuccessMessage(null);
-            setIsEditorOpen(true);
-            setIsAnnounceConfirmOpen(false);
         }
         if (modal === "next-meeting-announce") {
             setError(null);
             setSuccessMessage(null);
-            setIsAnnounceConfirmOpen(true);
-            setIsEditorOpen(false);
         }
-    }, [canManage, meeting, urlModalQuery]);
+    }, [canManage, meeting, modal]);
 
     const openEditor = () => {
         setDate(meeting?.date || "");
@@ -109,28 +103,23 @@ export function NextMeetingCard({
         setMode(meeting?.mode || "DISCORD");
         setError(null);
         setSuccessMessage(null);
-        setIsEditorOpen(true);
-        updateUrlModal({ modal: "next-meeting-edit" });
+        openModal("next-meeting-edit");
     };
 
     const closeEditor = () => {
         if (isSubmitting) return;
-        setIsEditorOpen(false);
-        setError(null);
-        clearUrlModal();
+        closeModal();
     };
 
     const openAnnounceConfirm = () => {
         setError(null);
         setSuccessMessage(null);
-        setIsAnnounceConfirmOpen(true);
-        updateUrlModal({ modal: "next-meeting-announce" });
+        openModal("next-meeting-announce");
     };
 
     const closeAnnounceConfirm = () => {
         if (isAnnouncing) return;
-        setIsAnnounceConfirmOpen(false);
-        clearUrlModal();
+        closeModal();
     };
 
     const handleSubmit = async (event: React.FormEvent) => {
@@ -153,8 +142,7 @@ export function NextMeetingCard({
 
             setMeeting(result.data);
             setSuccessMessage("次回部会を更新しました");
-            setIsEditorOpen(false);
-            clearUrlModal();
+            closeModal();
         } catch (submitError) {
             setError(
                 submitError instanceof Error
@@ -179,8 +167,7 @@ export function NextMeetingCard({
             }
 
             setSuccessMessage("次回部会連絡をDiscordに送信しました");
-            setIsAnnounceConfirmOpen(false);
-            clearUrlModal();
+            closeModal();
         } catch (announceError) {
             setError(
                 announceError instanceof Error

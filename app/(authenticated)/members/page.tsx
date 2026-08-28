@@ -221,17 +221,24 @@ const getAdmissionYear = (studentNumber: SheetCellValue): string | null => {
 };
 
 export default function MembersPage() {
-    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
-    const urlModalQuery = searchParams.toString();
+    const {
+        modal,
+        getModalParam,
+        openModal,
+        replaceModal,
+        closeModal,
+    } = useUrlModal();
+    const modalMemberId = getModalParam("member");
+    const isCreateModalOpen = modal === "member-create";
+    const isCheckedListModalOpen = modal === "checked-members";
+    const isEditModalOpen = modal === "member-edit";
+    const isDeleteModalOpen = modal === "member-delete";
     const [headers, setHeaders] = useState<string[]>([]);
     const [members, setMembers] = useState<MemberRow[]>([]);
     const [query, setQuery] = useState("");
     const [selectedAdmissionYear, setSelectedAdmissionYear] = useState("all");
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isCheckedListModalOpen, setIsCheckedListModalOpen] =
-        useState(false);
     const [editingMember, setEditingMember] = useState<MemberRow | null>(null);
     const [deletingMember, setDeletingMember] = useState<MemberRow | null>(
         null
@@ -407,25 +414,23 @@ export default function MembersPage() {
     useEffect(() => {
         if (isLoading) return;
 
-        const params = new URLSearchParams(urlModalQuery);
-        const modal = params.get("modal");
-        const studentNumber = params.get("member");
         if (modal === "member-create") {
             setCreateValues(headers.map(() => ""));
             setModalError(null);
-            setIsCreateModalOpen(true);
             return;
         }
 
         if (modal === "checked-members") {
-            setIsCheckedListModalOpen(true);
             return;
         }
 
-        if ((modal === "member-edit" || modal === "member-delete") && studentNumber) {
+        if (
+            (modal === "member-edit" || modal === "member-delete") &&
+            modalMemberId
+        ) {
             const member = members.find(
                 (currentMember) =>
-                    getMemberStudentNumber(currentMember) === studentNumber
+                    getMemberStudentNumber(currentMember) === modalMemberId
             );
             if (!member) return;
 
@@ -449,7 +454,8 @@ export default function MembersPage() {
         headers,
         isLoading,
         members,
-        urlModalQuery,
+        modal,
+        modalMemberId,
     ]);
 
     const clearFilters = () => {
@@ -507,22 +513,17 @@ export default function MembersPage() {
     const openCreateModal = () => {
         setCreateValues(headers.map(() => ""));
         setModalError(null);
-        setIsCreateModalOpen(true);
-        updateUrlModal({ modal: "member-create", member: null });
+        openModal("member-create", { member: null });
     };
 
     const closeCreateModal = (force = false) => {
         if (isSubmitting && !force) return;
-        setIsCreateModalOpen(false);
-        setCreateValues([]);
-        setModalError(null);
-        clearUrlModal(["member"]);
+        closeModal(["member"]);
     };
 
     const closeCheckedListModal = () => {
-        setIsCheckedListModalOpen(false);
         setLineNameCopyStatus("idle");
-        clearUrlModal(["member"]);
+        closeModal(["member"]);
     };
 
     const copyCheckedLineNames = async () => {
@@ -551,18 +552,14 @@ export default function MembersPage() {
             headers.map((_, index) => stringifyCell(member.values[index]))
         );
         setModalError(null);
-        updateUrlModal({
-            modal: "member-edit",
+        openModal("member-edit", {
             member: getMemberStudentNumber(member),
         });
     };
 
     const closeEditModal = (force = false) => {
         if (isSubmitting && !force) return;
-        setEditingMember(null);
-        setEditValues([]);
-        setModalError(null);
-        clearUrlModal(["member"]);
+        closeModal(["member"]);
     };
 
     const openDeleteModalFromEdit = () => {
@@ -571,17 +568,14 @@ export default function MembersPage() {
         setEditingMember(null);
         setEditValues([]);
         setModalError(null);
-        updateUrlModal({
-            modal: "member-delete",
+        replaceModal("member-delete", {
             member: getMemberStudentNumber(editingMember),
         });
     };
 
     const closeDeleteModal = (force = false) => {
         if (isSubmitting && !force) return;
-        setDeletingMember(null);
-        setModalError(null);
-        clearUrlModal(["member"]);
+        closeModal(["member"]);
     };
 
     const handleCreate = async () => {
@@ -718,11 +712,7 @@ export default function MembersPage() {
                             type="button"
                             className="btn btn-outline btn-sm gap-2"
                             onClick={() => {
-                                setIsCheckedListModalOpen(true);
-                                updateUrlModal({
-                                    modal: "checked-members",
-                                    member: null,
-                                });
+                                openModal("checked-members", { member: null });
                             }}
                             disabled={isLoading || checkedMembers.length === 0}
                         >
@@ -1154,7 +1144,7 @@ export default function MembersPage() {
                 </AppModal>
             )}
 
-            {editingMember && (
+            {isEditModalOpen && editingMember && (
                 <AppModal
                     onClose={() => closeEditModal()}
                     ariaLabel="名簿を編集"
@@ -1225,7 +1215,7 @@ export default function MembersPage() {
                 </AppModal>
             )}
 
-            {deletingMember && (
+            {isDeleteModalOpen && deletingMember && (
                 <AppModal
                     onClose={() => closeDeleteModal()}
                     ariaLabel="名簿から削除"

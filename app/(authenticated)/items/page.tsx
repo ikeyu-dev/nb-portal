@@ -34,17 +34,23 @@ const getCategoryFromItemId = (itemId: string): string => {
 };
 
 export default function ItemsPage() {
-    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
-    const urlModalQuery = searchParams.toString();
+    const {
+        modal,
+        getModalParam,
+        openModal,
+        replaceModal,
+        closeModal,
+    } = useUrlModal();
+    const modalItemId = getModalParam("item");
+    const isCreateModalOpen = modal === "item-create";
+    const isEditModalOpen = modal === "item-edit";
+    const isDeleteModalOpen = modal === "item-delete";
     const [items, setItems] = useState<Item[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<CategoryFilter>("all");
 
-    // モーダル関連の状態
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    // モーダルの表示状態と対象IDはURLで管理する
     const [selectedItem, setSelectedItem] = useState<{
         itemId: string;
         name: string;
@@ -112,34 +118,29 @@ export default function ItemsPage() {
     useEffect(() => {
         if (isLoading) return;
 
-        const params = new URLSearchParams(urlModalQuery);
-        const modal = params.get("modal");
-        const itemId = params.get("item");
         if (modal === "item-create") {
             setModalError(null);
-            setIsCreateModalOpen(true);
             return;
         }
 
-        if ((modal === "item-edit" || modal === "item-delete") && itemId) {
+        if (
+            (modal === "item-edit" || modal === "item-delete") &&
+            modalItemId
+        ) {
             const item = items.find(
-                (currentItem) => String(Object.values(currentItem)[0]) === itemId
+                (currentItem) =>
+                    String(Object.values(currentItem)[0]) === modalItemId
             );
             if (!item) return;
 
             const name = String(Object.values(item)[1] ?? "");
-            setSelectedItem({ itemId, name });
+            setSelectedItem({ itemId: modalItemId, name });
             setModalError(null);
             if (modal === "item-edit") {
                 setEditForm({ name });
-                setIsDeleteModalOpen(false);
-                setIsEditModalOpen(true);
-            } else {
-                setIsEditModalOpen(false);
-                setIsDeleteModalOpen(true);
             }
         }
-    }, [isLoading, items, urlModalQuery]);
+    }, [isLoading, items, modal, modalItemId]);
 
     const handleCreate = async () => {
         if (!createForm.name.trim()) {
@@ -159,9 +160,7 @@ export default function ItemsPage() {
             const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
-                setIsCreateModalOpen(false);
-                clearUrlModal(["item"]);
-                setCreateForm({ category: "MIC", name: "", count: 1 });
+                closeModal(["item"]);
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
@@ -195,10 +194,7 @@ export default function ItemsPage() {
             const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
-                setIsEditModalOpen(false);
-                clearUrlModal(["item"]);
-                setSelectedItem(null);
-                setEditForm({ name: "" });
+                closeModal(["item"]);
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
@@ -226,9 +222,7 @@ export default function ItemsPage() {
             const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
-                setIsDeleteModalOpen(false);
-                clearUrlModal(["item"]);
-                setSelectedItem(null);
+                closeModal(["item"]);
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
             } else {
@@ -245,15 +239,27 @@ export default function ItemsPage() {
         setSelectedItem({ itemId, name });
         setEditForm({ name });
         setModalError(null);
-        setIsEditModalOpen(true);
-        updateUrlModal({ modal: "item-edit", item: itemId });
+        openModal("item-edit", { item: itemId });
     };
 
-    const openDeleteModal = (itemId: string, name: string) => {
+    const openCreateModal = () => {
+        setCreateForm({ category: "MIC", name: "", count: 1 });
+        setModalError(null);
+        openModal("item-create", { item: null });
+    };
+
+    const openDeleteModal = (
+        itemId: string,
+        name: string,
+        replace = false
+    ) => {
         setSelectedItem({ itemId, name });
         setModalError(null);
-        setIsDeleteModalOpen(true);
-        updateUrlModal({ modal: "item-delete", item: itemId });
+        if (replace) {
+            replaceModal("item-delete", { item: itemId });
+        } else {
+            openModal("item-delete", { item: itemId });
+        }
     };
 
     const filteredItems =
@@ -406,11 +412,7 @@ export default function ItemsPage() {
                     </div>
                     <button
                         className="btn btn-primary btn-sm"
-                        onClick={() => {
-                            setModalError(null);
-                            setIsCreateModalOpen(true);
-                            updateUrlModal({ modal: "item-create", item: null });
-                        }}
+                        onClick={openCreateModal}
                     >
                         追加
                     </button>
@@ -474,11 +476,7 @@ export default function ItemsPage() {
                     </div>
                     <button
                         className="btn btn-primary btn-sm"
-                        onClick={() => {
-                            setModalError(null);
-                            setIsCreateModalOpen(true);
-                            updateUrlModal({ modal: "item-create", item: null });
-                        }}
+                        onClick={openCreateModal}
                     >
                         機材を追加
                     </button>
@@ -518,10 +516,7 @@ export default function ItemsPage() {
             {/* 機材登録モーダル */}
             {isCreateModalOpen && (
                 <AppModal
-                    onClose={() => {
-                    setIsCreateModalOpen(false);
-                    clearUrlModal(["item"]);
-                    }}
+                    onClose={() => closeModal(["item"])}
                     ariaLabel="機材を登録"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
@@ -599,10 +594,7 @@ export default function ItemsPage() {
                     <div className="modal-action">
                         <button
                             className="btn btn-ghost"
-                            onClick={() => {
-                                setIsCreateModalOpen(false);
-                                clearUrlModal(["item"]);
-                            }}
+                            onClick={() => closeModal(["item"])}
                             disabled={isSubmitting}
                         >
                             キャンセル
@@ -623,12 +615,9 @@ export default function ItemsPage() {
             )}
 
             {/* 機材編集モーダル */}
-            {isEditModalOpen && (
+            {isEditModalOpen && selectedItem && (
                 <AppModal
-                    onClose={() => {
-                    setIsEditModalOpen(false);
-                    clearUrlModal(["item"]);
-                    }}
+                    onClose={() => closeModal(["item"])}
                     ariaLabel="機材を編集"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
@@ -670,11 +659,11 @@ export default function ItemsPage() {
                         <button
                             className="btn btn-error btn-outline"
                             onClick={() => {
-                                setIsEditModalOpen(false);
                                 if (selectedItem) {
                                     openDeleteModal(
                                         selectedItem.itemId,
-                                        selectedItem.name
+                                        selectedItem.name,
+                                        true
                                     );
                                 }
                             }}
@@ -685,10 +674,7 @@ export default function ItemsPage() {
                         <div className="flex gap-2">
                             <button
                                 className="btn btn-ghost"
-                                onClick={() => {
-                                    setIsEditModalOpen(false);
-                                    clearUrlModal(["item"]);
-                                }}
+                                onClick={() => closeModal(["item"])}
                                 disabled={isSubmitting}
                             >
                                 キャンセル
@@ -710,12 +696,9 @@ export default function ItemsPage() {
             )}
 
             {/* 削除確認モーダル */}
-            {isDeleteModalOpen && (
+            {isDeleteModalOpen && selectedItem && (
                 <AppModal
-                    onClose={() => {
-                    setIsDeleteModalOpen(false);
-                    clearUrlModal(["item"]);
-                    }}
+                    onClose={() => closeModal(["item"])}
                     ariaLabel="機材を削除"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
@@ -749,10 +732,7 @@ export default function ItemsPage() {
                     <div className="modal-action">
                         <button
                             className="btn btn-ghost"
-                            onClick={() => {
-                                setIsDeleteModalOpen(false);
-                                clearUrlModal(["item"]);
-                            }}
+                            onClick={() => closeModal(["item"])}
                             disabled={isSubmitting}
                         >
                             キャンセル

@@ -197,7 +197,6 @@ interface ScheduleCardProps {
     attendanceDeadline?: string;
     dateLabel?: string;
     timeLabel?: string;
-    defaultOpen?: boolean;
     onClose?: () => void;
     onEdit?: () => void;
     hideCard?: boolean;
@@ -220,20 +219,34 @@ export default function ScheduleCard({
     attendanceDeadline,
     dateLabel,
     timeLabel,
-    defaultOpen = false,
     onClose,
     onEdit,
     hideCard = false,
     color = "#2a83a2",
 }: ScheduleCardProps) {
-    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
-    const urlModalQuery = searchParams.toString();
-    const [isModalOpen, setIsModalOpen] = useState(defaultOpen);
-    const [isAttendanceConfirmOpen, setIsAttendanceConfirmOpen] =
-        useState(false);
-    const [isAbsenceFormOpen, setIsAbsenceFormOpen] = useState(false);
-    const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-    const [isEventAttendanceOpen, setIsEventAttendanceOpen] = useState(false);
+    const {
+        modal,
+        getModalParam,
+        openModal,
+        replaceModal,
+        closeModal,
+    } = useUrlModal();
+    const ownsUrlModal = getModalParam("event") === eventId;
+    const isAttendanceConfirmOpen =
+        ownsUrlModal && modal === "response-confirm";
+    const isAbsenceFormOpen = ownsUrlModal && modal === "response-form";
+    const isDeleteConfirmOpen = ownsUrlModal && modal === "response-delete";
+    const isEventAttendanceOpen = ownsUrlModal && modal === "event-attendance";
+    const isModalOpen =
+        ownsUrlModal &&
+        [
+            "schedule-detail",
+            "schedule-response",
+            "response-confirm",
+            "response-form",
+            "response-delete",
+            "event-attendance",
+        ].includes(modal || "");
     const [isAttendanceSubmitting, setIsAttendanceSubmitting] = useState(false);
     const [isAbsenceSubmitting, setIsAbsenceSubmitting] = useState(false);
     const [isDeletingResponse, setIsDeletingResponse] = useState(false);
@@ -399,48 +412,6 @@ export default function ScheduleCard({
     }, [absences]);
 
     useEffect(() => {
-        const params = new URLSearchParams(urlModalQuery);
-        if (params.get("event") !== eventId) return;
-
-        const modal = params.get("modal");
-        if (modal === "schedule-response") {
-            setIsModalOpen(true);
-            setIsAttendanceConfirmOpen(false);
-            setIsAbsenceFormOpen(false);
-            setIsDeleteConfirmOpen(false);
-            setIsEventAttendanceOpen(false);
-        }
-        if (modal === "response-confirm") {
-            setIsModalOpen(true);
-            setIsAttendanceConfirmOpen(true);
-            setIsAbsenceFormOpen(false);
-            setIsDeleteConfirmOpen(false);
-            setIsEventAttendanceOpen(false);
-        }
-        if (modal === "response-form") {
-            setIsModalOpen(true);
-            setIsAttendanceConfirmOpen(false);
-            setIsAbsenceFormOpen(true);
-            setIsDeleteConfirmOpen(false);
-            setIsEventAttendanceOpen(false);
-        }
-        if (modal === "response-delete") {
-            setIsModalOpen(true);
-            setIsAttendanceConfirmOpen(false);
-            setIsAbsenceFormOpen(false);
-            setIsDeleteConfirmOpen(true);
-            setIsEventAttendanceOpen(false);
-        }
-        if (modal === "event-attendance") {
-            setIsModalOpen(true);
-            setIsAttendanceConfirmOpen(false);
-            setIsAbsenceFormOpen(false);
-            setIsDeleteConfirmOpen(false);
-            setIsEventAttendanceOpen(true);
-        }
-    }, [eventId, urlModalQuery]);
-
-    useEffect(() => {
         if (!isEventAttendanceOpen) return;
 
         const loadEventAttendance = async () => {
@@ -502,18 +473,16 @@ export default function ScheduleCard({
     }, [eventId, isEventAttendanceOpen]);
 
     const handleClose = () => {
-        setIsModalOpen(false);
-        setIsAttendanceConfirmOpen(false);
-        setIsAbsenceFormOpen(false);
-        setIsDeleteConfirmOpen(false);
-        setIsEventAttendanceOpen(false);
         setAttendanceSubmitMessage(null);
         setAbsenceSubmitMessage(null);
         setEventAttendanceMessage(null);
         setEventAttendanceSearch("");
         setAttendanceNote("");
-        onClose?.();
-        clearUrlModal(["event"]);
+        if (onClose) {
+            onClose();
+        } else {
+            closeModal(["event"]);
+        }
     };
 
     const resetAbsenceForm = () => {
@@ -557,38 +526,33 @@ export default function ScheduleCard({
 
     const closeAttendanceConfirm = () => {
         if (isAttendanceSubmitting) return;
-        setIsAttendanceConfirmOpen(false);
         setAttendanceSubmitMessage(null);
         setAttendanceNote("");
-        updateUrlModal({ modal: "schedule-response", event: eventId });
+        replaceModal("schedule-response", { event: eventId });
     };
 
     const closeAbsenceForm = () => {
         if (isAbsenceSubmitting) return;
-        setIsAbsenceFormOpen(false);
         setAbsenceSubmitMessage(null);
         resetAbsenceForm();
-        updateUrlModal({ modal: "schedule-response", event: eventId });
+        replaceModal("schedule-response", { event: eventId });
     };
 
     const closeDeleteConfirm = () => {
         if (isDeletingResponse) return;
-        setIsDeleteConfirmOpen(false);
-        updateUrlModal({ modal: "schedule-response", event: eventId });
+        replaceModal("schedule-response", { event: eventId });
     };
 
     const openEventAttendance = () => {
         setEventAttendanceMessage(null);
-        setIsEventAttendanceOpen(true);
-        updateUrlModal({ modal: "event-attendance", event: eventId });
+        replaceModal("event-attendance", { event: eventId });
     };
 
     const closeEventAttendance = () => {
         if (isEventAttendanceSaving) return;
-        setIsEventAttendanceOpen(false);
         setEventAttendanceMessage(null);
         setEventAttendanceSearch("");
-        updateUrlModal({ modal: "schedule-response", event: eventId });
+        replaceModal("schedule-response", { event: eventId });
     };
 
     const toggleEventAttendanceMember = (studentNumber: string) => {
@@ -662,7 +626,7 @@ export default function ScheduleCard({
                     };
                 })
             );
-            setEventAttendanceMessage("出席確認を保存しました");
+            replaceModal("schedule-response", { event: eventId });
         } catch (error) {
             setEventAttendanceMessage(
                 error instanceof Error
@@ -681,8 +645,7 @@ export default function ScheduleCard({
         }
         setAttendanceSubmitMessage(null);
         setAttendanceNote(ownResponse?.reasonDetail || "");
-        setIsAttendanceConfirmOpen(true);
-        updateUrlModal({ modal: "response-confirm", event: eventId });
+        replaceModal("response-confirm", { event: eventId });
     };
 
     const openAbsenceForm = () => {
@@ -703,8 +666,7 @@ export default function ScheduleCard({
                   }
                 : emptyAbsenceForm
         );
-        setIsAbsenceFormOpen(true);
-        updateUrlModal({ modal: "response-form", event: eventId });
+        replaceModal("response-form", { event: eventId });
     };
 
     const submitAttendance = async () => {
@@ -752,8 +714,8 @@ export default function ScheduleCard({
             setAttendanceSubmitMessage(
                 ownResponse ? "参加登録を更新しました" : "参加登録しました"
             );
-            setIsAttendanceConfirmOpen(false);
             setAttendanceNote("");
+            replaceModal("schedule-response", { event: eventId });
         } catch (error) {
             setAttendanceSubmitMessage(
                 error instanceof Error
@@ -821,8 +783,8 @@ export default function ScheduleCard({
             setAbsenceSubmitMessage(
                 ownResponse ? "欠席連絡を更新しました" : "欠席連絡を送信しました"
             );
-            setIsAbsenceFormOpen(false);
             resetAbsenceForm();
+            replaceModal("schedule-response", { event: eventId });
         } catch (error) {
             setAbsenceSubmitMessage(
                 error instanceof Error
@@ -856,12 +818,12 @@ export default function ScheduleCard({
             }
 
             removeLocalResponse();
-            setIsDeleteConfirmOpen(false);
             if (isAttendanceEvent) {
                 setAttendanceSubmitMessage("参加登録を削除しました");
             } else {
                 setAbsenceSubmitMessage("欠席連絡を削除しました");
             }
+            replaceModal("schedule-response", { event: eventId });
         } catch (error) {
             const message =
                 error instanceof Error
@@ -882,9 +844,7 @@ export default function ScheduleCard({
             {!hideCard && (
                 <div
                     onClick={() => {
-                        setIsModalOpen(true);
-                        updateUrlModal({
-                            modal: "schedule-response",
+                        openModal("schedule-response", {
                             event: eventId,
                         });
                     }}
@@ -1732,14 +1692,9 @@ export default function ScheduleCard({
                                                                             type="button"
                                                                             className="btn btn-ghost btn-xs text-error"
                                                                             onClick={() => {
-                                                                                setIsDeleteConfirmOpen(
-                                                                                    true
-                                                                                );
-                                                                                updateUrlModal(
-                                                                                    {
-                                                                                        modal: "response-delete",
-                                                                                        event: eventId,
-                                                                                    }
+                                                                                replaceModal(
+                                                                                    "response-delete",
+                                                                                    { event: eventId }
                                                                                 );
                                                                             }}
                                                                             disabled={

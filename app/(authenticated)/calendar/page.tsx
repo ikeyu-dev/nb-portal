@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { AppModal } from "@/src/shared/ui/AppModal";
@@ -156,9 +156,33 @@ const buildDateInput = (year: string, month: string, date: string) => {
     )}`;
 };
 
+const buildSelectedDateInfo = (
+    dateStr: string,
+    eventsByDate: Map<string, ScheduleWithPosition[]>
+): SelectedDateInfo | null => {
+    const date = parseDateStr(dateStr);
+    if (!date) return null;
+    return {
+        date,
+        dateStr,
+        events: eventsByDate.get(dateStr) || [],
+    };
+};
+
 export default function CalendarPage() {
-    const { searchParams, updateUrlModal, clearUrlModal } = useUrlModal();
-    const urlModalQuery = searchParams.toString();
+    const {
+        modal,
+        getModalParam,
+        openModal,
+        replaceModal,
+        closeModal: closeUrlModal,
+    } = useUrlModal();
+    const modalDate = getModalParam("date") || "";
+    const modalEventId = getModalParam("event") || "";
+    const showAddModal = modal === "schedule-create";
+    const showEditModal =
+        modal === "schedule-edit" || modal === "schedule-delete";
+    const showDeleteConfirm = modal === "schedule-delete";
     const [schedules, setSchedules] = useState<Schedule[]>([]);
     const [absences, setAbsences] = useState<Absence[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -168,9 +192,6 @@ export default function CalendarPage() {
         null
     );
     const [selectedEvent, setSelectedEvent] = useState<Schedule | null>(null);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const lastFetchAtRef = useRef(0);
@@ -329,90 +350,79 @@ export default function CalendarPage() {
         };
     }, []);
 
-    // 活動日のマップを作成（YYYY-MM-DD形式 -> イベント数）
     // 複数日にまたがるイベントは、開始日から終了日までの各日に表示（位置情報付き）
-    const activityCounts = new Map<string, number>();
-    const eventsByDate = new Map<string, ScheduleWithPosition[]>();
-    schedules.forEach((schedule) => {
-        const values = Object.values(schedule);
-        const startYear = Number(values[1]);
-        const startMonth = Number(values[2]);
-        const startDay = Number(values[3]);
-        // 終了日はインデックス9, 10, 11（END_YYYY, END_MM, END_DD）
-        const endYear = values[9] ? Number(values[9]) : 0;
-        const endMonth = values[10] ? Number(values[10]) : 0;
-        const endDay = values[11] ? Number(values[11]) : 0;
+    const eventsByDate = useMemo(() => {
+        const nextEventsByDate = new Map<string, ScheduleWithPosition[]>();
 
-        if (startYear && startMonth && startDay) {
-            const startDate = new Date(startYear, startMonth - 1, startDay);
-            // 終了日がある場合は複数日、なければ開始日のみ
-            const hasEndDate = endYear && endMonth && endDay;
-            const endDate = hasEndDate
-                ? new Date(endYear, endMonth - 1, endDay)
-                : startDate;
+        schedules.forEach((schedule) => {
+            const values = Object.values(schedule);
+            const startYear = Number(values[1]);
+            const startMonth = Number(values[2]);
+            const startDay = Number(values[3]);
+            // 終了日はインデックス9, 10, 11（END_YYYY, END_MM, END_DD）
+            const endYear = values[9] ? Number(values[9]) : 0;
+            const endMonth = values[10] ? Number(values[10]) : 0;
+            const endDay = values[11] ? Number(values[11]) : 0;
 
-            const isMultiDay =
-                hasEndDate && startDate.getTime() !== endDate.getTime();
+            if (startYear && startMonth && startDay) {
+                const startDate = new Date(startYear, startMonth - 1, startDay);
+                // 終了日がある場合は複数日、なければ開始日のみ
+                const hasEndDate = endYear && endMonth && endDay;
+                const endDate = hasEndDate
+                    ? new Date(endYear, endMonth - 1, endDay)
+                    : startDate;
 
-            // 開始日から終了日まで各日にイベントを追加
-            const currentDate = new Date(startDate);
-            while (currentDate <= endDate) {
-                const dateStr = `${currentDate.getFullYear()}-${String(
-                    currentDate.getMonth() + 1
-                ).padStart(
-                    2,
-                    "0"
-                )}-${String(currentDate.getDate()).padStart(2, "0")}`;
-                activityCounts.set(
-                    dateStr,
-                    (activityCounts.get(dateStr) || 0) + 1
-                );
+                const isMultiDay =
+                    hasEndDate && startDate.getTime() !== endDate.getTime();
 
-                // 位置情報を計算
-                let position: EventPosition = "single";
-                if (isMultiDay) {
-                    const isStart =
-                        currentDate.getTime() === startDate.getTime();
-                    const isEnd = currentDate.getTime() === endDate.getTime();
-                    if (isStart) {
-                        position = "start";
-                    } else if (isEnd) {
-                        position = "end";
-                    } else {
-                        position = "middle";
+                // 開始日から終了日まで各日にイベントを追加
+                const currentDate = new Date(startDate);
+                while (currentDate <= endDate) {
+                    const dateStr = `${currentDate.getFullYear()}-${String(
+                        currentDate.getMonth() + 1
+                    ).padStart(
+                        2,
+                        "0"
+                    )}-${String(currentDate.getDate()).padStart(2, "0")}`;
+                    // 位置情報を計算
+                    let position: EventPosition = "single";
+                    if (isMultiDay) {
+                        const isStart =
+                            currentDate.getTime() === startDate.getTime();
+                        const isEnd =
+                            currentDate.getTime() === endDate.getTime();
+                        if (isStart) {
+                            position = "start";
+                        } else if (isEnd) {
+                            position = "end";
+                        } else {
+                            position = "middle";
+                        }
                     }
+
+                    // 週の境界を計算（日曜日が週の始まり）
+                    const dayOfWeek = currentDate.getDay();
+                    const isWeekStart =
+                        dayOfWeek === 0 ||
+                        currentDate.getTime() === startDate.getTime();
+                    const isWeekEnd =
+                        dayOfWeek === 6 ||
+                        currentDate.getTime() === endDate.getTime();
+
+                    const existing = nextEventsByDate.get(dateStr) || [];
+                    nextEventsByDate.set(dateStr, [
+                        ...existing,
+                        { schedule, position, isWeekStart, isWeekEnd },
+                    ]);
+
+                    // 次の日へ
+                    currentDate.setDate(currentDate.getDate() + 1);
                 }
-
-                // 週の境界を計算（日曜日が週の始まり）
-                const dayOfWeek = currentDate.getDay();
-                const isWeekStart =
-                    dayOfWeek === 0 ||
-                    currentDate.getTime() === startDate.getTime();
-                const isWeekEnd =
-                    dayOfWeek === 6 ||
-                    currentDate.getTime() === endDate.getTime();
-
-                const existing = eventsByDate.get(dateStr) || [];
-                eventsByDate.set(dateStr, [
-                    ...existing,
-                    { schedule, position, isWeekStart, isWeekEnd },
-                ]);
-
-                // 次の日へ
-                currentDate.setDate(currentDate.getDate() + 1);
             }
-        }
-    });
+        });
 
-    const buildSelectedDateInfo = (dateStr: string): SelectedDateInfo | null => {
-        const date = parseDateStr(dateStr);
-        if (!date) return null;
-        return {
-            date,
-            dateStr,
-            events: eventsByDate.get(dateStr) || [],
-        };
-    };
+        return nextEventsByDate;
+    }, [schedules]);
 
     const buildEditForm = (event: Schedule): EventForm => {
         const values = Object.values(event);
@@ -521,31 +531,27 @@ export default function CalendarPage() {
     useEffect(() => {
         if (isLoading) return;
 
-        const params = new URLSearchParams(urlModalQuery);
-        const modal = params.get("modal");
-        const dateStr = params.get("date") || "";
-        const eventId = params.get("event") || "";
-        if (modal === "schedule-date" && dateStr) {
-            const nextSelectedDate = buildSelectedDateInfo(dateStr);
+        if (modal === "schedule-date" && modalDate) {
+            const nextSelectedDate = buildSelectedDateInfo(
+                modalDate,
+                eventsByDate
+            );
             if (nextSelectedDate) {
                 setSelectedDate(nextSelectedDate);
                 setSelectedEvent(null);
-                setShowAddModal(false);
-                setShowEditModal(false);
-                setShowDeleteConfirm(false);
             }
             return;
         }
 
-        if (modal === "schedule-create" && dateStr) {
-            const nextSelectedDate = buildSelectedDateInfo(dateStr);
+        if (modal === "schedule-create" && modalDate) {
+            const nextSelectedDate = buildSelectedDateInfo(
+                modalDate,
+                eventsByDate
+            );
             if (nextSelectedDate) {
                 setSelectedDate(nextSelectedDate);
                 setSelectedEvent(null);
                 setAddForm(buildAddForm(nextSelectedDate.date));
-                setShowAddModal(true);
-                setShowEditModal(false);
-                setShowDeleteConfirm(false);
             }
             return;
         }
@@ -556,80 +562,35 @@ export default function CalendarPage() {
                 "schedule-edit",
                 "schedule-delete",
             ].includes(modal || "") &&
-            eventId
+            modalEventId
         ) {
             const event = schedules.find(
-                (schedule) => getScheduleEventId(schedule) === eventId
+                (schedule) => getScheduleEventId(schedule) === modalEventId
             );
             if (!event) return;
             const eventDateStr = getScheduleDateStr(event);
-            const nextSelectedDate = buildSelectedDateInfo(eventDateStr);
+            const nextSelectedDate = buildSelectedDateInfo(
+                eventDateStr,
+                eventsByDate
+            );
             setSelectedDate(nextSelectedDate);
             setSelectedEvent(event);
-            setShowAddModal(false);
             if (modal === "schedule-edit" || modal === "schedule-delete") {
                 setEditForm(buildEditForm(event));
-                setShowEditModal(true);
-                setShowDeleteConfirm(modal === "schedule-delete");
-            } else {
-                setShowEditModal(false);
-                setShowDeleteConfirm(false);
             }
         }
-    }, [isLoading, schedules, urlModalQuery]);
+    }, [eventsByDate, isLoading, schedules, modal, modalDate, modalEventId]);
 
     // 日付クリック時のハンドラー
     const handleDateClick = (date: Date, dateStr: string) => {
         const events = eventsByDate.get(dateStr) || [];
         setSelectedDate({ date, dateStr, events });
-        updateUrlModal({ modal: "schedule-date", date: dateStr, event: null });
+        openModal("schedule-date", { date: dateStr, event: null });
     };
 
     // モーダルを閉じる
     const closeModal = () => {
-        setSelectedDate(null);
-        setSelectedEvent(null);
-        setShowAddModal(false);
-        setShowEditModal(false);
-        setAddForm({
-            title: "",
-            where: "",
-            detail: "",
-            timeHH: "",
-            timeMM: "",
-            endTimeHH: "",
-            endTimeMM: "",
-            year: "",
-            month: "",
-            date: "",
-            endYear: "",
-            endMonth: "",
-            endDate: "",
-            isAllDay: false,
-            color: "primary",
-            attendanceMode: "ABSENCE",
-            attendanceDeadline: "",
-        });
-        setEditForm({
-            title: "",
-            where: "",
-            detail: "",
-            timeHH: "",
-            timeMM: "",
-            endTimeHH: "",
-            endTimeMM: "",
-            year: "",
-            month: "",
-            date: "",
-            endYear: "",
-            endMonth: "",
-            endDate: "",
-            isAllDay: false,
-            color: "primary",
-            attendanceMode: "ABSENCE",
-            attendanceDeadline: "",
-        });
-        clearUrlModal(["date", "event"]);
+        closeUrlModal(["date", "event"]);
     };
 
     // 追加モーダルを開く
@@ -637,9 +598,7 @@ export default function CalendarPage() {
         if (selectedDate) {
             setAddForm(buildAddForm(selectedDate.date));
         }
-        setShowAddModal(true);
-        updateUrlModal({
-            modal: "schedule-create",
+        replaceModal("schedule-create", {
             date: selectedDate?.dateStr,
             event: null,
         });
@@ -647,28 +606,7 @@ export default function CalendarPage() {
 
     // 追加モーダルを閉じる（一覧に戻る）
     const closeAddModal = () => {
-        setShowAddModal(false);
-        setAddForm({
-            title: "",
-            where: "",
-            detail: "",
-            timeHH: "",
-            timeMM: "",
-            endTimeHH: "",
-            endTimeMM: "",
-            year: "",
-            month: "",
-            date: "",
-            endYear: "",
-            endMonth: "",
-            endDate: "",
-            isAllDay: false,
-            color: "primary",
-            attendanceMode: "ABSENCE",
-            attendanceDeadline: "",
-        });
-        updateUrlModal({
-            modal: "schedule-date",
+        replaceModal("schedule-date", {
             date: selectedDate?.dateStr,
             event: null,
         });
@@ -768,8 +706,7 @@ export default function CalendarPage() {
     // 一覧からイベントを選択
     const handleEventSelect = (event: Schedule) => {
         setSelectedEvent(event);
-        updateUrlModal({
-            modal: "schedule-detail",
+        replaceModal("schedule-detail", {
             event: getScheduleEventId(event),
             date: null,
         });
@@ -777,15 +714,13 @@ export default function CalendarPage() {
 
     // 詳細モーダルを閉じて一覧に戻る
     const closeEventModal = () => {
-        setSelectedEvent(null);
         if (selectedDate) {
-            updateUrlModal({
-                modal: "schedule-date",
+            replaceModal("schedule-date", {
                 date: selectedDate.dateStr,
                 event: null,
             });
         } else {
-            clearUrlModal(["date", "event"]);
+            closeUrlModal(["date", "event"]);
         }
     };
 
@@ -793,9 +728,7 @@ export default function CalendarPage() {
     const openEditModal = () => {
         if (!selectedEvent) return;
         setEditForm(buildEditForm(selectedEvent));
-        setShowEditModal(true);
-        updateUrlModal({
-            modal: "schedule-edit",
+        replaceModal("schedule-edit", {
             event: getScheduleEventId(selectedEvent),
             date: null,
         });
@@ -803,30 +736,8 @@ export default function CalendarPage() {
 
     // 編集モーダルを閉じる
     const closeEditModal = () => {
-        setShowEditModal(false);
-        setShowDeleteConfirm(false);
-        setEditForm({
-            title: "",
-            where: "",
-            detail: "",
-            timeHH: "",
-            timeMM: "",
-            endTimeHH: "",
-            endTimeMM: "",
-            year: "",
-            month: "",
-            date: "",
-            endYear: "",
-            endMonth: "",
-            endDate: "",
-            isAllDay: false,
-            color: "primary",
-            attendanceMode: "ABSENCE",
-            attendanceDeadline: "",
-        });
         if (selectedEvent) {
-            updateUrlModal({
-                modal: "schedule-detail",
+            replaceModal("schedule-detail", {
                 event: getScheduleEventId(selectedEvent),
                 date: null,
             });
@@ -1615,7 +1526,7 @@ export default function CalendarPage() {
             </div>
 
             {/* イベント一覧モーダル */}
-            {selectedDate && !selectedEvent && !showAddModal && (
+            {modal === "schedule-date" && selectedDate && !showAddModal && (
                 <AppModal
                     onClose={closeModal}
                     ariaLabel={`${selectedDate.date.getFullYear()}年${
@@ -2376,7 +2287,6 @@ export default function CalendarPage() {
                             attendanceDeadline={getScheduleAttendanceDeadline(
                                 selectedEvent
                             )}
-                            defaultOpen={true}
                             onClose={closeEventModal}
                             onEdit={openEditModal}
                             hideCard={true}
@@ -2769,10 +2679,8 @@ export default function CalendarPage() {
                                             type="button"
                                             className="btn btn-sm btn-ghost"
                                             onClick={() => {
-                                                setShowDeleteConfirm(false);
                                                 if (selectedEvent) {
-                                                    updateUrlModal({
-                                                        modal: "schedule-edit",
+                                                    replaceModal("schedule-edit", {
                                                         event: getScheduleEventId(
                                                             selectedEvent
                                                         ),
@@ -2803,10 +2711,8 @@ export default function CalendarPage() {
                                         type="button"
                                         className="btn btn-outline btn-error"
                                         onClick={() => {
-                                            setShowDeleteConfirm(true);
                                             if (selectedEvent) {
-                                                updateUrlModal({
-                                                    modal: "schedule-delete",
+                                                replaceModal("schedule-delete", {
                                                     event: getScheduleEventId(
                                                         selectedEvent
                                                     ),
