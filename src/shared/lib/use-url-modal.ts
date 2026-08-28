@@ -1,12 +1,11 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 type UrlModalParams = Record<string, string | null | undefined>;
 type UrlModalHistory = "push" | "replace";
 
 export const useUrlModal = () => {
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const modal = searchParams.get("modal");
@@ -25,7 +24,11 @@ export const useUrlModal = () => {
         });
         const query = next.toString();
         const url = query ? `${pathname}?${query}` : pathname;
-        router[history](url, { scroll: false });
+        if (history === "push") {
+            window.history.pushState(null, "", url);
+        } else {
+            window.history.replaceState(null, "", url);
+        }
     };
 
     const openModal = (name: string, params: UrlModalParams = {}) => {

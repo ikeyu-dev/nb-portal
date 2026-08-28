@@ -1,22 +1,30 @@
 import { renderHook, act } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useUrlModal } from "./use-url-modal";
 
-const push = vi.fn();
-const replace = vi.fn();
 let currentQuery = "";
 
 vi.mock("next/navigation", () => ({
-    useRouter: () => ({ push, replace }),
     usePathname: () => "/items",
     useSearchParams: () => new URLSearchParams(currentQuery),
 }));
 
 describe("useUrlModal", () => {
+    let pushState: ReturnType<typeof vi.spyOn>;
+    let replaceState: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
         currentQuery = "filter=MIC";
-        push.mockReset();
-        replace.mockReset();
+        pushState = vi
+            .spyOn(window.history, "pushState")
+            .mockImplementation(() => undefined);
+        replaceState = vi
+            .spyOn(window.history, "replaceState")
+            .mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
     });
 
     it("現在のモーダル名と対象パラメータを返す", () => {
@@ -36,11 +44,12 @@ describe("useUrlModal", () => {
             result.current.openModal("item-edit", { item: "MIC001" });
         });
 
-        expect(push).toHaveBeenCalledWith(
+        expect(pushState).toHaveBeenCalledWith(
+            null,
+            "",
             "/items?filter=MIC&modal=item-edit&item=MIC001",
-            { scroll: false }
         );
-        expect(replace).not.toHaveBeenCalled();
+        expect(replaceState).not.toHaveBeenCalled();
     });
 
     it("親モーダルへの遷移は現在の履歴を置き換える", () => {
@@ -53,11 +62,12 @@ describe("useUrlModal", () => {
             });
         });
 
-        expect(replace).toHaveBeenCalledWith(
+        expect(replaceState).toHaveBeenCalledWith(
+            null,
+            "",
             "/items?modal=schedule-response&event=EVENT001",
-            { scroll: false }
         );
-        expect(push).not.toHaveBeenCalled();
+        expect(pushState).not.toHaveBeenCalled();
     });
 
     it("完了後はモーダル用クエリだけを削除して履歴を置き換える", () => {
@@ -68,9 +78,11 @@ describe("useUrlModal", () => {
             result.current.closeModal(["item"]);
         });
 
-        expect(replace).toHaveBeenCalledWith("/items?filter=MIC", {
-            scroll: false,
-        });
-        expect(push).not.toHaveBeenCalled();
+        expect(replaceState).toHaveBeenCalledWith(
+            null,
+            "",
+            "/items?filter=MIC"
+        );
+        expect(pushState).not.toHaveBeenCalled();
     });
 });
