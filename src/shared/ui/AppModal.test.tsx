@@ -30,6 +30,9 @@ describe("AppModal", () => {
         const dialog = screen.getByRole("dialog", {
             name: "テストモーダル",
         });
+        expect(dialog.querySelector(".modal-box")).toHaveClass(
+            "app-modal-panel"
+        );
         expect(dialog).not.toHaveClass("modal-open");
         expect(dialog).toHaveAttribute("data-state", "opening");
 

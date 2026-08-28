@@ -69,7 +69,9 @@ export function AppModal({
                 className="modal-backdrop cursor-default"
                 onClick={onClose}
             />
-            <div className={`modal-box w-11/12 ${boxClassName}`}>
+            <div
+                className={`modal-box app-modal-panel w-11/12 ${boxClassName}`}
+            >
                 {children}
             </div>
         </div>

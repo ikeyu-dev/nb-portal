@@ -61,6 +61,20 @@ div {
     opacity: 0;
 }
 
+@keyframes app-modal-panel-enter {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.app-modal[data-state="open"] .app-modal-panel {
+    animation: app-modal-panel-enter 260ms var(--motion-ease-out) both;
+}
+
 :where(.btn) {
     touch-action: manipulation;
     transition-property:
@@ -116,6 +130,10 @@ div {
     }
 
     :where(.alert) {
+        animation: none;
+    }
+
+    .app-modal[data-state="open"] .app-modal-panel {
         animation: none;
     }
 }
