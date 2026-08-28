@@ -17,7 +17,10 @@ const accessLogSchema = z.object({
                     .min(1)
                     .max(200)
                     .regex(/^\/[A-Za-z0-9/_-]*$/),
-                clientTimestamp: z.string().datetime().optional(),
+                clientTimestamp: z
+                    .string()
+                    .datetime({ offset: true })
+                    .optional(),
             })
         )
         .min(1)
@@ -108,6 +111,7 @@ export async function POST(request: NextRequest) {
             error?: string;
         };
         return NextResponse.json(data, {
+            status: response.status,
             headers: {
                 "Cache-Control": "no-store, max-age=0",
             },
