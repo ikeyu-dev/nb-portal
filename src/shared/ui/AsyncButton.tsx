@@ -28,8 +28,10 @@ export function AsyncButton({
                 <span
                     data-button-state="idle"
                     aria-hidden={loading || undefined}
-                    className={`col-start-1 row-start-1 inline-flex items-center justify-center gap-2 ${
-                        loading ? "invisible" : ""
+                    className={`col-start-1 row-start-1 inline-flex items-center justify-center gap-2 motion-safe:transition-[opacity,scale] motion-safe:duration-150 motion-safe:ease-out ${
+                        loading
+                            ? "pointer-events-none opacity-0 scale-95"
+                            : "opacity-100 scale-100"
                     }`}
                 >
                     {children}
@@ -37,8 +39,10 @@ export function AsyncButton({
                 <span
                     data-button-state="loading"
                     aria-hidden={!loading || undefined}
-                    className={`col-start-1 row-start-1 inline-flex items-center justify-center gap-2 ${
-                        loading ? "" : "invisible"
+                    className={`col-start-1 row-start-1 inline-flex items-center justify-center gap-2 motion-safe:transition-[opacity,scale] motion-safe:duration-150 motion-safe:ease-out ${
+                        loading
+                            ? "opacity-100 scale-100"
+                            : "pointer-events-none opacity-0 scale-95"
                     }`}
                 >
                     <span

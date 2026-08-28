@@ -51,11 +51,14 @@ export function AppModal({
 
     if (!isRendered) return null;
 
+    const state = open ? (isVisible ? "open" : "opening") : "closed";
+
     return (
         <div
             role="dialog"
             aria-modal="true"
             aria-label={ariaLabel}
+            data-state={state}
             className={`modal app-modal modal-middle z-[999] px-4 ${
                 open && isVisible ? "modal-open" : ""
             }`}

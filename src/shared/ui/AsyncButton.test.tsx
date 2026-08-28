@@ -36,4 +36,28 @@ describe("AsyncButton", () => {
         expect(labels[0]).toHaveClass("col-start-1", "row-start-1");
         expect(labels[1]).toHaveClass("col-start-1", "row-start-1");
     });
+
+    it("処理中表示を位置を変えずにクロスフェードする", () => {
+        const { container, rerender } = render(
+            <AsyncButton loading={false} loadingLabel="送信中">
+                送信
+            </AsyncButton>
+        );
+
+        let labels = container.querySelectorAll("[data-button-state]");
+        expect(labels[0]).toHaveClass("opacity-100", "scale-100");
+        expect(labels[1]).toHaveClass("opacity-0", "scale-95");
+
+        rerender(
+            <AsyncButton loading loadingLabel="送信中">
+                送信
+            </AsyncButton>
+        );
+
+        labels = container.querySelectorAll("[data-button-state]");
+        expect(labels[0]).toHaveClass("opacity-0", "scale-95");
+        expect(labels[1]).toHaveClass("opacity-100", "scale-100");
+        expect(labels[0]).toHaveClass("motion-safe:transition-[opacity,scale]");
+        expect(labels[1]).toHaveClass("motion-safe:transition-[opacity,scale]");
+    });
 });

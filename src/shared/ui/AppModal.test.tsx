@@ -31,12 +31,14 @@ describe("AppModal", () => {
             name: "テストモーダル",
         });
         expect(dialog).not.toHaveClass("modal-open");
+        expect(dialog).toHaveAttribute("data-state", "opening");
 
         act(() => {
             nextFrame?.(0);
         });
 
         expect(dialog).toHaveClass("modal-open");
+        expect(dialog).toHaveAttribute("data-state", "open");
     });
 
     it("閉じる指示後は終了アニメーションの間だけDOMを保持する", () => {
@@ -58,6 +60,9 @@ describe("AppModal", () => {
         expect(
             screen.getByRole("dialog", { name: "テストモーダル" })
         ).not.toHaveClass("modal-open");
+        expect(
+            screen.getByRole("dialog", { name: "テストモーダル" })
+        ).toHaveAttribute("data-state", "closed");
 
         act(() => {
             vi.advanceTimersByTime(180);
