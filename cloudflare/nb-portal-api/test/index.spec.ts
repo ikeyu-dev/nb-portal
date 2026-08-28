@@ -163,6 +163,51 @@ describe("Hello World worker", () => {
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`
 		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS tasks (
+				id TEXT PRIMARY KEY,
+				title TEXT NOT NULL,
+				description TEXT,
+				status TEXT NOT NULL DEFAULT 'TODO' CHECK (status IN ('TODO', 'IN_PROGRESS', 'DONE')),
+				due_date TEXT,
+				created_by TEXT,
+				updated_by TEXT,
+				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`
+		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS task_assignees (
+				task_id TEXT NOT NULL,
+				student_number TEXT NOT NULL,
+				assigned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				PRIMARY KEY (task_id, student_number)
+			)`
+		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS push_subscriptions (
+				endpoint TEXT PRIMARY KEY,
+				student_id TEXT NOT NULL,
+				p256dh TEXT NOT NULL,
+				auth TEXT NOT NULL,
+				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`
+		).run();
+		await env.DB.prepare(
+			`CREATE TABLE IF NOT EXISTS access_logs (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				timestamp TEXT NOT NULL,
+				client_timestamp TEXT,
+				student_id TEXT,
+				display_name TEXT,
+				permission TEXT,
+				path TEXT NOT NULL,
+				method TEXT NOT NULL,
+				user_agent TEXT,
+				ip_hash TEXT
+			)`
+		).run();
 	});
 
 	it("responds with health status (unit style)", async () => {
@@ -196,6 +241,325 @@ describe("Hello World worker", () => {
 		expect(await response.json()).toMatchObject({
 			success: false,
 			error: "Unauthorized",
+		});
+	});
+
+	it("returns service unavailable when the backend API key is not configured", async () => {
+		const response = await fetchWorker(
+			new IncomingRequest("http://example.com/members"),
+			env,
+			createExecutionContext()
+		);
+		expect(response.status).toBe(503);
+		expect(await response.json()).toMatchObject({
+			success: false,
+			error: "Backend API key is not configured",
+		});
+	});
+
+	it("creates, verifies, updates, and soft-deletes a member", async () => {
+		const createResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/members", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					values: [
+						"26D1001",
+						"試験 太郎",
+						"テスト",
+						true,
+						"test-line",
+						false,
+						true,
+						"SUB_HEAD",
+					],
+				}),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(createResponse.status).toBe(200);
+		expect(await createResponse.json()).toMatchObject({
+			success: true,
+			values: [
+				"26D1001",
+				"試験 太郎",
+				"テスト",
+				true,
+				"test-line",
+				false,
+				true,
+				"SUB_HEAD",
+			],
+		});
+
+		const verifyResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/verify-member?identifier=26D1001", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(await verifyResponse.json()).toEqual({
+			success: true,
+			isMember: true,
+			name: "試験 太郎",
+			nickname: "テスト",
+			permission: "SUB_HEAD",
+		});
+
+		const membersResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/members", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		const membersBody = (await membersResponse.json()) as {
+			data?: { members?: Array<{ rowNumber: number; values: unknown[] }> };
+		};
+		const member = membersBody.data?.members?.find(
+			(row) => row.values[0] === "26D1001"
+		);
+		expect(member).toBeDefined();
+
+		const updateResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/members/update", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					rowNumber: member?.rowNumber,
+					values: [
+						"26D1001",
+						"試験 太郎",
+						"更新後",
+						true,
+						"test-line",
+						true,
+						true,
+						"HEAD",
+					],
+				}),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(updateResponse.status).toBe(200);
+
+		const deleteResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/members/delete", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({ rowNumber: member?.rowNumber }),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(deleteResponse.status).toBe(200);
+
+		const deletedVerifyResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/verify-member?identifier=26D1001", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(await deletedVerifyResponse.json()).toMatchObject({
+			success: true,
+			isMember: false,
+		});
+	});
+
+	it("creates, updates, returns, and deletes a task with unique assignees", async () => {
+		await env.DB.prepare(
+			`INSERT INTO members (student_number, name, nickname, permission, is_active)
+			VALUES ('26D2001', '担当 太郎', '担当者', 'NORMAL', 1)`
+		).run();
+
+		const createResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/tasks", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					id: "TASK-CHARACTERIZATION",
+					title: "特性化テスト",
+					description: "現在の挙動を固定する",
+					status: "invalid-status",
+					dueDate: "2099-12-01",
+					createdBy: "26D2001",
+					assigneeStudentNumbers: ["26D2001", "26D2001"],
+				}),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(createResponse.status).toBe(200);
+		const createBody = (await createResponse.json()) as {
+			data?: Array<Record<string, unknown>>;
+		};
+		expect(createBody.data?.find((task) => task.id === "TASK-CHARACTERIZATION")).toMatchObject({
+			title: "特性化テスト",
+			status: "TODO",
+			createdBy: "26D2001",
+			assignees: [
+				expect.objectContaining({
+					studentNumber: "26D2001",
+					displayName: "担当者",
+				}),
+			],
+		});
+
+		const updateResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/tasks/update", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					id: "TASK-CHARACTERIZATION",
+					title: "更新済みタスク",
+					status: "DONE",
+					updatedBy: "26D2001",
+					assigneeStudentNumbers: [],
+				}),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		const updateBody = (await updateResponse.json()) as {
+			data?: Array<Record<string, unknown>>;
+		};
+		expect(updateBody.data?.find((task) => task.id === "TASK-CHARACTERIZATION")).toMatchObject({
+			title: "更新済みタスク",
+			status: "DONE",
+			updatedBy: "26D2001",
+			assignees: [],
+		});
+
+		const deleteResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/tasks/delete", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({ id: "TASK-CHARACTERIZATION" }),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(await deleteResponse.json()).toMatchObject({ success: true });
+
+		const getResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/tasks", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		const getBody = (await getResponse.json()) as {
+			data?: Array<{ id: string }>;
+		};
+		expect(getBody.data?.some((task) => task.id === "TASK-CHARACTERIZATION")).toBe(false);
+	});
+
+	it("upserts, returns, and deletes a push subscription by endpoint", async () => {
+		const endpoint = "https://push.example.test/characterization";
+		for (const [studentId, p256dh, auth] of [
+			["26D3001", "first-key", "first-auth"],
+			["26D3002", "updated-key", "updated-auth"],
+		]) {
+			const response = await fetchWorker(
+				new IncomingRequest("http://example.com/push-subscribe", {
+					method: "POST",
+					headers: authorizedHeaders({ "Content-Type": "application/json" }),
+					body: JSON.stringify({
+						studentId,
+						subscription: {
+							endpoint,
+							keys: { p256dh, auth },
+						},
+					}),
+				}),
+				authorizedEnv,
+				createExecutionContext()
+			);
+			expect(response.status).toBe(200);
+		}
+
+		const getResponse = await fetchWorker(
+			new IncomingRequest("http://example.com/push-subscriptions", {
+				headers: authorizedHeaders(),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		const getBody = (await getResponse.json()) as {
+			data?: Array<Record<string, unknown>>;
+		};
+		expect(getBody.data?.filter((item) => item.endpoint === endpoint)).toEqual([
+			expect.objectContaining({
+				studentId: "26D3002",
+				p256dh: "updated-key",
+				auth: "updated-auth",
+			}),
+		]);
+
+		await fetchWorker(
+			new IncomingRequest("http://example.com/push-unsubscribe", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({ endpoint }),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		const row = await env.DB.prepare(
+			"SELECT endpoint FROM push_subscriptions WHERE endpoint = ?"
+		)
+			.bind(endpoint)
+			.first();
+		expect(row).toBeNull();
+	});
+
+	it("stores access log fields and reports the inserted count", async () => {
+		const response = await fetchWorker(
+			new IncomingRequest("http://example.com/access-logs", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					logs: [
+						{
+							timestamp: "2026-08-28T12:34:56+09:00",
+							clientTimestamp: "2026-08-28T12:34:55+09:00",
+							studentId: "26D4001",
+							displayName: "ログ試験",
+							permission: "NORMAL",
+							path: "/calendar",
+							method: "GET",
+							userAgent: "vitest",
+							ipHash: "hash",
+						},
+					],
+				}),
+			}),
+			authorizedEnv,
+			createExecutionContext()
+		);
+		expect(await response.json()).toMatchObject({ success: true, count: 1 });
+
+		const row = await env.DB.prepare(
+			`SELECT timestamp, client_timestamp, student_id, display_name, permission,
+				path, method, user_agent, ip_hash
+			FROM access_logs WHERE student_id = ?`
+		)
+			.bind("26D4001")
+			.first<Record<string, unknown>>();
+		expect(row).toEqual({
+			timestamp: "2026-08-28T12:34:56+09:00",
+			client_timestamp: "2026-08-28T12:34:55+09:00",
+			student_id: "26D4001",
+			display_name: "ログ試験",
+			permission: "NORMAL",
+			path: "/calendar",
+			method: "GET",
+			user_agent: "vitest",
+			ip_hash: "hash",
 		});
 	});
 
