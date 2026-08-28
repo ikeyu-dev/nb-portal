@@ -19,6 +19,7 @@ import { TASK_STATUS_LABELS } from "@/src/shared/types/api";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { parseDateInput } from "@/src/shared/lib/jst-date";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 
 type MemberOption = {
     studentNumber: string;
@@ -497,9 +498,11 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                 </div>
             </section>
 
-            {isTaskModalOpen &&
-                (modal === "task-create" || form.id === modalTaskId) && (
-                <AppModal
+            <AppModal
+                    open={
+                        isTaskModalOpen &&
+                        (modal === "task-create" || form.id === modalTaskId)
+                    }
                     onClose={closeTaskModal}
                     ariaLabel={form.id ? "タスクを編集" : "タスクを追加"}
                     boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -643,29 +646,27 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                 >
                                     キャンセル
                                 </button>
-                                <button
+                                <AsyncButton
                                     type="submit"
                                     className="btn btn-primary gap-2"
-                                    disabled={isSubmitting}
+                                    loading={isSubmitting}
+                                    loadingLabel="保存中"
                                 >
-                                    {isSubmitting ? (
-                                        <span className="loading loading-spinner loading-sm" />
-                                    ) : (
-                                        <FontAwesomeIcon icon={faCheck} />
-                                    )}
+                                    <FontAwesomeIcon icon={faCheck} />
                                     保存
-                                </button>
+                                </AsyncButton>
                             </div>
                         </form>
-                </AppModal>
-            )}
+            </AppModal>
 
-            {isDeleteModalOpen && deleteTargetTask && (
-                <AppModal
+            <AppModal
+                    open={isDeleteModalOpen && Boolean(deleteTargetTask)}
                     onClose={closeDeleteTaskModal}
                     ariaLabel="タスクを削除"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
+                    {deleteTargetTask && (
+                        <>
                         <div className="flex items-center gap-2">
                             <FontAwesomeIcon
                                 icon={faTrash}
@@ -698,22 +699,20 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                             >
                                 キャンセル
                             </button>
-                            <button
+                            <AsyncButton
                                 type="button"
                                 className="btn btn-error gap-2"
                                 onClick={() => void deleteTask()}
-                                disabled={isDeleting}
+                                loading={isDeleting}
+                                loadingLabel="削除中"
                             >
-                                {isDeleting ? (
-                                    <span className="loading loading-spinner loading-sm" />
-                                ) : (
-                                    <FontAwesomeIcon icon={faTrash} />
-                                )}
+                                <FontAwesomeIcon icon={faTrash} />
                                 削除
-                            </button>
+                            </AsyncButton>
                         </div>
-                </AppModal>
-            )}
+                        </>
+                    )}
+            </AppModal>
         </>
     );
 }

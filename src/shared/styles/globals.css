@@ -22,3 +22,27 @@ div {
     font-style: normal;
     font-weight: 500;
 }
+
+.app-modal {
+    transition-duration: 160ms;
+}
+
+.app-modal.modal-open {
+    transition-duration: 200ms;
+}
+
+.app-modal .modal-box {
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.app-modal.modal-open .modal-box {
+    transition-duration: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-modal,
+    .app-modal .modal-box {
+        transition-duration: 0.01ms;
+    }
+}

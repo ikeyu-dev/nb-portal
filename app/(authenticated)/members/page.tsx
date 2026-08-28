@@ -31,6 +31,7 @@ import {
 } from "@/src/shared/lib/cache-policy";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 
 const HEADER_LABELS: Record<string, string> = {
     studentnumber: "学籍番号",
@@ -973,8 +974,8 @@ export default function MembersPage() {
                 )}
             </div>
 
-            {isCreateModalOpen && (
-                <AppModal
+            <AppModal
+                    open={isCreateModalOpen}
                     onClose={() => closeCreateModal()}
                     ariaLabel="名簿に追加"
                     boxClassName="max-w-xl max-h-[calc(100dvh-8rem)] overflow-hidden p-0 sm:max-h-[calc(100dvh-10rem)]"
@@ -1013,23 +1014,20 @@ export default function MembersPage() {
                             >
                                 キャンセル
                             </button>
-                            <button
+                            <AsyncButton
                                 type="button"
                                 className="btn btn-primary"
                                 onClick={() => void handleCreate()}
-                                disabled={isSubmitting}
+                                loading={isSubmitting}
+                                loadingLabel="追加中"
                             >
-                                {isSubmitting && (
-                                    <span className="loading loading-spinner loading-sm" />
-                                )}
                                 追加
-                            </button>
+                            </AsyncButton>
                         </div>
-                </AppModal>
-            )}
+            </AppModal>
 
-            {isCheckedListModalOpen && (
-                <AppModal
+            <AppModal
+                    open={isCheckedListModalOpen}
                     onClose={closeCheckedListModal}
                     ariaLabel="チェック済み部員"
                     boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-hidden p-0 sm:max-h-[calc(100dvh-10rem)]"
@@ -1141,15 +1139,16 @@ export default function MembersPage() {
                                 </button>
                             </div>
                         </div>
-                </AppModal>
-            )}
+            </AppModal>
 
-            {isEditModalOpen && editingMember && (
-                <AppModal
+            <AppModal
+                    open={isEditModalOpen && Boolean(editingMember)}
                     onClose={() => closeEditModal()}
                     ariaLabel="名簿を編集"
                     boxClassName="max-w-xl max-h-[calc(100dvh-8rem)] overflow-hidden p-0 sm:max-h-[calc(100dvh-10rem)]"
                 >
+                    {editingMember && (
+                        <>
                         <div className="bg-base-200 px-6 py-5">
                             <h2 className="font-bold text-lg">編集</h2>
                         </div>
@@ -1199,28 +1198,29 @@ export default function MembersPage() {
                                 >
                                     キャンセル
                                 </button>
-                                <button
+                                <AsyncButton
                                     type="button"
                                     className="btn btn-primary"
                                     onClick={() => void handleSave()}
-                                    disabled={isSubmitting}
+                                    loading={isSubmitting}
+                                    loadingLabel="保存中"
                                 >
-                                    {isSubmitting && (
-                                        <span className="loading loading-spinner loading-sm" />
-                                    )}
                                     保存
-                                </button>
+                                </AsyncButton>
                             </div>
                         </div>
-                </AppModal>
-            )}
+                        </>
+                    )}
+            </AppModal>
 
-            {isDeleteModalOpen && deletingMember && (
-                <AppModal
+            <AppModal
+                    open={isDeleteModalOpen && Boolean(deletingMember)}
                     onClose={() => closeDeleteModal()}
                     ariaLabel="名簿から削除"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
+                    {deletingMember && (
+                        <>
                         <h2 className="font-bold text-lg">名簿から削除</h2>
                         <p className="mt-3">
                             {getPrimaryValue(deletingMember, headers)}
@@ -1242,20 +1242,19 @@ export default function MembersPage() {
                             >
                                 キャンセル
                             </button>
-                            <button
+                            <AsyncButton
                                 type="button"
                                 className="btn btn-error"
                                 onClick={() => void handleDelete()}
-                                disabled={isSubmitting}
+                                loading={isSubmitting}
+                                loadingLabel="削除中"
                             >
-                                {isSubmitting && (
-                                    <span className="loading loading-spinner loading-sm" />
-                                )}
                                 削除
-                            </button>
+                            </AsyncButton>
                         </div>
-                </AppModal>
-            )}
+                        </>
+                    )}
+            </AppModal>
         </div>
     );
 }

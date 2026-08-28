@@ -23,6 +23,7 @@ import {
     updateEventAttendance,
 } from "@/src/shared/api/client";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import {
     getAttendanceDeadlineLabel,
@@ -919,8 +920,8 @@ export default function ScheduleCard({
             )}
 
             {/* Modal */}
-            {isModalOpen && (
-                <AppModal
+            <AppModal
+                    open={isModalOpen}
                     onClose={handleClose}
                     ariaLabel={title}
                     boxClassName={`max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)] ${
@@ -996,17 +997,15 @@ export default function ScheduleCard({
                                     >
                                         キャンセル
                                     </button>
-                                    <button
+                                    <AsyncButton
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={() => void submitAttendance()}
-                                        disabled={isAttendanceSubmitting}
+                                        loading={isAttendanceSubmitting}
+                                        loadingLabel="送信中"
                                     >
-                                        {isAttendanceSubmitting && (
-                                            <span className="loading loading-spinner loading-sm" />
-                                        )}
                                         送信
-                                    </button>
+                                    </AsyncButton>
                                 </div>
                             </>
                         ) : isDeleteConfirmOpen ? (
@@ -1028,17 +1027,15 @@ export default function ScheduleCard({
                                     >
                                         キャンセル
                                     </button>
-                                    <button
+                                    <AsyncButton
                                         type="button"
                                         className="btn btn-error"
                                         onClick={() => void deleteResponse()}
-                                        disabled={isDeletingResponse}
+                                        loading={isDeletingResponse}
+                                        loadingLabel="削除中"
                                     >
-                                        {isDeletingResponse && (
-                                            <span className="loading loading-spinner loading-sm" />
-                                        )}
                                         削除
-                                    </button>
+                                    </AsyncButton>
                                 </div>
                             </>
                         ) : isEventAttendanceOpen ? (
@@ -1208,7 +1205,7 @@ export default function ScheduleCard({
                                     >
                                         閉じる
                                     </button>
-                                    <button
+                                    <AsyncButton
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={() =>
@@ -1216,15 +1213,13 @@ export default function ScheduleCard({
                                         }
                                         disabled={
                                             isEventAttendanceLoading ||
-                                            isEventAttendanceSaving ||
                                             !canSaveEventAttendance
                                         }
+                                        loading={isEventAttendanceSaving}
+                                        loadingLabel="保存中"
                                     >
-                                        {isEventAttendanceSaving && (
-                                            <span className="loading loading-spinner loading-sm" />
-                                        )}
                                         保存
-                                    </button>
+                                    </AsyncButton>
                                 </div>
                             </div>
                         ) : isAbsenceFormOpen ? (
@@ -1468,16 +1463,14 @@ export default function ScheduleCard({
                                     >
                                         キャンセル
                                     </button>
-                                    <button
+                                    <AsyncButton
                                         type="submit"
                                         className="btn btn-primary"
-                                        disabled={isAbsenceSubmitting}
+                                        loading={isAbsenceSubmitting}
+                                        loadingLabel="送信中"
                                     >
-                                        {isAbsenceSubmitting && (
-                                            <span className="loading loading-spinner loading-sm" />
-                                        )}
                                         送信
-                                    </button>
+                                    </AsyncButton>
                                 </div>
                             </form>
                         ) : (
@@ -1778,8 +1771,7 @@ export default function ScheduleCard({
                                 )}
                             </>
                         )}
-                </AppModal>
-            )}
+            </AppModal>
         </>
     );
 }
