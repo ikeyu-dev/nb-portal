@@ -44,23 +44,21 @@ div {
 }
 
 .app-modal .modal-box {
-    transition-property: opacity, translate, scale;
+    translate: 0 0;
+    scale: 1;
+    transition-property: opacity;
     transition-duration: var(--motion-duration-exit);
     transition-timing-function: var(--motion-ease-standard);
 }
 
 .app-modal.modal-open .modal-box {
     opacity: 1;
-    translate: 0 0;
-    scale: 1;
     transition-duration: var(--motion-duration-enter);
     transition-timing-function: var(--motion-ease-out);
 }
 
 .app-modal:not(.modal-open) .modal-box {
     opacity: 0;
-    translate: 0 0.5rem;
-    scale: 0.985;
 }
 
 :where(.btn) {
