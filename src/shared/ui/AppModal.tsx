@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
-const EXIT_ANIMATION_MS = 180;
+const EXIT_ANIMATION_MS = 280;
 
 type AppModalProps = {
     children: ReactNode;

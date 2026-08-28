@@ -68,7 +68,15 @@ describe("AppModal", () => {
         ).toHaveAttribute("data-state", "closed");
 
         act(() => {
-            vi.advanceTimersByTime(180);
+            vi.advanceTimersByTime(240);
+        });
+
+        expect(
+            screen.getByRole("dialog", { name: "テストモーダル" })
+        ).toBeInTheDocument();
+
+        act(() => {
+            vi.advanceTimersByTime(40);
         });
 
         expect(
