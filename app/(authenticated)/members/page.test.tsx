@@ -109,6 +109,20 @@ describe("MembersPage", () => {
         expect(screen.getByText("該当する名簿データがありません")).toBeInTheDocument();
     });
 
+    it("部員をチェックすると行を選択色へ切り替える", async () => {
+        render(<MembersPage />);
+
+        const checkbox = await screen.findByRole("checkbox", {
+            name: "放研 太郎をチェック",
+        });
+        const row = checkbox.closest("tr");
+        expect(row).not.toHaveClass("bg-primary/10");
+
+        fireEvent.click(checkbox);
+
+        expect(row).toHaveClass("bg-primary/10");
+    });
+
     it("部員を追加し、成功後にモーダルを閉じて一覧へ反映する", async () => {
         const createdValues = [
             "c263456",

@@ -4,11 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCircleCheck,
+    faCopy,
     faMagnifyingGlass,
     faPen,
     faPlus,
     faTrashCan,
     faUsers,
+    faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import {
     MEMBER_PERMISSION_LABELS,
@@ -32,6 +34,7 @@ import {
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { AppModal } from "@/src/shared/ui/AppModal";
 import { AsyncButton } from "@/src/shared/ui/AsyncButton";
+import { AnimatedState } from "@/src/shared/ui/AnimatedState";
 
 const HEADER_LABELS: Record<string, string> = {
     studentnumber: "学籍番号",
@@ -853,7 +856,13 @@ export default function MembersPage() {
                                     filteredMembers.map((member) => (
                                     <tr
                                         key={member.rowNumber}
-                                        className="hover cursor-pointer align-middle"
+                                        className={`cursor-pointer align-middle transition-colors duration-150 ${
+                                            checkedMemberRows.has(
+                                                member.rowNumber
+                                            )
+                                                ? "bg-primary/10 hover:bg-primary/15"
+                                                : "hover"
+                                        }`}
                                         onClick={() => openEditModal(member)}
                                     >
                                         <td
@@ -1124,11 +1133,38 @@ export default function MembersPage() {
                                     onClick={() => void copyCheckedLineNames()}
                                     disabled={checkedLineNames.length === 0}
                                 >
-                                    {lineNameCopyStatus === "copied"
-                                        ? "コピー済み"
-                                        : lineNameCopyStatus === "failed"
-                                          ? "失敗"
-                                          : "LINE名コピー"}
+                                    <AnimatedState
+                                        activeKey={lineNameCopyStatus}
+                                        items={[
+                                            {
+                                                key: "idle",
+                                                content: (
+                                                    <>
+                                                        <FontAwesomeIcon icon={faCopy} />
+                                                        LINE名コピー
+                                                    </>
+                                                ),
+                                            },
+                                            {
+                                                key: "copied",
+                                                content: (
+                                                    <>
+                                                        <FontAwesomeIcon icon={faCircleCheck} />
+                                                        コピー済み
+                                                    </>
+                                                ),
+                                            },
+                                            {
+                                                key: "failed",
+                                                content: (
+                                                    <>
+                                                        <FontAwesomeIcon icon={faXmark} />
+                                                        失敗
+                                                    </>
+                                                ),
+                                            },
+                                        ]}
+                                    />
                                 </button>
                                 <button
                                     type="button"

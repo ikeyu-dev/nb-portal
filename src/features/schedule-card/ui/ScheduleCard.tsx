@@ -1149,7 +1149,11 @@ export default function ScheduleCard({
                                                                     key={
                                                                         member.studentNumber
                                                                     }
-                                                                    className="flex cursor-pointer items-center gap-3 px-3 py-3 transition-colors hover:bg-base-200/60 sm:px-4"
+                                                                    className={`flex cursor-pointer items-center gap-3 px-3 py-3 transition-colors duration-150 sm:px-4 ${
+                                                                        checked
+                                                                            ? "bg-primary/10 hover:bg-primary/15"
+                                                                            : "hover:bg-base-200/60"
+                                                                    }`}
                                                                 >
                                                                     <input
                                                                         type="checkbox"

@@ -161,7 +161,11 @@ describe("ScheduleCard", () => {
         fireEvent.click(screen.getByRole("button", { name: "閲覧・編集" }));
         expect(await screen.findByText("たろう")).toBeInTheDocument();
         expect(screen.queryByText("はな")).toBeNull();
-        fireEvent.click(screen.getByRole("checkbox"));
+        const checkbox = screen.getByRole("checkbox");
+        const memberRow = checkbox.closest("label");
+        expect(memberRow).not.toHaveClass("bg-primary/10");
+        fireEvent.click(checkbox);
+        expect(memberRow).toHaveClass("bg-primary/10");
         fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
         await waitFor(() =>
