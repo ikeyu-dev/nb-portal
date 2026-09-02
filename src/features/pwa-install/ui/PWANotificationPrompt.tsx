@@ -10,6 +10,7 @@ import {
     subscribeToPushNotifications,
 } from "@/src/features/push-notification/lib/push-subscription";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 
 interface PWANotificationPromptProps {
     userEmail: string | null;
@@ -94,10 +95,9 @@ export function PWANotificationPrompt({
         }
     };
 
-    if (!isVisible) return null;
-
     return (
         <AppModal
+            open={isVisible}
             onClose={dismiss}
             ariaLabel="通知を有効にしますか"
             boxClassName="max-w-sm max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-2xl p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -137,18 +137,15 @@ export function PWANotificationPrompt({
                     >
                         あとで
                     </button>
-                    <button
+                    <AsyncButton
                         type="button"
                         className="btn btn-primary"
                         onClick={enableNotifications}
-                        disabled={isSubmitting}
+                        loading={isSubmitting}
+                        loadingLabel="設定中"
                     >
-                        {isSubmitting ? (
-                            <span className="loading loading-spinner loading-sm" />
-                        ) : (
-                            "有効にする"
-                        )}
-                    </button>
+                        有効にする
+                    </AsyncButton>
                 </div>
         </AppModal>
     );

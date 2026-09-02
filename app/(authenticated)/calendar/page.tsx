@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 import {
     normalizeScheduleAttendanceMode,
     SCHEDULE_ATTENDANCE_MODE_LABELS,
@@ -1526,8 +1527,9 @@ export default function CalendarPage() {
             </div>
 
             {/* イベント一覧モーダル */}
-            {modal === "schedule-date" && selectedDate && !showAddModal && (
+            {selectedDate && (
                 <AppModal
+                    open={modal === "schedule-date" && !showAddModal}
                     onClose={closeModal}
                     ariaLabel={`${selectedDate.date.getFullYear()}年${
                         selectedDate.date.getMonth() + 1
@@ -1799,8 +1801,9 @@ export default function CalendarPage() {
             )}
 
             {/* イベント追加モーダル */}
-            {selectedDate && showAddModal && (
+            {selectedDate && (
                 <AppModal
+                    open={showAddModal}
                     onClose={closeAddModal}
                     ariaLabel="予定を追加"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -2172,19 +2175,15 @@ export default function CalendarPage() {
                                 >
                                     キャンセル
                                 </button>
-                                <button
+                                <AsyncButton
                                     type="submit"
                                     className="btn btn-primary"
-                                    disabled={
-                                        isSubmitting || !addForm.title.trim()
-                                    }
+                                    disabled={!addForm.title.trim()}
+                                    loading={isSubmitting}
+                                    loadingLabel="追加中"
                                 >
-                                    {isSubmitting ? (
-                                        <span className="loading loading-spinner loading-sm"></span>
-                                    ) : (
-                                        "追加"
-                                    )}
-                                </button>
+                                    追加
+                                </AsyncButton>
                             </div>
                         </form>
                 </AppModal>
@@ -2295,8 +2294,9 @@ export default function CalendarPage() {
                 })()}
 
             {/* イベント編集モーダル */}
-            {selectedEvent && showEditModal && (
+            {selectedEvent && (
                 <AppModal
+                    open={showEditModal}
                     onClose={closeEditModal}
                     ariaLabel="予定を編集"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -2691,18 +2691,16 @@ export default function CalendarPage() {
                                         >
                                             キャンセル
                                         </button>
-                                        <button
+                                        <AsyncButton
                                             type="button"
                                             className="btn btn-sm btn-error"
                                             onClick={handleDeleteSubmit}
-                                            disabled={isDeleting}
+                                            loading={isDeleting}
+                                            loadingLabel="削除中"
+                                            spinnerClassName="loading-xs"
                                         >
-                                            {isDeleting ? (
-                                                <span className="loading loading-spinner loading-sm"></span>
-                                            ) : (
-                                                "削除する"
-                                            )}
-                                        </button>
+                                            削除する
+                                        </AsyncButton>
                                     </div>
                                 </div>
                             ) : (
@@ -2731,20 +2729,15 @@ export default function CalendarPage() {
                                         >
                                             キャンセル
                                         </button>
-                                        <button
+                                        <AsyncButton
                                             type="submit"
                                             className="btn btn-primary"
-                                            disabled={
-                                                isSubmitting ||
-                                                !editForm.title.trim()
-                                            }
+                                            disabled={!editForm.title.trim()}
+                                            loading={isSubmitting}
+                                            loadingLabel="保存中"
                                         >
-                                            {isSubmitting ? (
-                                                <span className="loading loading-spinner loading-sm"></span>
-                                            ) : (
-                                                "保存"
-                                            )}
-                                        </button>
+                                            保存
+                                        </AsyncButton>
                                     </div>
                                 </div>
                             )}

@@ -39,9 +39,10 @@ export default function Dock() {
                 <Link
                     key={item.href}
                     href={item.href}
-                    className={`transition-transform ${
-                        pathname === item.href ? "text-primary scale-110" : ""
+                    className={`app-nav-item app-dock-item ${
+                        pathname === item.href ? "text-primary" : ""
                     }`}
+                    data-active={pathname === item.href}
                 >
                     <FontAwesomeIcon
                         icon={item.icon}

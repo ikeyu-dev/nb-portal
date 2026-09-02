@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBoxOpen } from "@fortawesome/free-solid-svg-icons";
 import { HelpButton } from "@/src/features/help";
@@ -17,9 +17,12 @@ import {
 } from "@/src/shared/lib/cache-policy";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
+import { AnimatedAlert } from "@/src/shared/ui/AnimatedAlert";
 
 type CategoryFilter = "all" | "MIC" | "SPK" | "CAB" | "OTHER";
 type ItemCategory = "MIC" | "SPK" | "CAB" | "OTH";
+const LIST_EXIT_ANIMATION_MS = 160;
 
 const CATEGORY_MAP: Record<string, string> = {
     MIC: "マイク",
@@ -49,6 +52,8 @@ export default function ItemsPage() {
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<CategoryFilter>("all");
+    const [enteringItemId, setEnteringItemId] = useState<string | null>(null);
+    const [exitingItemId, setExitingItemId] = useState<string | null>(null);
 
     // モーダルの表示状態と対象IDはURLで管理する
     const [selectedItem, setSelectedItem] = useState<{
@@ -68,7 +73,10 @@ export default function ItemsPage() {
         name: "",
     });
 
-    const fetchItems = async (useCache = true) => {
+    const fetchItems = useCallback(async (
+        useCache = true,
+        previousItemIds?: Set<string>
+    ) => {
         if (useCache) {
             const cache = getClientCacheEntry<Item[]>(
                 CLIENT_CACHE_KEYS.items,
@@ -87,6 +95,19 @@ export default function ItemsPage() {
             const data = (await res.json()) as ApiResponse<Item[]>;
             if (data.success) {
                 const fetchedItems = data.data || [];
+                if (previousItemIds) {
+                    const addedItem = fetchedItems.find(
+                        (item) =>
+                            !previousItemIds.has(
+                                String(Object.values(item)[0] ?? "")
+                            )
+                    );
+                    setEnteringItemId(
+                        addedItem
+                            ? String(Object.values(addedItem)[0] ?? "")
+                            : null
+                    );
+                }
                 setItems(fetchedItems);
                 setClientCache(CLIENT_CACHE_KEYS.items, fetchedItems);
             } else {
@@ -109,11 +130,11 @@ export default function ItemsPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchItems();
-    }, []);
+    }, [fetchItems]);
 
     useEffect(() => {
         if (isLoading) return;
@@ -160,9 +181,12 @@ export default function ItemsPage() {
             const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
+                const previousItemIds = new Set(
+                    items.map((item) => String(Object.values(item)[0] ?? ""))
+                );
                 closeModal(["item"]);
                 clearClientCache(CLIENT_CACHE_KEYS.items);
-                await fetchItems(false);
+                await fetchItems(false, previousItemIds);
             } else {
                 setModalError(data.error || "機材を登録できませんでした");
             }
@@ -222,9 +246,15 @@ export default function ItemsPage() {
             const data = (await res.json()) as ApiResponse<null>;
 
             if (data.success) {
+                const deletedItemId = selectedItem.itemId;
+                setExitingItemId(deletedItemId);
                 closeModal(["item"]);
+                await new Promise((resolve) =>
+                    window.setTimeout(resolve, LIST_EXIT_ANIMATION_MS)
+                );
                 clearClientCache(CLIENT_CACHE_KEYS.items);
                 await fetchItems(false);
+                setExitingItemId(null);
             } else {
                 setModalError(data.error || "機材を削除できませんでした");
             }
@@ -296,7 +326,7 @@ export default function ItemsPage() {
         );
     }
 
-    const renderTableRow = (item: Item, index: number, isMobile: boolean) => {
+    const renderTableRow = (item: Item, isMobile: boolean) => {
         const values = Object.values(item);
         const itemId = String(values[0] ?? "");
         const name = String(values[1] ?? "");
@@ -305,7 +335,14 @@ export default function ItemsPage() {
 
         return (
             <tr
-                key={index}
+                key={`${isMobile ? "mobile" : "desktop"}-${itemId}`}
+                data-motion={
+                    exitingItemId === itemId
+                        ? "exit"
+                        : enteringItemId === itemId
+                          ? "enter"
+                          : undefined
+                }
                 className="hover cursor-pointer"
                 onClick={() => openEditModal(itemId, name)}
             >
@@ -353,30 +390,40 @@ export default function ItemsPage() {
     const FilterButtons = ({ size }: { size: "xs" | "sm" }) => (
         <>
             <button
+                type="button"
+                aria-pressed={filter === "all"}
                 className={`btn btn-${size} ${filter === "all" ? "btn-primary" : "btn-outline"}`}
                 onClick={() => setFilter("all")}
             >
                 すべて
             </button>
             <button
+                type="button"
+                aria-pressed={filter === "MIC"}
                 className={`btn btn-${size} ${filter === "MIC" ? "btn-primary" : "btn-outline"}`}
                 onClick={() => setFilter("MIC")}
             >
                 マイク
             </button>
             <button
+                type="button"
+                aria-pressed={filter === "SPK"}
                 className={`btn btn-${size} ${filter === "SPK" ? "btn-primary" : "btn-outline"}`}
                 onClick={() => setFilter("SPK")}
             >
                 スピーカー
             </button>
             <button
+                type="button"
+                aria-pressed={filter === "CAB"}
                 className={`btn btn-${size} ${filter === "CAB" ? "btn-primary" : "btn-outline"}`}
                 onClick={() => setFilter("CAB")}
             >
                 ケーブル
             </button>
             <button
+                type="button"
+                aria-pressed={filter === "OTHER"}
                 className={`btn btn-${size} ${filter === "OTHER" ? "btn-primary" : "btn-outline"}`}
                 onClick={() => setFilter("OTHER")}
             >
@@ -386,12 +433,14 @@ export default function ItemsPage() {
     );
 
     return (
-        <div className="max-lg:p-0 lg:p-6 w-full lg:h-full flex flex-col lg:items-stretch items-center bg-base-100 lg:overflow-hidden">
-            {error && (
-                <div className="alert alert-error mb-4 w-full max-w-4xl lg:hidden">
-                    <span>{error}</span>
-                </div>
-            )}
+        <div className="app-content-enter max-lg:p-0 lg:p-6 w-full lg:h-full flex flex-col lg:items-stretch items-center bg-base-100 lg:overflow-hidden">
+            <AnimatedAlert
+                show={Boolean(error)}
+                variant="error"
+                className="mb-4 w-full max-w-4xl lg:hidden"
+            >
+                <span>{error}</span>
+            </AnimatedAlert>
 
             {/* モバイル版 */}
             <div
@@ -440,10 +489,13 @@ export default function ItemsPage() {
                                 </th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody
+                            key={`mobile-${filter}`}
+                            className="app-filter-results"
+                        >
                             {filteredItems.length > 0
-                                ? filteredItems.map((item, index) =>
-                                      renderTableRow(item, index, true)
+                                ? filteredItems.map((item) =>
+                                      renderTableRow(item, true)
                                   )
                                 : renderEmptyRow()}
                         </tbody>
@@ -502,10 +554,13 @@ export default function ItemsPage() {
                                 </th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody
+                            key={`desktop-${filter}`}
+                            className="app-filter-results"
+                        >
                             {filteredItems.length > 0
-                                ? filteredItems.map((item, index) =>
-                                      renderTableRow(item, index, false)
+                                ? filteredItems.map((item) =>
+                                      renderTableRow(item, false)
                                   )
                                 : renderEmptyRow()}
                         </tbody>
@@ -514,19 +569,21 @@ export default function ItemsPage() {
             </div>
 
             {/* 機材登録モーダル */}
-            {isCreateModalOpen && (
-                <AppModal
+            <AppModal
+                    open={isCreateModalOpen}
                     onClose={() => closeModal(["item"])}
                     ariaLabel="機材を登録"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
                     <h3 className="font-bold text-lg mb-4">機材を登録</h3>
 
-                    {modalError && (
-                        <div className="alert alert-error mb-4">
-                            <span>{modalError}</span>
-                        </div>
-                    )}
+                    <AnimatedAlert
+                        show={Boolean(modalError)}
+                        variant="error"
+                        className="mb-4"
+                    >
+                        <span>{modalError}</span>
+                    </AnimatedAlert>
 
                     <div className="form-control mb-4">
                         <label className="label">
@@ -599,35 +656,33 @@ export default function ItemsPage() {
                         >
                             キャンセル
                         </button>
-                        <button
+                        <AsyncButton
                             className="btn btn-primary"
                             onClick={handleCreate}
-                            disabled={isSubmitting}
+                            loading={isSubmitting}
+                            loadingLabel="登録中"
                         >
-                            {isSubmitting ? (
-                                <span className="loading loading-spinner loading-sm"></span>
-                            ) : (
-                                "登録"
-                            )}
-                        </button>
+                            登録
+                        </AsyncButton>
                     </div>
-                </AppModal>
-            )}
+            </AppModal>
 
             {/* 機材編集モーダル */}
-            {isEditModalOpen && selectedItem && (
-                <AppModal
+            <AppModal
+                    open={isEditModalOpen && Boolean(selectedItem)}
                     onClose={() => closeModal(["item"])}
                     ariaLabel="機材を編集"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
                     <h3 className="font-bold text-lg mb-4">機材を編集</h3>
 
-                    {modalError && (
-                        <div className="alert alert-error mb-4">
-                            <span>{modalError}</span>
-                        </div>
-                    )}
+                    <AnimatedAlert
+                        show={Boolean(modalError)}
+                        variant="error"
+                        className="mb-4"
+                    >
+                        <span>{modalError}</span>
+                    </AnimatedAlert>
 
                     <div className="form-control mb-4">
                         <label className="label">
@@ -679,36 +734,34 @@ export default function ItemsPage() {
                             >
                                 キャンセル
                             </button>
-                            <button
+                            <AsyncButton
                                 className="btn btn-primary"
                                 onClick={handleEdit}
-                                disabled={isSubmitting}
+                                loading={isSubmitting}
+                                loadingLabel="保存中"
                             >
-                                {isSubmitting ? (
-                                    <span className="loading loading-spinner loading-sm"></span>
-                                ) : (
-                                    "保存"
-                                )}
-                            </button>
+                                保存
+                            </AsyncButton>
                         </div>
                     </div>
-                </AppModal>
-            )}
+            </AppModal>
 
             {/* 削除確認モーダル */}
-            {isDeleteModalOpen && selectedItem && (
-                <AppModal
+            <AppModal
+                    open={isDeleteModalOpen && Boolean(selectedItem)}
                     onClose={() => closeModal(["item"])}
                     ariaLabel="機材を削除"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
                     <h3 className="font-bold text-lg mb-4">機材を削除</h3>
 
-                    {modalError && (
-                        <div className="alert alert-error mb-4">
-                            <span>{modalError}</span>
-                        </div>
-                    )}
+                    <AnimatedAlert
+                        show={Boolean(modalError)}
+                        variant="error"
+                        className="mb-4"
+                    >
+                        <span>{modalError}</span>
+                    </AnimatedAlert>
 
                     <p className="mb-4">
                         この機材を削除しますか？
@@ -737,20 +790,16 @@ export default function ItemsPage() {
                         >
                             キャンセル
                         </button>
-                        <button
+                        <AsyncButton
                             className="btn btn-error"
                             onClick={handleDelete}
-                            disabled={isSubmitting}
+                            loading={isSubmitting}
+                            loadingLabel="削除中"
                         >
-                            {isSubmitting ? (
-                                <span className="loading loading-spinner loading-sm"></span>
-                            ) : (
-                                "削除"
-                            )}
-                        </button>
+                            削除
+                        </AsyncButton>
                     </div>
-                </AppModal>
-            )}
+            </AppModal>
         </div>
     );
 }

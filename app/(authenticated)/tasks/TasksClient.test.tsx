@@ -115,7 +115,10 @@ describe("TasksClient", () => {
                 screen.queryByRole("dialog", { name: "タスクを追加" })
             ).toBeNull()
         );
-        expect(screen.getByText("新しいタスク")).toBeInTheDocument();
+        expect(screen.getByText("新しいタスク").closest("article")).toHaveAttribute(
+            "data-motion",
+            "enter"
+        );
     });
 
     it("確認後にタスクを削除し、一覧から取り除く", async () => {
@@ -134,6 +137,11 @@ describe("TasksClient", () => {
                 body: JSON.stringify({ id: "TASK-001" }),
             })
         );
+        expect(
+            screen
+                .getByRole("heading", { name: "会議資料を作る" })
+                .closest("article")
+        ).toHaveAttribute("data-motion", "exit");
         await waitFor(() =>
             expect(screen.queryByText("会議資料を作る")).toBeNull()
         );

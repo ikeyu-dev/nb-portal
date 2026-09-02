@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { AnimatedState } from "@/src/shared/ui/AnimatedState";
 
 /**
  * 部会メモのデモコンポーネント
@@ -67,7 +70,29 @@ export function DemoMemo() {
                 }`}
                 onClick={handleCopy}
             >
-                {copyStatus === "success" ? "コピーしました（デモ）" : "コピー"}
+                <AnimatedState
+                    activeKey={copyStatus}
+                    items={[
+                        {
+                            key: "idle",
+                            content: (
+                                <>
+                                    <FontAwesomeIcon icon={faCopy} />
+                                    コピー
+                                </>
+                            ),
+                        },
+                        {
+                            key: "success",
+                            content: (
+                                <>
+                                    <FontAwesomeIcon icon={faCheck} />
+                                    コピーしました（デモ）
+                                </>
+                            ),
+                        },
+                    ]}
+                />
             </button>
 
             <p className="text-xs text-base-content/50 text-center">

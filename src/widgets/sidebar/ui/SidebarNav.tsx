@@ -37,7 +37,7 @@ export function SidebarNav() {
                 <li key={item.href}>
                     <Link
                         href={item.href}
-                        className={`transition-transform hover:scale-105 ${pathname === item.href ? "text-primary" : ""}`}
+                        className={`app-nav-item ${pathname === item.href ? "text-primary" : ""}`}
                     >
                         <FontAwesomeIcon
                             icon={item.icon}

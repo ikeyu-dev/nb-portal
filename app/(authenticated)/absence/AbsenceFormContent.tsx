@@ -5,6 +5,8 @@ import { useState } from "react";
 import { submitAbsence } from "@/src/shared/api/client";
 import { HelpButton } from "@/src/features/help";
 import { normalizeScheduleAttendanceMode } from "@/src/shared/types/api";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
+import { AnimatedAlert } from "@/src/shared/ui/AnimatedAlert";
 
 interface AbsenceFormContentProps {
     studentId: string | null;
@@ -122,17 +124,13 @@ export function AbsenceFormContent({
                 <HelpButton sectionId="absence" />
             </div>
 
-            {submitStatus.type && (
-                <div
-                    className={`alert ${
-                        submitStatus.type === "success"
-                            ? "alert-success"
-                            : "alert-error"
-                    } mb-6`}
-                >
-                    <span>{submitStatus.message}</span>
-                </div>
-            )}
+            <AnimatedAlert
+                show={Boolean(submitStatus.type)}
+                variant={submitStatus.type === "success" ? "success" : "error"}
+                className="mb-6"
+            >
+                <span>{submitStatus.message}</span>
+            </AnimatedAlert>
 
             <div className="card bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body">
@@ -397,19 +395,16 @@ export function AbsenceFormContent({
 
                         {/* 送信ボタン */}
                         <div className="flex gap-4">
-                            <button
+                            <AsyncButton
                                 type="submit"
-                                className={`btn btn-primary flex-1 ${
-                                    isSubmitting ? "loading" : ""
-                                }`}
-                                disabled={isSubmitting}
+                                className="btn btn-primary flex-1"
+                                loading={isSubmitting}
+                                loadingLabel="送信中"
                             >
-                                {isSubmitting
-                                    ? "送信中..."
-                                    : isAttendanceEvent
-                                      ? "参加登録"
-                                      : "欠席連絡を送信"}
-                            </button>
+                                {isAttendanceEvent
+                                    ? "参加登録"
+                                    : "欠席連絡を送信"}
+                            </AsyncButton>
                             <a
                                 href="/home"
                                 className="btn btn-ghost flex-1"

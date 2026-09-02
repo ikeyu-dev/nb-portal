@@ -118,7 +118,7 @@ export function DemoItems() {
                         item.itemId.substring(0, 3).toUpperCase() === filter
                 );
 
-    const FilterButtons = () => (
+    const filterButtons = (
         <>
             <button
                 className={`btn btn-xs ${filter === "all" ? "btn-primary" : "btn-outline"}`}
@@ -171,7 +171,7 @@ export function DemoItems() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-                <FilterButtons />
+                {filterButtons}
             </div>
 
             <div className="overflow-x-auto border border-base-300 rounded-lg">
@@ -236,8 +236,8 @@ export function DemoItems() {
             </div>
 
             {/* 機材登録モーダル */}
-            {isCreateModalOpen && (
-                <AppModal
+            <AppModal
+                    open={isCreateModalOpen}
                     onClose={() => setIsCreateModalOpen(false)}
                     ariaLabel="機材を登録"
                     boxClassName="max-w-lg max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -316,12 +316,11 @@ export function DemoItems() {
                             登録
                         </button>
                     </div>
-                </AppModal>
-            )}
+            </AppModal>
 
             {/* 機材編集モーダル */}
-            {isEditModalOpen && (
-                <AppModal
+            <AppModal
+                    open={isEditModalOpen}
                     onClose={() => setIsEditModalOpen(false)}
                     ariaLabel="機材を編集"
                     boxClassName="max-w-lg max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -376,8 +375,7 @@ export function DemoItems() {
                             </button>
                         </div>
                     </div>
-                </AppModal>
-            )}
+            </AppModal>
 
             <p className="text-xs text-base-content/50 text-center">
                 これはデモ表示です。実際のデータとは異なります。

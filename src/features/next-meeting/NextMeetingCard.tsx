@@ -18,6 +18,7 @@ import { announceNextMeeting, updateNextMeeting } from "@/src/shared/api";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { parseDateInput } from "@/src/shared/lib/jst-date";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 
 const canManageNextMeeting = (permission?: MemberPermission) =>
     permission === "HEAD" || permission === "SUB_HEAD" || permission === "ACCOUNTANT";
@@ -229,22 +230,20 @@ export function NextMeetingCard({
                                     />
                                     編集
                                 </button>
-                                <button
+                                <AsyncButton
                                     type="button"
                                     className="btn btn-primary btn-outline btn-sm gap-2"
                                     onClick={openAnnounceConfirm}
-                                    disabled={isAnnouncing}
+                                    loading={isAnnouncing}
+                                    loadingLabel="送信中"
+                                    spinnerClassName="loading-xs"
                                 >
-                                    {isAnnouncing ? (
-                                        <span className="loading loading-spinner loading-xs" />
-                                    ) : (
-                                        <FontAwesomeIcon
-                                            icon={faPaperPlane}
-                                            className="text-lg"
-                                        />
-                                    )}
+                                    <FontAwesomeIcon
+                                        icon={faPaperPlane}
+                                        className="text-lg"
+                                    />
                                     送信
-                                </button>
+                                </AsyncButton>
                             </div>
                         )}
                     </div>
@@ -255,8 +254,8 @@ export function NextMeetingCard({
                 )}
             </div>
 
-            {isEditorOpen && (
-                <AppModal
+            <AppModal
+                    open={isEditorOpen}
                     onClose={closeEditor}
                     ariaLabel="次回部会を編集"
                     boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -336,23 +335,20 @@ export function NextMeetingCard({
                                 >
                                     キャンセル
                                 </button>
-                                <button
+                                <AsyncButton
                                     type="submit"
                                     className="btn btn-primary"
-                                    disabled={isSubmitting}
+                                    loading={isSubmitting}
+                                    loadingLabel="保存中"
                                 >
-                                    {isSubmitting && (
-                                        <span className="loading loading-spinner loading-sm" />
-                                    )}
                                     保存
-                                </button>
+                                </AsyncButton>
                             </div>
                         </form>
-                </AppModal>
-            )}
+            </AppModal>
 
-            {isAnnounceConfirmOpen && (
-                <AppModal
+            <AppModal
+                    open={isAnnounceConfirmOpen}
                     onClose={closeAnnounceConfirm}
                     ariaLabel="次回部会連絡を送信"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
@@ -380,20 +376,17 @@ export function NextMeetingCard({
                             >
                                 キャンセル
                             </button>
-                            <button
+                            <AsyncButton
                                 type="button"
                                 className="btn btn-primary"
                                 onClick={handleAnnounce}
-                                disabled={isAnnouncing}
+                                loading={isAnnouncing}
+                                loadingLabel="送信中"
                             >
-                                {isAnnouncing && (
-                                    <span className="loading loading-spinner loading-sm" />
-                                )}
                                 送信する
-                            </button>
+                            </AsyncButton>
                         </div>
-                </AppModal>
-            )}
+            </AppModal>
         </div>
     );
 }
