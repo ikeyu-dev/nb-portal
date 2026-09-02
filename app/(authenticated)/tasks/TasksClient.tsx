@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCheck,
@@ -20,6 +20,7 @@ import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { parseDateInput } from "@/src/shared/lib/jst-date";
 import { AppModal } from "@/src/shared/ui/AppModal";
 import { AsyncButton } from "@/src/shared/ui/AsyncButton";
+import { AnimatedAlert } from "@/src/shared/ui/AnimatedAlert";
 
 type MemberOption = {
     studentNumber: string;
@@ -54,6 +55,7 @@ const statusBadgeClass: Record<TaskStatus, string> = {
 };
 
 const statusOrder: TaskStatus[] = ["TODO", "IN_PROGRESS", "DONE"];
+const LIST_EXIT_ANIMATION_MS = 160;
 
 const normalizeStudentNumber = (value: string | null | undefined) =>
     String(value ?? "").trim().toLowerCase();
@@ -94,6 +96,18 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
     const [deleteTargetTask, setDeleteTargetTask] = useState<Task | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [enteringTaskId, setEnteringTaskId] = useState<string | null>(null);
+    const [exitingTaskId, setExitingTaskId] = useState<string | null>(null);
+    const motionTimeouts = useRef<number[]>([]);
+
+    useEffect(
+        () => () => {
+            motionTimeouts.current.forEach((timeoutId) =>
+                window.clearTimeout(timeoutId)
+            );
+        },
+        []
+    );
 
     const progress = useMemo(() => {
         const total = tasks.length;
@@ -247,7 +261,17 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                 throw new Error(data.error || "タスクを保存できませんでした");
             }
 
-            setTasks(data.data || []);
+            const nextTasks = data.data || [];
+            if (!form.id) {
+                const currentIds = new Set(tasks.map((task) => task.id));
+                const addedTask = nextTasks.find(
+                    (task) => !currentIds.has(task.id)
+                );
+                if (addedTask) {
+                    setEnteringTaskId(addedTask.id);
+                }
+            }
+            setTasks(nextTasks);
             setSuccessMessage(form.id ? "タスクを更新しました" : "タスクを追加しました");
             closeModal(["task"]);
         } catch (caught) {
@@ -318,8 +342,15 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                 throw new Error(data.error || "タスクを削除できませんでした");
             }
 
-            setTasks((current) =>
-                current.filter((task) => task.id !== deleteTargetTask.id)
+            const deletedTaskId = deleteTargetTask.id;
+            setExitingTaskId(deletedTaskId);
+            motionTimeouts.current.push(
+                window.setTimeout(() => {
+                    setTasks((current) =>
+                        current.filter((task) => task.id !== deletedTaskId)
+                    );
+                    setExitingTaskId(null);
+                }, LIST_EXIT_ANIMATION_MS)
             );
             setSuccessMessage("タスクを削除しました");
             closeModal(["task"]);
@@ -344,7 +375,7 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
 
     return (
         <>
-            <section className="card bg-base-100 shadow-xl border border-base-300">
+            <section className="app-content-enter card bg-base-100 shadow-xl border border-base-300">
                 <div className="card-body gap-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-3">
@@ -390,6 +421,13 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                         {group.tasks.map((task) => (
                                             <article
                                                 key={task.id}
+                                                data-motion={
+                                                    exitingTaskId === task.id
+                                                        ? "exit"
+                                                        : enteringTaskId === task.id
+                                                          ? "enter"
+                                                          : undefined
+                                                }
                                                 className="rounded-lg border border-base-300 bg-base-200/40 p-4"
                                             >
                                                 <div className="flex items-start gap-3">
@@ -467,6 +505,10 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                                         <button
                                                             key={status}
                                                             type="button"
+                                                            aria-pressed={
+                                                                task.status ===
+                                                                status
+                                                            }
                                                             className={`btn btn-xs ${
                                                                 task.status ===
                                                                 status
@@ -628,14 +670,15 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                 </div>
                             </div>
 
-                            {error && (
-                                <div className="alert alert-error">{error}</div>
-                            )}
-                            {successMessage && (
-                                <div className="alert alert-success">
-                                    {successMessage}
-                                </div>
-                            )}
+                            <AnimatedAlert show={Boolean(error)} variant="error">
+                                {error}
+                            </AnimatedAlert>
+                            <AnimatedAlert
+                                show={Boolean(successMessage)}
+                                variant="success"
+                            >
+                                {successMessage}
+                            </AnimatedAlert>
 
                             <div className="modal-action">
                                 <button
@@ -687,9 +730,13 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
                                 </p>
                             )}
                         </div>
-                        {error && (
-                            <div className="alert alert-error mt-4">{error}</div>
-                        )}
+                        <AnimatedAlert
+                            show={Boolean(error)}
+                            variant="error"
+                            className="mt-4"
+                        >
+                            {error}
+                        </AnimatedAlert>
                         <div className="modal-action">
                             <button
                                 type="button"

@@ -757,7 +757,7 @@ export default function MembersPage() {
                         <span className="loading loading-spinner loading-lg text-primary" />
                     </div>
                 ) : (
-                    <div className="rounded-lg border border-base-300 bg-base-100 overflow-hidden w-full">
+                    <div className="app-content-enter rounded-lg border border-base-300 bg-base-100 overflow-hidden w-full">
                         <div className="border-b border-base-300 bg-base-50 p-3 sm:p-4">
                             <div className="grid grid-cols-1 items-end gap-2 sm:gap-3 lg:grid-cols-[minmax(0,1fr)_16rem_auto_auto]">
                                 <label className="form-control w-full">

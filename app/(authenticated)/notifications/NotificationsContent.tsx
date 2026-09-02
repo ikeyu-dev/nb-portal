@@ -20,6 +20,7 @@ import {
     CLIENT_CACHE_KEYS,
 } from "@/src/shared/lib/cache-policy";
 import type { ApiResponse } from "@/src/shared/types/api";
+import { AnimatedAlert } from "@/src/shared/ui/AnimatedAlert";
 
 interface Notification {
     eventId: string;
@@ -156,7 +157,7 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
     }
 
     return (
-        <div className="p-4 lg:p-6 w-full">
+        <div className="app-content-enter p-4 lg:p-6 w-full">
             <div className="max-w-4xl mx-auto">
                 {/* ヘッダー */}
                 <div className="flex items-center gap-3 mb-6">
@@ -178,11 +179,13 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                     <PushNotificationToggle userEmail={userEmail} />
                 </div>
 
-                {error && (
-                    <div className="alert alert-error mb-4">
-                        <span>{error}</span>
-                    </div>
-                )}
+                <AnimatedAlert
+                    show={Boolean(error)}
+                    variant="error"
+                    className="mb-4"
+                >
+                    <span>{error}</span>
+                </AnimatedAlert>
 
                 {notifications.length === 0 ? (
                     <div className="text-center py-12 text-base-content/60">

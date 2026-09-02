@@ -138,6 +138,82 @@ div {
         var(--motion-ease-out) both;
 }
 
+.app-alert[data-state="opening"] {
+    opacity: 0;
+    translate: 0 0.375rem;
+}
+
+.app-alert {
+    animation: none;
+}
+
+@keyframes app-filter-results-enter {
+    from {
+        opacity: 0;
+        translate: 0 0.2rem;
+    }
+}
+
+.app-filter-results {
+    animation: app-filter-results-enter var(--motion-duration-fast)
+        var(--motion-ease-out) both;
+}
+
+.app-alert[data-state="open"] {
+    opacity: 1;
+    translate: 0 0;
+    transition:
+        opacity var(--motion-duration-enter) var(--motion-ease-out),
+        translate var(--motion-duration-enter) var(--motion-ease-out);
+}
+
+.app-alert[data-state="closed"] {
+    opacity: 0;
+    translate: 0 -0.25rem;
+    transition:
+        opacity var(--motion-duration-exit) var(--motion-ease-standard),
+        translate var(--motion-duration-exit) var(--motion-ease-standard);
+}
+
+@keyframes app-content-enter {
+    from {
+        opacity: 0;
+        translate: 0 0.25rem;
+    }
+}
+
+.app-content-enter {
+    animation: app-content-enter var(--motion-duration-enter)
+        var(--motion-ease-out) both;
+}
+
+@keyframes app-list-item-enter {
+    from {
+        opacity: 0;
+        translate: 0 0.375rem;
+        scale: 0.99;
+    }
+}
+
+@keyframes app-list-item-exit {
+    to {
+        opacity: 0;
+        translate: 0 -0.25rem;
+        scale: 0.99;
+    }
+}
+
+[data-motion="enter"] {
+    animation: app-list-item-enter var(--motion-duration-enter)
+        var(--motion-ease-out) both;
+}
+
+[data-motion="exit"] {
+    pointer-events: none;
+    animation: app-list-item-exit var(--motion-duration-exit)
+        var(--motion-ease-standard) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .app-modal,
     .app-modal .modal-box,
@@ -146,8 +222,15 @@ div {
         transition-duration: 0.01ms;
     }
 
-    :where(.alert) {
+    :where(.alert),
+    .app-content-enter,
+    .app-filter-results,
+    [data-motion] {
         animation: none;
+    }
+
+    .app-alert[data-state] {
+        transition-duration: 0.01ms;
     }
 
     .app-modal[data-state] .app-modal-panel {
