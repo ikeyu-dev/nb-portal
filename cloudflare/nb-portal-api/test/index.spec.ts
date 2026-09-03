@@ -613,6 +613,170 @@ describe("Hello World worker", () => {
 		});
 	});
 
+	it("creates a separate event when the next meeting date changes", async () => {
+		await env.DB.prepare("DELETE FROM absences").run();
+		await env.DB.prepare("DELETE FROM schedules").run();
+		await env.DB.prepare("DELETE FROM next_meeting_settings").run();
+
+		const updateNextMeeting = async (date: string, time: string) => {
+			const request = new IncomingRequest("http://example.com/next-meeting", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					date,
+					time,
+					mode: "IN_PERSON",
+					updatedBy: "test",
+				}),
+			});
+			const ctx = createExecutionContext();
+			const response = await fetchWorker(request, authorizedEnv, ctx);
+			await waitOnExecutionContext(ctx);
+			expect(response.status).toBe(200);
+			return (await response.json()) as {
+				success?: boolean;
+				data?: { eventId?: string };
+			};
+		};
+
+		const firstUpdate = await updateNextMeeting("2099-06-01", "18:00");
+		const firstEventId = firstUpdate.data?.eventId;
+		expect(firstEventId).toBeTruthy();
+
+		await env.DB.prepare(
+			`INSERT INTO absences (
+				id, event_id, student_number, name, type
+			) VALUES (?, ?, ?, ?, ?)`
+		)
+			.bind(
+			`${firstEventId}:26D4001`,
+			firstEventId,
+			"26D4001",
+			"過去の欠席者",
+			"欠席"
+			)
+			.run();
+
+		const secondUpdate = await updateNextMeeting("2099-06-08", "19:00");
+		const secondEventId = secondUpdate.data?.eventId;
+		expect(secondEventId).toBeTruthy();
+		expect(secondEventId).not.toBe(firstEventId);
+
+		const oldSchedule = await env.DB.prepare(
+			"SELECT id, date FROM schedules WHERE id = ?"
+		)
+			.bind(firstEventId)
+			.first<{ id: string; date: string }>();
+		const currentSchedule = await env.DB.prepare(
+			"SELECT id, date FROM schedules WHERE id = ?"
+		)
+			.bind(secondEventId)
+			.first<{ id: string; date: string }>();
+		const oldAbsence = await env.DB.prepare(
+			"SELECT event_id FROM absences WHERE event_id = ?"
+		)
+			.bind(firstEventId)
+			.first<{ event_id: string }>();
+		const settings = await env.DB.prepare(
+			"SELECT event_id FROM next_meeting_settings WHERE id = 1"
+		).first<{ event_id: string }>();
+
+		expect(oldSchedule).toEqual({ id: firstEventId, date: "2099-06-01" });
+		expect(currentSchedule).toEqual({ id: secondEventId, date: "2099-06-08" });
+		expect(oldAbsence).toEqual({ event_id: firstEventId });
+		expect(settings).toEqual({ event_id: secondEventId });
+
+		const discordRequest = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: {
+				name: "absences",
+				options: [{ name: "date", type: 3, value: "2099-06-08" }],
+			},
+		});
+		const discordResponse = await fetchWorker(
+			discordRequest,
+			discordEnv(),
+			createExecutionContext()
+		);
+		const discordBody = await discordResponse.text();
+		expect(discordBody).toContain("欠席者はいません");
+		expect(discordBody).not.toContain("過去の欠席者");
+	});
+
+	it("keeps the event ID when the next meeting date stays the same", async () => {
+		await env.DB.prepare("DELETE FROM next_meeting_settings").run();
+		await env.DB.prepare("DELETE FROM schedules").run();
+
+		const update = async (time: string) => {
+			const ctx = createExecutionContext();
+			const response = await fetchWorker(
+				new IncomingRequest("http://example.com/next-meeting", {
+					method: "POST",
+					headers: authorizedHeaders({ "Content-Type": "application/json" }),
+					body: JSON.stringify({
+						date: "2099-07-01",
+						time,
+						mode: "DISCORD",
+						updatedBy: "test",
+					}),
+					}),
+					authorizedEnv,
+					ctx
+			);
+			await waitOnExecutionContext(ctx);
+			return (await response.json()) as {
+				data?: { eventId?: string };
+			};
+		};
+
+		const first = await update("18:00");
+		const second = await update("19:00");
+		expect(second.data?.eventId).toBe(first.data?.eventId);
+
+		const schedules = await env.DB.prepare(
+			"SELECT id, date, start_time FROM schedules"
+		).all<{ id: string; date: string; start_time: string }>();
+		expect(schedules.results).toEqual([
+			{
+				id: first.data?.eventId,
+				date: "2099-07-01",
+				start_time: "19:00",
+			},
+		]);
+	});
+
+	it("creates a new event when the configured event no longer exists", async () => {
+		await env.DB.prepare("DELETE FROM schedules").run();
+		await env.DB.prepare("DELETE FROM next_meeting_settings").run();
+		await env.DB.prepare(
+			`INSERT INTO next_meeting_settings (id, event_id, date, time, mode)
+			VALUES (1, 'MEETING-MISSING', '2099-08-01', '18:00', 'IN_PERSON')`
+		).run();
+
+		const ctx = createExecutionContext();
+		const response = await fetchWorker(
+			new IncomingRequest("http://example.com/next-meeting", {
+				method: "POST",
+				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				body: JSON.stringify({
+					date: "2099-08-08",
+					time: "18:00",
+					mode: "IN_PERSON",
+					updatedBy: "test",
+				}),
+			}),
+			authorizedEnv,
+			ctx
+		);
+		await waitOnExecutionContext(ctx);
+		const body = (await response.json()) as { data?: { eventId?: string } };
+
+		expect(body.data?.eventId).toMatch(/^MEETING-/);
+		expect(body.data?.eventId).not.toBe("MEETING-MISSING");
+	});
+
 	it("stores and returns schedule end date", async () => {
 		const request = new IncomingRequest("http://example.com/schedules", {
 			method: "POST",
