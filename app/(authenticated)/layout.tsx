@@ -17,16 +17,16 @@ export default async function AuthenticatedLayout({
             <AccessLogger />
             <PWANotificationPrompt userEmail={session?.user?.email || null} />
 
-            {/* Drawer - 大画面のみ表示 */}
-            <Sidebar>{children}</Sidebar>
-
-            {/* 小画面用のコンテンツラッパー */}
-            <div className="lg:hidden flex flex-col min-h-dvh">
-                <Header />
-                <div className="flex-1 pb-28">{children}</div>
+            <div className="flex min-h-dvh">
+                <Sidebar session={session} />
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="shrink-0 lg:hidden">
+                        <Header />
+                    </div>
+                    <div className="flex-1 pb-28 lg:pb-0">{children}</div>
+                </div>
             </div>
 
-            {/* Bottom dock - 小画面のみ表示 */}
             <Dock />
         </>
     );

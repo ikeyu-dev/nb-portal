@@ -1,6 +1,17 @@
 import type { Metadata, Viewport } from "next";
+import { Zen_Maru_Gothic } from "next/font/google";
+import { config } from "@fortawesome/fontawesome-svg-core";
+import "@fortawesome/fontawesome-svg-core/styles.css";
 import "@/src/shared/styles/globals.css";
 import { ServiceWorkerRegistration } from "@/src/components/ServiceWorkerRegistration";
+
+config.autoAddCss = false;
+
+const zenMaruGothic = Zen_Maru_Gothic({
+    weight: ["400"],
+    subsets: ["latin"],
+    display: "swap",
+});
 
 export const metadata: Metadata = {
     title: "NB-Portal",
@@ -37,7 +48,7 @@ export default function RootLayout({
                     href="/icons/icon-192x192.png"
                 />
             </head>
-            <body>
+            <body className={zenMaruGothic.className}>
                 <ServiceWorkerRegistration />
                 {children}
             </body>

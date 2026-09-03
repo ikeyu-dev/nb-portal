@@ -18,7 +18,6 @@ import { DigitalClock } from "@/features/digital-clock";
 import { WeatherWidget } from "@/features/weather";
 import { ScheduleCard } from "@/features/schedule-card";
 import { DateDisplay } from "@/features/date-display";
-import { ProfileImageSaver } from "@/features/profile-image";
 import { NextMeetingCard } from "@/src/features/next-meeting";
 import { MobilePWAInstallBanner } from "@/src/features/pwa-install";
 import { auth } from "@/src/auth";
@@ -149,7 +148,6 @@ export default async function HomePage() {
 
     return (
         <>
-            <ProfileImageSaver profileImage={session?.profileImage} />
             <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
                 <div className="mb-5 flex items-center gap-3 max-lg:hidden shrink-0 lg:mb-6">
                     <FontAwesomeIcon

@@ -1,9 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c&family=Zen+Maru+Gothic&display=swap");
 @import "tailwindcss";
 @plugin "daisyui" {
     themes:
         light --default,
         dark --prefersDark;
+}
+
+div {
+    font-weight: 500;
 }
 
 :root {
@@ -26,12 +29,6 @@
 [data-theme="dark"] {
     --color-primary: #0086bf;
     --color-primary-content: #ffffff;
-}
-
-div {
-    font-family: "Zen Maru Gothic";
-    font-style: normal;
-    font-weight: 500;
 }
 
 .app-modal {

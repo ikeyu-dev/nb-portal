@@ -7,6 +7,7 @@ export default async function MorePage() {
     return (
         <MoreClient
             user={session?.user}
+            profileImage={session?.profileImage}
             displayName={
                 session?.displayName ||
                 session?.memberName ||

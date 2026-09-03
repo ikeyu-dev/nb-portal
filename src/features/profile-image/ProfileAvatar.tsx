@@ -1,34 +1,33 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-solid-svg-icons";
-import { getProfileImageKey } from "./ProfileImageSaver";
 
 interface ProfileAvatarProps {
     name?: string | null;
+    imageUrl?: string | null;
     size?: "sm" | "md";
 }
 
-export function ProfileAvatar({ name, size = "md" }: ProfileAvatarProps) {
-    const [imageUrl, setImageUrl] = useState<string | null>(null);
+export function ProfileAvatar({
+    name,
+    imageUrl,
+    size = "md",
+}: ProfileAvatarProps) {
     const sizeClass = size === "sm" ? "w-10" : "w-12";
+    const sizePixels = size === "sm" ? 40 : 48;
     const iconClass = size === "sm" ? "text-lg" : "text-2xl";
-
-    useEffect(() => {
-        const image = localStorage.getItem(getProfileImageKey());
-        if (image) {
-            setImageUrl(image);
-        }
-    }, []);
 
     return (
         <div className="avatar placeholder">
             {imageUrl ? (
-                <div className={`rounded-full ${sizeClass}`}>
-                    <img
+                <div className={`overflow-hidden rounded-full ${sizeClass}`}>
+                    <Image
                         src={imageUrl}
                         alt={name || "プロフィール画像"}
+                        width={sizePixels}
+                        height={sizePixels}
+                        unoptimized
+                        className="aspect-square h-auto w-full object-cover"
                     />
                 </div>
             ) : (

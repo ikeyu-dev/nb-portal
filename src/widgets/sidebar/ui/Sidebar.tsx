@@ -1,19 +1,19 @@
 import Image from "next/image";
+import type { Session } from "next-auth";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faRightFromBracket } from "@fortawesome/free-solid-svg-icons";
 import { ThemeToggle } from "@/features/theme-toggle";
 import { ProfileAvatar } from "@/features/profile-image";
-import { auth, signOut } from "@/src/auth";
+import { signOut } from "@/src/auth";
 import { SidebarClient } from "./SidebarClient";
 import { SidebarNav } from "./SidebarNav";
 import packageJson from "@/package.json";
 
 interface SidebarProps {
-    children: React.ReactNode;
+    session: Session | null;
 }
 
-export default async function Sidebar({ children }: SidebarProps) {
-    const session = await auth();
+export default function Sidebar({ session }: SidebarProps) {
     const displayName =
         session?.displayName ||
         session?.memberName ||
@@ -22,104 +22,84 @@ export default async function Sidebar({ children }: SidebarProps) {
         null;
 
     return (
-        <div className="drawer lg:drawer-open max-lg:hidden">
-            <input
-                id="drawer"
-                type="checkbox"
-                className="drawer-toggle"
-            />
-            <div className="drawer-content flex flex-col min-h-screen">
-                {children}
+        <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col overflow-y-auto bg-base-200 lg:flex xl:w-64 2xl:w-80">
+            <div className="p-4 flex items-center justify-center">
+                <Image
+                    src="/nb_logo.png"
+                    alt="NB Logo"
+                    width={200}
+                    height={80}
+                    priority
+                    className="h-auto max-w-full"
+                />
             </div>
-            <div className="drawer-side z-40">
-                <label
-                    htmlFor="drawer"
-                    aria-label="close sidebar"
-                    className="drawer-overlay"
-                ></label>
-                <div className="bg-base-200 min-h-full w-56 xl:w-64 2xl:w-80 flex flex-col">
-                    {/* Logo */}
-                    <div className="p-4 flex items-center justify-center">
-                        <Image
-                            src="/nb_logo.png"
-                            alt="NB Logo"
-                            width={200}
-                            height={80}
-                            priority
-                            className="h-auto max-w-full"
+
+            <SidebarNav />
+
+            <div className="p-4 border-t border-base-300">
+                <ThemeToggle showLabel={true} />
+            </div>
+
+            {session?.user && (
+                <div className="p-4 border-t border-base-300 space-y-3">
+                    <div className="flex items-center gap-3">
+                        <ProfileAvatar
+                            name={displayName}
+                            imageUrl={session.profileImage}
+                            size="sm"
                         />
-                    </div>
-                    {/* Menu */}
-                    <SidebarNav />
-
-                    {/* Theme Toggle */}
-                    <div className="p-4 border-t border-base-300">
-                        <ThemeToggle showLabel={true} />
-                    </div>
-
-                    {/* User Info & Logout & PWA Install */}
-                    {session?.user && (
-                        <div className="p-4 border-t border-base-300 space-y-3">
-                            <div className="flex items-center gap-3">
-                                <ProfileAvatar
-                                    name={displayName}
-                                    size="sm"
-                                />
-                                <div className="flex-1 min-w-0">
-                                    <p
-                                        className="font-medium truncate"
-                                        style={{
-                                            fontSize:
-                                                "clamp(0.75rem, 1.2vw, 0.875rem)",
-                                        }}
-                                    >
-                                        {displayName}
-                                    </p>
-                                    <p
-                                        className="text-base-content/60 truncate"
-                                        style={{
-                                            fontSize:
-                                                "clamp(0.625rem, 1vw, 0.75rem)",
-                                        }}
-                                    >
-                                        {session.user.email}
-                                    </p>
-                                </div>
-                            </div>
-                            <SidebarClient />
-                            <form
-                                action={async () => {
-                                    "use server";
-                                    await signOut({ redirectTo: "/login" });
+                        <div className="flex-1 min-w-0">
+                            <p
+                                className="font-medium truncate"
+                                style={{
+                                    fontSize:
+                                        "clamp(0.75rem, 1.2vw, 0.875rem)",
                                 }}
                             >
-                                <button
-                                    type="submit"
-                                    className="btn btn-error btn-outline btn-sm w-full justify-start gap-2"
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faRightFromBracket}
-                                        className="w-5 text-lg"
-                                    />
-                                    ログアウト
-                                </button>
-                            </form>
+                                {displayName}
+                            </p>
+                            <p
+                                className="text-base-content/60 truncate"
+                                style={{
+                                    fontSize:
+                                        "clamp(0.625rem, 1vw, 0.75rem)",
+                                }}
+                            >
+                                {session.user.email}
+                            </p>
                         </div>
-                    )}
-
-                    {/* Version Info */}
-                    <div className="p-4 border-t border-base-300">
-                        <p
-                            className="text-base-content/40 text-center"
-                            style={{
-                                fontSize: "clamp(0.625rem, 1vw, 0.75rem)",
-                            }}
-                        >
-                            NB Portal v{packageJson.version}
-                        </p>
                     </div>
+                    <SidebarClient />
+                    <form
+                        action={async () => {
+                            "use server";
+                            await signOut({ redirectTo: "/login" });
+                        }}
+                    >
+                        <button
+                            type="submit"
+                            className="btn btn-error btn-outline btn-sm w-full justify-start gap-2"
+                        >
+                            <FontAwesomeIcon
+                                icon={faRightFromBracket}
+                                className="w-5 text-lg"
+                            />
+                            ログアウト
+                        </button>
+                    </form>
                 </div>
+            )}
+
+            <div className="p-4 border-t border-base-300">
+                <p
+                    className="text-base-content/40 text-center"
+                    style={{
+                        fontSize: "clamp(0.625rem, 1vw, 0.75rem)",
+                    }}
+                >
+                    NB Portal v{packageJson.version}
+                </p>
             </div>
-        </div>
+        </aside>
     );
 }
