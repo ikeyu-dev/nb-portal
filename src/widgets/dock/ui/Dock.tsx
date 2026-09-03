@@ -39,6 +39,7 @@ export default function Dock() {
                 <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={false}
                     className={`app-nav-item app-dock-item ${
                         pathname === item.href ? "text-primary" : ""
                     }`}

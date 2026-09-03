@@ -1,25 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
     userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const standaloneMediaQuery = "(display-mode: standalone)";
+
+const getIsInstalled = () =>
+    window.matchMedia(standaloneMediaQuery).matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
+const subscribeToInstallState = (onStoreChange: () => void) => {
+    const mediaQuery = window.matchMedia(standaloneMediaQuery);
+    mediaQuery.addEventListener("change", onStoreChange);
+    window.addEventListener("appinstalled", onStoreChange);
+
+    return () => {
+        mediaQuery.removeEventListener("change", onStoreChange);
+        window.removeEventListener("appinstalled", onStoreChange);
+    };
+};
+
 export function PWAInstallButton() {
     const [deferredPrompt, setDeferredPrompt] =
         useState<BeforeInstallPromptEvent | null>(null);
-    const [isInstalled, setIsInstalled] = useState(true);
+    const isInstalled = useSyncExternalStore(
+        subscribeToInstallState,
+        getIsInstalled,
+        () => true
+    );
 
     useEffect(() => {
-        // PWAとして既にインストールされているかチェック
-        const isStandalone =
-            window.matchMedia("(display-mode: standalone)").matches ||
-            (navigator as Navigator & { standalone?: boolean }).standalone ===
-                true;
-        setIsInstalled(isStandalone);
-
         // beforeinstallpromptイベントをリッスン
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
@@ -33,7 +47,6 @@ export function PWAInstallButton() {
 
         // インストール完了イベントをリッスン
         const handleAppInstalled = () => {
-            setIsInstalled(true);
             setDeferredPrompt(null);
         };
 

@@ -116,7 +116,7 @@ export function MobilePWAInstallBanner() {
             : "ブラウザの共有・メニュー → ホーム画面に追加";
 
     return (
-        <div className="mb-5 rounded-2xl border border-primary/20 bg-base-100 p-4 shadow-sm">
+        <aside className="fixed inset-x-4 bottom-28 z-30 mx-auto max-w-md rounded-2xl border border-primary/20 bg-base-100 p-4 shadow-lg">
             <div className="flex items-start gap-3">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                     <FontAwesomeIcon icon={faMobileScreenButton} />
@@ -167,6 +167,6 @@ export function MobilePWAInstallBanner() {
                     )}
                 </div>
             </div>
-        </div>
+        </aside>
     );
 }

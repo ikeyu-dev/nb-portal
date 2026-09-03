@@ -23,9 +23,14 @@ interface User {
 interface MoreClientProps {
     user: User | undefined;
     displayName?: string | null;
+    profileImage?: string | null;
 }
 
-export default function MoreClient({ user, displayName }: MoreClientProps) {
+export default function MoreClient({
+    user,
+    displayName,
+    profileImage,
+}: MoreClientProps) {
     const resolvedDisplayName = displayName || user?.name || null;
 
     return (
@@ -139,6 +144,7 @@ export default function MoreClient({ user, displayName }: MoreClientProps) {
                             <div className="flex items-center gap-4 mt-2">
                                 <ProfileAvatar
                                     name={resolvedDisplayName}
+                                    imageUrl={profileImage}
                                     size="md"
                                 />
                                 <div className="flex-1 min-w-0">
