@@ -1016,16 +1016,22 @@ const getNextMeeting = async (env: Env) => {
 
 const updateNextMeeting = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const existing = await env.DB.prepare(
-		"SELECT event_id FROM next_meeting_settings WHERE id = 1"
-	).first<{ event_id: string | null }>();
 	const date = String(body.date ?? "").trim();
 	const time = String(body.time ?? "").trim();
 	const mode = String(body.mode ?? "IN_PERSON").trim() || "IN_PERSON";
 	const updatedBy = String(body.updatedBy ?? "").trim();
+	const existing = await env.DB.prepare(
+		`SELECT n.event_id, s.date AS schedule_date
+		FROM next_meeting_settings n
+		LEFT JOIN schedules s ON s.id = n.event_id
+		WHERE n.id = 1`
+	).first<{ event_id: string | null; schedule_date: string | null }>();
+	const existingEventId =
+		String(body.eventId ?? "").trim() || existing?.event_id || "";
 	const eventId =
-		String(body.eventId ?? "").trim() ||
-		existing?.event_id ||
+		(existingEventId && existing?.schedule_date === date
+			? existingEventId
+			: "") ||
 		generatePrefixedId("MEETING");
 
 	if (!date) return error("Next meeting date is required", 400);
