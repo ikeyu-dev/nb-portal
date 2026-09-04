@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
+    faChevronRight,
     faPaperPlane,
     faPen,
+    faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import {
     NEXT_MEETING_MODE_LABELS,
@@ -20,16 +22,40 @@ import { parseDateInput } from "@/src/shared/lib/jst-date";
 import { AppModal } from "@/src/shared/ui/AppModal";
 import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 
-const canManageNextMeeting = (permission?: MemberPermission) =>
-    permission === "HEAD" || permission === "SUB_HEAD" || permission === "ACCOUNTANT";
+const DETAIL_MODAL = "next-meeting";
+const EDIT_MODAL = "next-meeting-edit";
+const ANNOUNCE_MODAL = "next-meeting-announce";
+type ModalView = "details" | "edit" | "announce";
 
-const formatNextMeeting = (meeting: NextMeetingSettings | null): string => {
-    if (!meeting) return "未設定";
+const canManageNextMeeting = (permission?: MemberPermission) =>
+    permission === "HEAD" ||
+    permission === "SUB_HEAD" ||
+    permission === "ACCOUNTANT";
+
+const getMeetingDateParts = (meeting: NextMeetingSettings | null) => {
+    if (!meeting) return null;
 
     const date = parseDateInput(meeting.date);
-    if (!date) return `${meeting.date.replaceAll("-", "/")} ${meeting.time} ${NEXT_MEETING_MODE_LABELS[meeting.mode]}`;
-    const weekday = ["日", "月", "火", "水", "木", "金", "土"][date.getDay()];
-    return `${meeting.date.replaceAll("-", "/")}(${weekday}) ${meeting.time} ${NEXT_MEETING_MODE_LABELS[meeting.mode]}`;
+    if (!date) {
+        return {
+            short: `${meeting.date.replaceAll("-", "/")} ${meeting.time}`,
+            full: `${meeting.date.replaceAll("-", "/")} ${meeting.time}`,
+        };
+    }
+
+    const weekday = ["日", "月", "火", "水", "木", "金", "土"][
+        date.getDay()
+    ];
+    return {
+        short: `${date.getMonth() + 1}/${date.getDate()}(${weekday}) ${meeting.time}`,
+        full: `${meeting.date.replaceAll("-", "/")}(${weekday}) ${meeting.time}`,
+    };
+};
+
+const formatNextMeeting = (meeting: NextMeetingSettings | null): string => {
+    const dateParts = getMeetingDateParts(meeting);
+    if (!meeting || !dateParts) return "未設定";
+    return `${dateParts.full} ${NEXT_MEETING_MODE_LABELS[meeting.mode]}`;
 };
 
 const formatUpdatedAt = (updatedAt: string): string => {
@@ -63,7 +89,7 @@ export function NextMeetingCard({
     permission,
     className = "",
 }: NextMeetingCardProps) {
-    const { modal, openModal, closeModal } = useUrlModal();
+    const { modal, openModal, replaceModal, closeModal } = useUrlModal();
     const [meeting, setMeeting] = useState(initialMeeting);
     const [date, setDate] = useState(initialMeeting?.date || "");
     const [time, setTime] = useState(initialMeeting?.time || "21:00");
@@ -74,29 +100,46 @@ export function NextMeetingCard({
     const [isAnnouncing, setIsAnnouncing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-    const canManage = useMemo(
-        () => canManageNextMeeting(permission),
-        [permission]
+    const canManage = canManageNextMeeting(permission);
+    const [modalView, setModalView] = useState<ModalView>(() =>
+        canManage && modal === EDIT_MODAL
+            ? "edit"
+            : canManage && modal === ANNOUNCE_MODAL
+              ? "announce"
+              : "details"
     );
-    const isEditorOpen = canManage && modal === "next-meeting-edit";
-    const isAnnounceConfirmOpen =
-        canManage && modal === "next-meeting-announce";
+    const isDetailsOpen = modal === DETAIL_MODAL;
+    const isEditorOpen = canManage && modal === EDIT_MODAL;
+    const isAnnounceConfirmOpen = canManage && modal === ANNOUNCE_MODAL;
+    const isModalOpen =
+        isDetailsOpen || isEditorOpen || isAnnounceConfirmOpen;
+    const dateParts = getMeetingDateParts(meeting);
 
     useEffect(() => {
         if (!canManage) return;
-        if (modal === "next-meeting-edit") {
+
+        if (modal === EDIT_MODAL) {
+            setModalView("edit");
             setDate(meeting?.date || "");
             setTime(meeting?.time || "21:00");
             setMode(meeting?.mode || "DISCORD");
-            setError(null);
-            setSuccessMessage(null);
         }
-        if (modal === "next-meeting-announce") {
+
+        if (modal === ANNOUNCE_MODAL) {
+            setModalView("announce");
+        }
+
+        if (modal === EDIT_MODAL || modal === ANNOUNCE_MODAL) {
             setError(null);
             setSuccessMessage(null);
         }
     }, [canManage, meeting, modal]);
+
+    const openDetails = () => {
+        setModalView("details");
+        setError(null);
+        openModal(DETAIL_MODAL);
+    };
 
     const openEditor = () => {
         setDate(meeting?.date || "");
@@ -104,22 +147,26 @@ export function NextMeetingCard({
         setMode(meeting?.mode || "DISCORD");
         setError(null);
         setSuccessMessage(null);
-        openModal("next-meeting-edit");
-    };
-
-    const closeEditor = () => {
-        if (isSubmitting) return;
-        closeModal();
+        setModalView("edit");
+        replaceModal(EDIT_MODAL);
     };
 
     const openAnnounceConfirm = () => {
         setError(null);
         setSuccessMessage(null);
-        openModal("next-meeting-announce");
+        setModalView("announce");
+        replaceModal(ANNOUNCE_MODAL);
     };
 
-    const closeAnnounceConfirm = () => {
-        if (isAnnouncing) return;
+    const returnToDetails = () => {
+        if (isSubmitting || isAnnouncing) return;
+        setError(null);
+        setModalView("details");
+        replaceModal(DETAIL_MODAL);
+    };
+
+    const handleClose = () => {
+        if (isSubmitting || isAnnouncing) return;
         closeModal();
     };
 
@@ -158,12 +205,15 @@ export function NextMeetingCard({
     const handleAnnounce = async () => {
         setError(null);
         setSuccessMessage(null);
-
         setIsAnnouncing(true);
+
         try {
             const result = await announceNextMeeting();
             if (!result.success) {
-                setError(result.error || "次回部会のお知らせを送信できませんでした");
+                setError(
+                    result.error ||
+                        "次回部会のお知らせを送信できませんでした"
+                );
                 return;
             }
 
@@ -180,90 +230,99 @@ export function NextMeetingCard({
         }
     };
 
+    const modalLabel = modalView === "edit"
+        ? "次回部会を編集"
+        : modalView === "announce"
+          ? "次回部会連絡を送信"
+          : "次回部会";
+
     return (
-        <div
-            className={`card bg-base-100 shadow-xl border border-base-300 ${className}`}
-        >
-            <div className="card-body gap-4 p-5 pb-4">
-                <div className="flex items-center gap-2">
-                    <FontAwesomeIcon
-                        icon={faCalendarDays}
-                        className="text-xl text-primary"
-                    />
-                    <h2
-                        className="card-title"
-                        style={{ fontSize: "clamp(1rem, 2.5vw, 1.25rem)" }}
-                    >
-                        次回部会
-                    </h2>
-                </div>
-
-                <div className="rounded-lg border border-base-300 bg-base-50 px-4 py-3">
-                    <div className="flex items-stretch gap-3">
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm text-base-content/60 mb-1">
-                                予定
-                            </p>
-                            <p className="truncate font-medium">
-                                {formatNextMeeting(meeting)}
-                            </p>
-                            {meeting?.updatedAt && (
-                                <p className="text-xs text-base-content/50 mt-2">
-                                    更新: {formatUpdatedAt(meeting.updatedAt)}
-                                    {meeting.updatedByName || meeting.updatedBy
-                                        ? ` / ${meeting.updatedByName || meeting.updatedBy}`
-                                        : ""}
-                                </p>
-                            )}
-                        </div>
-                        {canManage && (
-                            <div className="flex shrink-0 items-center gap-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-primary btn-sm gap-2"
-                                    onClick={openEditor}
-                                    disabled={isAnnouncing}
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faPen}
-                                        className="text-lg"
-                                    />
-                                    編集
-                                </button>
-                                <AsyncButton
-                                    type="button"
-                                    className="btn btn-primary btn-outline btn-sm gap-2"
-                                    onClick={openAnnounceConfirm}
-                                    loading={isAnnouncing}
-                                    loadingLabel="送信中"
-                                    spinnerClassName="loading-xs"
-                                >
-                                    <FontAwesomeIcon
-                                        icon={faPaperPlane}
-                                        className="text-lg"
-                                    />
-                                    送信
-                                </AsyncButton>
-                            </div>
-                        )}
+        <>
+            <section
+                className={`card bg-base-100 shadow-xl border border-base-300 ${className}`}
+            >
+                <div className="card-body flex flex-col p-5 pb-4">
+                    <div className="mb-3 flex h-8 items-center gap-2 shrink-0">
+                        <FontAwesomeIcon
+                            icon={faCalendarDays}
+                            className="text-xl text-primary"
+                        />
+                        <h2
+                            className="card-title"
+                            style={{
+                                fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
+                            }}
+                        >
+                            次回部会
+                        </h2>
                     </div>
-                </div>
 
-                {successMessage && (
-                    <p className="text-sm text-success">{successMessage}</p>
-                )}
-            </div>
+                    <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70">
+                        <button
+                            type="button"
+                            aria-label="次回部会の詳細を開く"
+                            className="app-nav-item group flex w-full cursor-pointer items-stretch gap-4 p-5 text-left transition-colors hover:bg-base-200/50"
+                            onClick={openDetails}
+                        >
+                            <span
+                                className="w-1 shrink-0 rounded-full bg-primary"
+                                aria-hidden="true"
+                            />
+                            <span className="flex min-w-0 flex-1 items-center gap-3">
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-bold text-base sm:text-lg">
+                                        {dateParts?.short || "未設定"}
+                                    </span>
+                                    <span className="mt-1 block">
+                                        <span className="badge badge-outline badge-sm">
+                                            {meeting
+                                                ? NEXT_MEETING_MODE_LABELS[
+                                                      meeting.mode
+                                                  ]
+                                                : "予定なし"}
+                                        </span>
+                                    </span>
+                                </span>
+                                <FontAwesomeIcon
+                                    icon={faChevronRight}
+                                    className="text-sm text-base-content/35 transition-transform group-hover:translate-x-0.5"
+                                />
+                            </span>
+                        </button>
+                    </div>
+
+                    {successMessage && (
+                        <p className="mt-3 text-sm text-success">
+                            {successMessage}
+                        </p>
+                    )}
+                </div>
+            </section>
 
             <AppModal
-                    open={isEditorOpen}
-                    onClose={closeEditor}
-                    ariaLabel="次回部会を編集"
-                    boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
-                >
-                        <h3 className="font-bold text-lg mb-4">
-                            次回部会を編集
-                        </h3>
+                open={isModalOpen}
+                onClose={handleClose}
+                ariaLabel={modalLabel}
+                boxClassName={`max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)] ${
+                    modalView === "announce" ? "max-w-md" : "max-w-2xl"
+                }`}
+            >
+                <div className="mb-5 flex items-center justify-between gap-4">
+                    <h3 className="text-lg font-bold">{modalLabel}</h3>
+                    <button
+                        type="button"
+                        aria-label="閉じる"
+                        title="閉じる"
+                        className="btn btn-sm btn-square btn-ghost shrink-0"
+                        onClick={handleClose}
+                        disabled={isSubmitting || isAnnouncing}
+                    >
+                        <FontAwesomeIcon icon={faXmark} />
+                    </button>
+                </div>
 
+                {modalView === "edit" ? (
+                    <>
                         <form
                             onSubmit={handleSubmit}
                             className="grid grid-cols-1 gap-4"
@@ -303,7 +362,8 @@ export function NextMeetingCard({
                                     value={mode}
                                     onChange={(event) =>
                                         setMode(
-                                            event.target.value as NextMeetingMode
+                                            event.target
+                                                .value as NextMeetingMode
                                         )
                                     }
                                 >
@@ -323,14 +383,16 @@ export function NextMeetingCard({
                             </label>
 
                             {error && (
-                                <div className="alert alert-error">{error}</div>
+                                <div className="alert alert-error">
+                                    {error}
+                                </div>
                             )}
 
                             <div className="modal-action">
                                 <button
                                     type="button"
-                                    className="btn"
-                                    onClick={closeEditor}
+                                    className="btn btn-ghost"
+                                    onClick={returnToDetails}
                                     disabled={isSubmitting}
                                 >
                                     キャンセル
@@ -345,19 +407,11 @@ export function NextMeetingCard({
                                 </AsyncButton>
                             </div>
                         </form>
-            </AppModal>
-
-            <AppModal
-                    open={isAnnounceConfirmOpen}
-                    onClose={closeAnnounceConfirm}
-                    ariaLabel="次回部会連絡を送信"
-                    boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
-                >
-                        <h3 className="font-bold text-lg mb-3">
-                            次回部会連絡を送信
-                        </h3>
+                    </>
+                ) : modalView === "announce" ? (
+                    <>
                         <p className="text-sm text-base-content/70">
-                            Discord に次回部会連絡を送信します。
+                            Discordへ次回部会連絡を送信します。
                         </p>
                         <p className="mt-3 rounded-lg bg-base-200 px-3 py-2 text-sm font-medium">
                             {formatNextMeeting(meeting)}
@@ -370,8 +424,8 @@ export function NextMeetingCard({
                         <div className="modal-action">
                             <button
                                 type="button"
-                                className="btn"
-                                onClick={closeAnnounceConfirm}
+                                className="btn btn-ghost"
+                                onClick={returnToDetails}
                                 disabled={isAnnouncing}
                             >
                                 キャンセル
@@ -386,7 +440,73 @@ export function NextMeetingCard({
                                 送信する
                             </AsyncButton>
                         </div>
+                    </>
+                ) : (
+                    <>
+                        {meeting && dateParts ? (
+                            <div className="rounded-xl border border-base-300 bg-base-200/40 p-4">
+                                <div className="flex items-start gap-3">
+                                    <FontAwesomeIcon
+                                        icon={faCalendarDays}
+                                        className="mt-0.5 text-xl text-primary"
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold">
+                                            {dateParts.full}
+                                        </p>
+                                        <span className="badge badge-outline badge-sm mt-2">
+                                            {
+                                                NEXT_MEETING_MODE_LABELS[
+                                                    meeting.mode
+                                                ]
+                                            }
+                                        </span>
+                                        {meeting.updatedAt && (
+                                            <p className="mt-3 text-xs text-base-content/55">
+                                                更新: {formatUpdatedAt(
+                                                    meeting.updatedAt
+                                                )}
+                                                {meeting.updatedByName ||
+                                                meeting.updatedBy
+                                                    ? ` / ${meeting.updatedByName || meeting.updatedBy}`
+                                                    : ""}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <p className="rounded-xl border border-base-300 bg-base-200/40 p-4 text-base-content/65">
+                                次回部会は未設定です。
+                            </p>
+                        )}
+
+                        <div className="modal-action">
+                            {canManage && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline btn-primary gap-2"
+                                        onClick={openEditor}
+                                    >
+                                        <FontAwesomeIcon icon={faPen} />
+                                        編集
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary gap-2"
+                                        onClick={openAnnounceConfirm}
+                                        disabled={!meeting}
+                                    >
+                                        <FontAwesomeIcon icon={faPaperPlane} />
+                                        Discordへ即時送信
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </>
+                )}
             </AppModal>
-        </div>
+        </>
     );
 }

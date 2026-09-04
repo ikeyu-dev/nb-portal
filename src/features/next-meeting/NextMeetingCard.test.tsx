@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -18,6 +24,7 @@ vi.mock("@/src/shared/lib/use-url-modal", async () => {
             return {
                 modal,
                 openModal: (name: string) => setModal(name),
+                replaceModal: (name: string) => setModal(name),
                 closeModal: () => setModal(null),
             };
         },
@@ -44,7 +51,7 @@ describe("NextMeetingCard", () => {
         mocks.announceNextMeeting.mockResolvedValue({ success: true });
     });
 
-    it("一般部員には編集・送信操作を表示しない", () => {
+    it("予定一覧と同じくカードから詳細モーダルを開く", () => {
         render(
             <NextMeetingCard
                 initialMeeting={initialMeeting}
@@ -52,12 +59,26 @@ describe("NextMeetingCard", () => {
             />
         );
 
-        expect(screen.getByText("2026/09/01(火) 18:00 対面")).toBeInTheDocument();
+        expect(screen.getByText("9/1(火) 18:00")).toBeInTheDocument();
+        expect(screen.getByText("対面")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
-        expect(screen.queryByRole("button", { name: "送信" })).toBeNull();
+        expect(
+            screen.queryByRole("button", { name: "Discordへ即時送信" })
+        ).toBeNull();
+
+        fireEvent.click(
+            screen.getByRole("button", { name: "次回部会の詳細を開く" })
+        );
+
+        expect(
+            screen.getByRole("dialog", { name: "次回部会" })
+        ).toBeInTheDocument();
+        expect(screen.getByText("更新: 2026/08/28 12:34:56 / 部長 太郎"))
+            .toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
     });
 
-    it("更新成功後にモーダルを閉じ、表示内容を更新する", async () => {
+    it("管理者は詳細モーダルから編集し、成功後にモーダルを閉じる", async () => {
         mocks.updateNextMeeting.mockResolvedValueOnce({
             success: true,
             data: {
@@ -73,6 +94,10 @@ describe("NextMeetingCard", () => {
             />
         );
 
+        expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
+        fireEvent.click(
+            screen.getByRole("button", { name: "次回部会の詳細を開く" })
+        );
         fireEvent.click(screen.getByRole("button", { name: "編集" }));
         const dialog = screen.getByRole("dialog", { name: "次回部会を編集" });
         const inputs = dialog.querySelectorAll("input");
@@ -95,7 +120,12 @@ describe("NextMeetingCard", () => {
                 screen.queryByRole("dialog", { name: "次回部会を編集" })
             ).toBeNull()
         );
-        expect(screen.getByText("2026/09/08(火) 19:30 Discord")).toBeInTheDocument();
+        const trigger = screen.getByRole("button", {
+            name: "次回部会の詳細を開く",
+        });
+        expect(within(trigger).getByText("9/8(火) 19:30"))
+            .toBeInTheDocument();
+        expect(within(trigger).getByText("Discord")).toBeInTheDocument();
         expect(screen.getByText("次回部会を更新しました")).toBeInTheDocument();
     });
 
@@ -111,6 +141,9 @@ describe("NextMeetingCard", () => {
             />
         );
 
+        fireEvent.click(
+            screen.getByRole("button", { name: "次回部会の詳細を開く" })
+        );
         fireEvent.click(screen.getByRole("button", { name: "編集" }));
         fireEvent.click(screen.getByRole("button", { name: "保存" }));
 
@@ -120,7 +153,7 @@ describe("NextMeetingCard", () => {
         ).toBeInTheDocument();
     });
 
-    it("確認後にDiscord告知を送信してモーダルを閉じる", async () => {
+    it("管理者は詳細モーダルからDiscordへ即時送信できる", async () => {
         render(
             <NextMeetingCard
                 initialMeeting={initialMeeting}
@@ -128,7 +161,12 @@ describe("NextMeetingCard", () => {
             />
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "送信" }));
+        fireEvent.click(
+            screen.getByRole("button", { name: "次回部会の詳細を開く" })
+        );
+        fireEvent.click(
+            screen.getByRole("button", { name: "Discordへ即時送信" })
+        );
         expect(
             screen.getByRole("dialog", { name: "次回部会連絡を送信" })
         ).toBeInTheDocument();
@@ -145,5 +183,20 @@ describe("NextMeetingCard", () => {
         expect(
             screen.getByText("次回部会連絡をDiscordに送信しました")
         ).toBeInTheDocument();
+    });
+
+    it("次回部会が未設定の場合は即時送信できない", () => {
+        render(
+            <NextMeetingCard initialMeeting={null} permission="ACCOUNTANT" />
+        );
+
+        fireEvent.click(
+            screen.getByRole("button", { name: "次回部会の詳細を開く" })
+        );
+
+        expect(
+            screen.getByRole("button", { name: "Discordへ即時送信" })
+        ).toBeDisabled();
+        expect(screen.getByRole("button", { name: "編集" })).toBeEnabled();
     });
 });
