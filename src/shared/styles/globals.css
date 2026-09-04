@@ -114,12 +114,103 @@ div {
     transition-duration: var(--motion-duration-press);
 }
 
-.app-dock-item[data-active="true"] {
-    scale: 1.1;
+.app-mobile-dock {
+    --dock-item-count: 5;
+    --dock-bottom-space: max(1rem, env(safe-area-inset-bottom, 0px));
+    display: grid;
+    grid-template-columns: repeat(var(--dock-item-count), minmax(0, 1fr));
+    height: calc(4rem + var(--dock-bottom-space));
+    padding: 0.45rem 0.35rem var(--dock-bottom-space);
+    background: var(--color-base-100);
+    border-top: 1px solid
+        color-mix(in oklab, var(--color-base-300) 78%, transparent);
+    box-shadow: 0 -0.35rem 1.25rem rgb(0 0 0 / 0.08);
+    isolation: isolate;
 }
 
-.app-dock-item[data-active="true"]:active {
-    scale: 1.065;
+[data-theme="dark"] .app-mobile-dock {
+    box-shadow: 0 -0.35rem 1.25rem rgb(0 0 0 / 0.3);
+}
+
+.app-dock-item {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 3.55rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.1rem;
+    color: var(--color-base-content);
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.app-dock-item[data-active="true"] {
+    color: var(--color-primary);
+}
+
+.app-dock-icon {
+    position: relative;
+    display: grid;
+    width: 2.5rem;
+    height: 2rem;
+    flex: 0 0 2rem;
+    place-items: center;
+    font-size: 1.35rem;
+    line-height: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    transform-origin: bottom center;
+    transition:
+        color var(--motion-duration-fast) var(--motion-ease-standard),
+        filter 220ms var(--motion-ease-out),
+        transform 300ms var(--motion-ease-out);
+    will-change: transform;
+}
+
+.app-dock-item[data-active="true"] .app-dock-icon {
+    transform: translate3d(0, -0.1rem, 0) scale(1.06);
+}
+
+.app-dock-item:active .app-dock-icon {
+    transform: translate3d(0, -0.18rem, 0) scale(0.96);
+    transition-duration: var(--motion-duration-press);
+}
+
+.app-dock-item:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+    border-radius: 0.35rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .app-dock-item:hover .app-dock-icon {
+        filter: drop-shadow(
+            0 0.35rem 0.35rem
+                color-mix(in oklab, var(--color-base-content) 18%, transparent)
+        );
+        transform: translate3d(0, -0.45rem, 0) scale(1.22);
+    }
+
+    .app-dock-item:has(+ .app-dock-item:hover) .app-dock-icon,
+    .app-dock-item:hover + .app-dock-item .app-dock-icon {
+        transform: translate3d(0, -0.14rem, 0) scale(1.07);
+    }
+
+    .app-dock-item:active .app-dock-icon {
+        transform: translate3d(0, -0.32rem, 0) scale(1.1);
+    }
+}
+
+.app-dock-label {
+    overflow: hidden;
+    max-width: 100%;
+    padding-inline: 0.15rem;
+    font-size: 0.7rem;
+    line-height: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 @keyframes app-message-enter {
@@ -215,7 +306,8 @@ div {
     .app-modal,
     .app-modal .modal-box,
     :where(.btn),
-    .app-nav-item {
+    .app-nav-item,
+    .app-dock-icon {
         transition-duration: 0.01ms;
     }
 

@@ -5,10 +5,13 @@ import { signOut } from "next-auth/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBars,
+    faBell,
     faBookOpen,
     faCircleInfo,
     faCircleQuestion,
     faFileLines,
+    faListCheck,
+    faMicrophone,
     faRightFromBracket,
     faUser,
 } from "@fortawesome/free-solid-svg-icons";
@@ -51,6 +54,48 @@ export default function MoreClient({
 
                 <section className="card bg-base-200">
                     <div className="card-body">
+                        <h2 className="card-title text-base">機能</h2>
+                        <div className="grid grid-cols-1 min-[380px]:grid-cols-2 gap-2 mt-2">
+                            {[
+                                {
+                                    href: "/items",
+                                    label: "機材一覧",
+                                    icon: faMicrophone,
+                                },
+                                {
+                                    href: "/tasks",
+                                    label: "タスク",
+                                    icon: faListCheck,
+                                },
+                                {
+                                    href: "/notifications",
+                                    label: "お知らせ",
+                                    icon: faBell,
+                                },
+                                {
+                                    href: "/documents",
+                                    label: "資料",
+                                    icon: faFileLines,
+                                },
+                            ].map((item) => (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className="btn btn-ghost h-auto min-h-14 justify-start gap-3 bg-base-100 px-3"
+                                >
+                                    <FontAwesomeIcon
+                                        icon={item.icon}
+                                        className="w-5 text-lg text-primary"
+                                    />
+                                    {item.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="card bg-base-200">
+                    <div className="card-body">
                         <h2 className="card-title text-base">
                             <FontAwesomeIcon
                                 icon={faCircleQuestion}
@@ -71,33 +116,6 @@ export default function MoreClient({
                                     className="text-lg"
                                 />
                                 ヘルプを見る
-                            </Link>
-                        </div>
-                    </div>
-                </section>
-
-                <section className="card bg-base-200">
-                    <div className="card-body">
-                        <h2 className="card-title text-base">
-                            <FontAwesomeIcon
-                                icon={faFileLines}
-                                className="text-lg"
-                            />
-                            資料
-                        </h2>
-                        <p className="text-sm text-base-content/60 mt-1">
-                            部内資料や共有ドキュメントを確認できます
-                        </p>
-                        <div className="card-actions mt-3">
-                            <Link
-                                href="/documents"
-                                className="btn btn-primary btn-sm w-full gap-2"
-                            >
-                                <FontAwesomeIcon
-                                    icon={faFileLines}
-                                    className="text-lg"
-                                />
-                                資料を見る
                             </Link>
                         </div>
                     </div>
