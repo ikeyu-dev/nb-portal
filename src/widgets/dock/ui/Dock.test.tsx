@@ -15,7 +15,7 @@ vi.mock("next/link", () => ({
     }) => (
         <a
             {...props}
-            data-prefetch={String(prefetch)}
+            data-prefetch={prefetch === undefined ? "default" : String(prefetch)}
             onClick={(event) => {
                 onClick?.(event);
                 event.preventDefault();
@@ -61,11 +61,11 @@ describe("Dock", () => {
         expect(navigation).toHaveAttribute("data-active-index", "1");
     });
 
-    it("Sidebarと重複するルートを自動prefetchしない", () => {
+    it("モバイルの遷移先にNext.js標準のprefetch設定を使う", () => {
         render(<Dock />);
 
         for (const link of screen.getAllByRole("link")) {
-            expect(link).toHaveAttribute("data-prefetch", "false");
+            expect(link).toHaveAttribute("data-prefetch", "default");
         }
     });
 });

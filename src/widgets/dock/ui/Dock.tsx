@@ -70,7 +70,6 @@ export default function Dock() {
                     <Link
                         key={item.href}
                         href={item.href}
-                        prefetch={false}
                         aria-current={isCurrent ? "page" : undefined}
                         aria-busy={isPending || undefined}
                         className="app-nav-item app-dock-item"
