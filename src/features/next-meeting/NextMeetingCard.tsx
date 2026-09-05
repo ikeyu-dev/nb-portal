@@ -278,33 +278,35 @@ export function NextMeetingCard({
                         <button
                             type="button"
                             aria-label="次回部会の詳細を開く"
-                            className="app-nav-item group flex w-full cursor-pointer items-stretch gap-4 p-5 text-left transition-colors hover:bg-base-200/50"
+                            className="app-event-row group w-full cursor-pointer bg-base-100 p-5 text-left"
                             onClick={openDetails}
                         >
-                            <span
-                                className="w-1 shrink-0 rounded-full bg-primary"
-                                aria-hidden="true"
-                            />
-                            <span className="flex min-w-0 flex-1 items-center gap-3">
-                                <span className="min-w-0 flex-1">
-                                    <span className="block font-bold text-base sm:text-lg">
-                                        {dateParts?.short || "未設定"}
-                                    </span>
-                                    {meeting ? (
-                                        <MeetingLocation
-                                            mode={meeting.mode}
-                                            className="mt-1 text-sm"
-                                        />
-                                    ) : (
-                                        <span className="mt-1 block text-sm text-base-content/60">
-                                            予定なし
-                                        </span>
-                                    )}
-                                </span>
-                                <FontAwesomeIcon
-                                    icon={faChevronRight}
-                                    className="text-sm text-base-content/35 transition-transform group-hover:translate-x-0.5"
+                            <span className="app-event-row-content flex w-full items-stretch gap-4">
+                                <span
+                                    className="app-event-row-accent w-1 shrink-0 rounded-full bg-primary"
+                                    aria-hidden="true"
                                 />
+                                <span className="flex min-w-0 flex-1 items-center gap-3">
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block font-bold text-base sm:text-lg">
+                                            {dateParts?.short || "未設定"}
+                                        </span>
+                                        {meeting ? (
+                                            <MeetingLocation
+                                                mode={meeting.mode}
+                                                className="mt-1 text-sm"
+                                            />
+                                        ) : (
+                                            <span className="mt-1 block text-sm text-base-content/60">
+                                                予定なし
+                                            </span>
+                                        )}
+                                    </span>
+                                    <FontAwesomeIcon
+                                        icon={faChevronRight}
+                                        className="text-sm text-base-content/35 transition-transform group-hover:translate-x-0.5"
+                                    />
+                                </span>
                             </span>
                         </button>
                     </div>

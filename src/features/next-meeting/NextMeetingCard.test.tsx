@@ -65,6 +65,14 @@ describe("NextMeetingCard", () => {
         expect(
             container.querySelectorAll('[data-icon="location-dot"]')
         ).toHaveLength(1);
+        const trigger = screen.getByRole("button", {
+            name: "次回部会の詳細を開く",
+        });
+        expect(trigger).toHaveClass("app-event-row");
+        expect(trigger.querySelector(".app-event-row-accent"))
+            .toBeInTheDocument();
+        expect(trigger.querySelector(".app-event-row-content"))
+            .toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
         expect(
             screen.queryByRole("button", { name: "Discordへ即時送信" })

@@ -849,11 +849,11 @@ export default function ScheduleCard({
                             event: eventId,
                         });
                     }}
-                    className="group bg-base-100 p-5 transition-colors cursor-pointer hover:bg-base-200/50"
+                    className="app-event-row group cursor-pointer bg-base-100 p-5"
                 >
-                    <div className="flex items-stretch gap-4">
+                    <div className="app-event-row-content flex items-stretch gap-4">
                         <div
-                            className="w-1 rounded-full"
+                            className="app-event-row-accent w-1 rounded-full"
                             style={{ backgroundColor: color }}
                         />
                         <div className="flex items-start gap-3 flex-1">

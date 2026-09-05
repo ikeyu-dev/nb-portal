@@ -114,6 +114,22 @@ div {
     transition-duration: var(--motion-duration-press);
 }
 
+.app-event-row-content {
+    transform: translate3d(0, 0, 0);
+    transition: transform 260ms var(--motion-ease-out);
+}
+
+.app-event-row:active .app-event-row-content {
+    transform: translate3d(0.25rem, 0, 0);
+    transition-duration: var(--motion-duration-press);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .app-event-row:hover .app-event-row-content {
+        transform: translate3d(0.5rem, 0, 0);
+    }
+}
+
 .app-mobile-dock {
     --dock-item-count: 5;
     --dock-bottom-space: max(1rem, env(safe-area-inset-bottom, 0px));
@@ -313,6 +329,7 @@ div {
     .app-modal .modal-box,
     :where(.btn),
     .app-nav-item,
+    .app-event-row-content,
     .app-dock-icon {
         transition-duration: 0.01ms;
     }

@@ -65,6 +65,19 @@ describe("ScheduleCard", () => {
         mocks.updateEventAttendance.mockResolvedValue({ success: true });
     });
 
+    it("予定行に共通のホバーアニメーション構造を適用する", () => {
+        const { container } = render(
+            <ScheduleCard {...baseProps} hideCard={false} />
+        );
+
+        expect(screen.getAllByText("夏季活動")[0].closest(".app-event-row"))
+            .toBeInTheDocument();
+        expect(container.querySelector(".app-event-row-accent"))
+            .toBeInTheDocument();
+        expect(container.querySelector(".app-event-row-content"))
+            .toBeInTheDocument();
+    });
+
     it("希望者参加の参加登録を出席連絡として送信する", async () => {
         vi.mocked(fetch).mockResolvedValueOnce(
             response({
