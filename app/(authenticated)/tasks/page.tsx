@@ -2,9 +2,15 @@ import { faListCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { auth } from "@/src/auth";
 import TasksClient from "./TasksClient";
+import { getInitialData } from "@/src/shared/api/initial-data";
+import type { Task, MembersData } from "@/src/shared/types/api";
 
 export default async function TasksPage() {
-    const session = await auth();
+    const [session, tasks, members] = await Promise.all([
+        auth(),
+        getInitialData<Task[]>("tasks"),
+        getInitialData<MembersData>("members"),
+    ]);
 
     return (
         <div className="p-4 lg:p-6 w-full">
@@ -21,7 +27,8 @@ export default async function TasksPage() {
                         タスク管理
                     </h1>
                 </div>
-                <TasksClient currentStudentId={session?.studentId || null} />
+                <TasksClient currentStudentId={session?.studentId || null}
+                    initialData={tasks && members ? { tasks, members } : null} />
             </div>
         </div>
     );

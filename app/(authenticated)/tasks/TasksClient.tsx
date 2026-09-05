@@ -38,6 +38,7 @@ type TaskFormState = {
 
 type TasksClientProps = {
     currentStudentId: string | null;
+    initialData?: { tasks: Task[]; members: MembersData } | null;
 };
 
 const emptyForm: TaskFormState = {
@@ -82,15 +83,15 @@ const resolveMembers = (data: MembersData | undefined): MemberOption[] => {
         .filter((member) => member.studentNumber && member.displayName);
 };
 
-export default function TasksClient({ currentStudentId }: TasksClientProps) {
+export default function TasksClient({ currentStudentId, initialData = null }: TasksClientProps) {
     const { modal, getModalParam, openModal, closeModal } = useUrlModal();
     const modalTaskId = getModalParam("task");
     const isTaskModalOpen = modal === "task-create" || modal === "task-edit";
     const isDeleteModalOpen = modal === "task-delete";
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [members, setMembers] = useState<MemberOption[]>([]);
+    const [tasks, setTasks] = useState<Task[]>(initialData?.tasks ?? []);
+    const [members, setMembers] = useState<MemberOption[]>(resolveMembers(initialData?.members));
     const [form, setForm] = useState<TaskFormState>(emptyForm);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(initialData === null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteTargetTask, setDeleteTargetTask] = useState<Task | null>(null);
@@ -166,8 +167,8 @@ export default function TasksClient({ currentStudentId }: TasksClientProps) {
     };
 
     useEffect(() => {
-        void loadData();
-    }, []);
+        if (initialData === null) void loadData();
+    }, [initialData]);
 
     useEffect(() => {
         if (isLoading) return;

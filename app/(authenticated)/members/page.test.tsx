@@ -30,7 +30,7 @@ vi.mock("@/src/shared/lib/use-url-modal", async () => {
     };
 });
 
-import MembersPage from "./page";
+import MembersPage from "./MembersClient";
 
 const membersData = {
     headers: [
@@ -80,6 +80,11 @@ const jsonResponse = (data: unknown, status = 200) =>
     });
 
 describe("MembersPage", () => {
+    it("サーバー初期データの表示でAPIを再取得しない", () => {
+        render(<MembersPage initialData={membersData} />);
+        expect(screen.getAllByText("放研 太郎").length).toBeGreaterThan(0);
+        expect(fetch).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         localStorage.clear();
         vi.stubGlobal("fetch", vi.fn());

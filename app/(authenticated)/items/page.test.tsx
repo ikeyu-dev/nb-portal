@@ -39,7 +39,7 @@ vi.mock("@/src/features/help", () => ({
     HelpButton: () => <button type="button">ヘルプ</button>,
 }));
 
-import ItemsPage from "./page";
+import ItemsPage from "./ItemsClient";
 
 const item = {
     ITEM_ID: "MIC-001",
@@ -53,6 +53,11 @@ const jsonResponse = (data: unknown) =>
     });
 
 describe("ItemsPage", () => {
+    it("初期データを表示するときはAPIを再取得しない", () => {
+        render(<ItemsPage initialData={[item]} />);
+        expect(screen.getAllByText("SHURE SM58").length).toBeGreaterThan(0);
+        expect(fetch).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         vi.stubGlobal("fetch", vi.fn());
         vi.mocked(fetch).mockResolvedValueOnce(

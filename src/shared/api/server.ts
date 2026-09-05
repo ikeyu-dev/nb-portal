@@ -207,6 +207,22 @@ export async function getSchedulesServer(): Promise<ApiResponse<Schedule[]>> {
 }
 
 /**
+ * 予定画面の初期表示に必要なデータをまとめて取得する
+ */
+export async function getCalendarDataServer(): Promise<{
+    schedules: ApiResponse<Schedule[]>;
+    absences: ApiResponse<Absence[]>;
+}> {
+    await requireAuthenticatedSession();
+    const [schedules, absences] = await Promise.all([
+        getSchedulesCached(),
+        getAbsencesCached(),
+    ]);
+
+    return { schedules, absences };
+}
+
+/**
  * Members取得API（サーバーサイド用）
  */
 export async function getMembersServer(): Promise<ApiResponse<MembersData>> {
