@@ -128,6 +128,12 @@ div {
     isolation: isolate;
 }
 
+@media (width >= 64rem) {
+    .app-mobile-dock {
+        display: none;
+    }
+}
+
 [data-theme="dark"] .app-mobile-dock {
     box-shadow: 0 -0.35rem 1.25rem rgb(0 0 0 / 0.3);
 }

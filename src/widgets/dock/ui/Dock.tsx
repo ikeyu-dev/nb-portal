@@ -58,7 +58,7 @@ export default function Dock() {
     return (
         <nav
             aria-label="メインナビゲーション"
-            className="app-mobile-dock fixed bottom-0 left-0 right-0 z-30 lg:hidden"
+            className="app-mobile-dock fixed bottom-0 left-0 right-0 z-30"
             data-active-index={activeIndex}
         >
             {dockItems.map((item) => {
