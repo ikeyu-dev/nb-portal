@@ -21,6 +21,7 @@ vi.mock("@/src/shared/lib/server-env", () => ({
 
 import {
     getAbsencesServer,
+    getCalendarDataServer,
     getDashboardDataServer,
     getNextMeetingServer,
     getSchedulesServer,
@@ -63,6 +64,37 @@ describe("サーバーAPI", () => {
                     "x-nb-portal-api-key": "test-api-key",
                 },
             }
+        );
+    });
+
+    it("予定画面の初期データを1回の認証で並列取得する", async () => {
+        vi.mocked(fetch)
+            .mockResolvedValueOnce(
+                jsonResponse({
+                    success: true,
+                    data: [{ EVENT_ID: "EVENT-001" }],
+                })
+            )
+            .mockResolvedValueOnce(
+                jsonResponse({
+                    success: true,
+                    data: [{ eventId: "EVENT-001" }],
+                })
+            );
+
+        const result = await getCalendarDataServer();
+
+        expect(mocks.auth).toHaveBeenCalledTimes(1);
+        expect(result.schedules.data).toEqual([{ EVENT_ID: "EVENT-001" }]);
+        expect(result.absences.data).toEqual([{ eventId: "EVENT-001" }]);
+        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(fetch).toHaveBeenCalledWith(
+            "https://backend.example.test/api?path=schedules",
+            expect.any(Object)
+        );
+        expect(fetch).toHaveBeenCalledWith(
+            "https://backend.example.test/api?path=absences",
+            expect.any(Object)
         );
     });
 

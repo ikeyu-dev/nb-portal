@@ -22,7 +22,7 @@ import {
 import type { ApiResponse } from "@/src/shared/types/api";
 import { AnimatedAlert } from "@/src/shared/ui/AnimatedAlert";
 
-interface Notification {
+export interface Notification {
     eventId: string;
     title: string;
     date: string;
@@ -34,11 +34,12 @@ interface Notification {
 
 interface NotificationsContentProps {
     userEmail: string | null;
+    initialData?: Notification[] | null;
 }
 
-export function NotificationsContent({ userEmail }: NotificationsContentProps) {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+export function NotificationsContent({ userEmail, initialData = null }: NotificationsContentProps) {
+    const [notifications, setNotifications] = useState<Notification[]>(initialData ?? []);
+    const [isLoading, setIsLoading] = useState(initialData === null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -85,8 +86,8 @@ export function NotificationsContent({ userEmail }: NotificationsContentProps) {
                 setIsLoading(false);
             }
         };
-        fetchNotifications();
-    }, []);
+        if (initialData === null) void fetchNotifications();
+    }, [initialData]);
 
     // 相対時間を表示（例: 3分前、1時間前、2日前）
     const getRelativeTime = (dateStr: string): string => {

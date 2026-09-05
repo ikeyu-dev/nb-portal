@@ -60,6 +60,11 @@ const jsonResponse = (data: unknown, status = 200) =>
     });
 
 describe("TasksClient", () => {
+    it("サーバー初期データからタスクを表示し再取得しない", () => {
+        render(<TasksClient currentStudentId="a123456" initialData={{ tasks: [task], members: membersData }} />);
+        expect(screen.getByText(task.title)).toBeInTheDocument();
+        expect(fetch).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         vi.stubGlobal("fetch", vi.fn());
         vi.mocked(fetch)
