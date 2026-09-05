@@ -57,7 +57,7 @@ const getDisplayName = (
 };
 
 /** 部員確認API呼び出し（あだ名も同時に取得） */
-export const resolveMemberProfile = async (
+const fetchMemberProfile = async (
     identifier: string
 ): Promise<{
     isMember: boolean;
@@ -108,6 +108,20 @@ export const resolveMemberProfile = async (
             permission: null,
         };
     }
+};
+
+// 同じサーバー内で処理中の取得だけを共有し、完了したプロフィールは保持しない。
+const pendingMemberProfiles = new Map<string, ReturnType<typeof fetchMemberProfile>>();
+
+export const resolveMemberProfile = (identifier: string) => {
+    const pending = pendingMemberProfiles.get(identifier);
+    if (pending) return pending;
+
+    const request = fetchMemberProfile(identifier).finally(() => {
+        pendingMemberProfiles.delete(identifier);
+    });
+    pendingMemberProfiles.set(identifier, request);
+    return request;
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
