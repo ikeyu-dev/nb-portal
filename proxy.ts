@@ -1,10 +1,21 @@
 import { auth } from "@/src/auth";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import type { NextRequest, NextFetchEvent } from "next/server";
 
-export async function proxy(request: NextRequest) {
-    const session = await auth();
-    const isLoggedIn = !!session;
+const authenticatedProxy = auth((request, _event: NextFetchEvent) => {
+    void _event;
+    if (!request.auth) {
+        const loginUrl = new URL("/login", request.nextUrl.origin);
+        loginUrl.searchParams.set(
+            "callbackUrl",
+            `${request.nextUrl.pathname}${request.nextUrl.search}`,
+        );
+        return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+});
+
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
     const { pathname } = request.nextUrl;
 
     // 認証不要のパス
@@ -33,17 +44,7 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
     }
 
-    // 未認証ならログインページにリダイレクト
-    if (!isLoggedIn) {
-        const loginUrl = new URL("/login", request.nextUrl.origin);
-        loginUrl.searchParams.set(
-            "callbackUrl",
-            `${request.nextUrl.pathname}${request.nextUrl.search}`
-        );
-        return NextResponse.redirect(loginUrl);
-    }
-
-    return NextResponse.next();
+    return authenticatedProxy(request, event);
 }
 
 export const config = {
