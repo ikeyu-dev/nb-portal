@@ -52,7 +52,7 @@ describe("NextMeetingCard", () => {
     });
 
     it("予定一覧と同じくカードから詳細モーダルを開く", () => {
-        render(
+        const { container } = render(
             <NextMeetingCard
                 initialMeeting={initialMeeting}
                 permission="NORMAL"
@@ -61,6 +61,10 @@ describe("NextMeetingCard", () => {
 
         expect(screen.getByText("9/1(火) 18:00")).toBeInTheDocument();
         expect(screen.getByText("対面")).toBeInTheDocument();
+        expect(screen.getByText("対面").closest(".badge")).toBeNull();
+        expect(
+            container.querySelectorAll('[data-icon="location-dot"]')
+        ).toHaveLength(1);
         expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
         expect(
             screen.queryByRole("button", { name: "Discordへ即時送信" })
@@ -73,6 +77,9 @@ describe("NextMeetingCard", () => {
         expect(
             screen.getByRole("dialog", { name: "次回部会" })
         ).toBeInTheDocument();
+        expect(
+            container.querySelectorAll('[data-icon="location-dot"]')
+        ).toHaveLength(2);
         expect(screen.getByText("更新: 2026/08/28 12:34:56 / 部長 太郎"))
             .toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "編集" })).toBeNull();
@@ -154,7 +161,7 @@ describe("NextMeetingCard", () => {
     });
 
     it("管理者は詳細モーダルからDiscordへ即時送信できる", async () => {
-        render(
+        const { container } = render(
             <NextMeetingCard
                 initialMeeting={initialMeeting}
                 permission="SUB_HEAD"
@@ -170,6 +177,9 @@ describe("NextMeetingCard", () => {
         expect(
             screen.getByRole("dialog", { name: "次回部会連絡を送信" })
         ).toBeInTheDocument();
+        expect(
+            container.querySelectorAll('[data-icon="location-dot"]')
+        ).toHaveLength(2);
         fireEvent.click(screen.getByRole("button", { name: "送信する" }));
 
         await waitFor(() =>

@@ -5,6 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCalendarDays,
     faChevronRight,
+    faLocationDot,
     faPaperPlane,
     faPen,
     faXmark,
@@ -52,12 +53,6 @@ const getMeetingDateParts = (meeting: NextMeetingSettings | null) => {
     };
 };
 
-const formatNextMeeting = (meeting: NextMeetingSettings | null): string => {
-    const dateParts = getMeetingDateParts(meeting);
-    if (!meeting || !dateParts) return "未設定";
-    return `${dateParts.full} ${NEXT_MEETING_MODE_LABELS[meeting.mode]}`;
-};
-
 const formatUpdatedAt = (updatedAt: string): string => {
     const date = new Date(updatedAt);
     if (Number.isNaN(date.getTime())) return updatedAt;
@@ -77,6 +72,28 @@ const formatUpdatedAt = (updatedAt: string): string => {
 
     return `${value("year")}/${value("month")}/${value("day")} ${value("hour")}:${value("minute")}:${value("second")}`;
 };
+
+function MeetingLocation({
+    mode,
+    className = "",
+}: {
+    mode: NextMeetingMode;
+    className?: string;
+}) {
+    return (
+        <span
+            className={`flex items-center gap-1 text-base-content/80 ${className}`}
+        >
+            <FontAwesomeIcon
+                icon={faLocationDot}
+                className="text-base text-primary"
+            />
+            <span className="font-medium">
+                {NEXT_MEETING_MODE_LABELS[mode]}
+            </span>
+        </span>
+    );
+}
 
 interface NextMeetingCardProps {
     initialMeeting: NextMeetingSettings | null;
@@ -273,15 +290,16 @@ export function NextMeetingCard({
                                     <span className="block font-bold text-base sm:text-lg">
                                         {dateParts?.short || "未設定"}
                                     </span>
-                                    <span className="mt-1 block">
-                                        <span className="badge badge-outline badge-sm">
-                                            {meeting
-                                                ? NEXT_MEETING_MODE_LABELS[
-                                                      meeting.mode
-                                                  ]
-                                                : "予定なし"}
+                                    {meeting ? (
+                                        <MeetingLocation
+                                            mode={meeting.mode}
+                                            className="mt-1 text-sm"
+                                        />
+                                    ) : (
+                                        <span className="mt-1 block text-sm text-base-content/60">
+                                            予定なし
                                         </span>
-                                    </span>
+                                    )}
                                 </span>
                                 <FontAwesomeIcon
                                     icon={faChevronRight}
@@ -413,9 +431,17 @@ export function NextMeetingCard({
                         <p className="text-sm text-base-content/70">
                             Discordへ次回部会連絡を送信します。
                         </p>
-                        <p className="mt-3 rounded-lg bg-base-200 px-3 py-2 text-sm font-medium">
-                            {formatNextMeeting(meeting)}
-                        </p>
+                        <div className="mt-3 rounded-lg bg-base-200 px-3 py-2 text-sm">
+                            <p className="font-medium">
+                                {dateParts?.full || "未設定"}
+                            </p>
+                            {meeting && (
+                                <MeetingLocation
+                                    mode={meeting.mode}
+                                    className="mt-1"
+                                />
+                            )}
+                        </div>
                         {error && (
                             <div className="alert alert-error mt-4">
                                 {error}
@@ -454,13 +480,10 @@ export function NextMeetingCard({
                                         <p className="font-bold">
                                             {dateParts.full}
                                         </p>
-                                        <span className="badge badge-outline badge-sm mt-2">
-                                            {
-                                                NEXT_MEETING_MODE_LABELS[
-                                                    meeting.mode
-                                                ]
-                                            }
-                                        </span>
+                                        <MeetingLocation
+                                            mode={meeting.mode}
+                                            className="mt-2 text-sm"
+                                        />
                                         {meeting.updatedAt && (
                                             <p className="mt-3 text-xs text-base-content/55">
                                                 更新: {formatUpdatedAt(
