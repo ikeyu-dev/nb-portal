@@ -58,15 +58,18 @@ const getDisplayName = (
 
 /** 部員確認API呼び出し（あだ名も同時に取得） */
 const fetchMemberProfile = async (
-    identifier: string
+    identifier: string,
+    purpose: "authorization" | "session",
 ): Promise<{
     isMember: boolean;
     name: string | null;
     nickname: string | null;
     displayName: string | null;
     permission: MemberPermission | null;
+    fetchedAt?: number;
 }> => {
     try {
+        const requestedAt = Date.now();
         const apiUrl = getBackendApiUrl();
         if (!apiUrl) {
             return {
@@ -78,8 +81,11 @@ const fetchMemberProfile = async (
             };
         }
 
+        const url = new URL(apiUrl);
+        url.searchParams.set("path", purpose === "session" ? "session-member-profile" : "verify-member");
+        url.searchParams.set("identifier", identifier);
         const res = await fetch(
-            `${apiUrl}?path=verify-member&identifier=${encodeURIComponent(identifier)}`,
+            url.toString(),
             { cache: "no-store", headers: getBackendApiHeaders() }
         );
         const data = (await res.json()) as {
@@ -88,6 +94,7 @@ const fetchMemberProfile = async (
             name?: string;
             nickname?: string;
             permission?: string;
+            fetchedAt?: number;
         };
         const name = data.name || null;
         const nickname = data.nickname || null;
@@ -98,6 +105,9 @@ const fetchMemberProfile = async (
             nickname,
             displayName: getDisplayName(nickname, name),
             permission,
+            fetchedAt: typeof data.fetchedAt === "number" && Number.isFinite(data.fetchedAt)
+                ? Math.min(data.fetchedAt, requestedAt)
+                : requestedAt,
         };
     } catch {
         return {
@@ -113,14 +123,15 @@ const fetchMemberProfile = async (
 // 同じサーバー内で処理中の取得だけを共有し、完了したプロフィールは保持しない。
 const pendingMemberProfiles = new Map<string, ReturnType<typeof fetchMemberProfile>>();
 
-export const resolveMemberProfile = (identifier: string) => {
-    const pending = pendingMemberProfiles.get(identifier);
+export const resolveMemberProfile = (identifier: string, purpose: "authorization" | "session" = "authorization") => {
+    const key = JSON.stringify([purpose, identifier]);
+    const pending = pendingMemberProfiles.get(key);
     if (pending) return pending;
 
-    const request = fetchMemberProfile(identifier).finally(() => {
-        pendingMemberProfiles.delete(identifier);
+    const request = fetchMemberProfile(identifier, purpose).finally(() => {
+        pendingMemberProfiles.delete(key);
     });
-    pendingMemberProfiles.set(identifier, request);
+    pendingMemberProfiles.set(key, request);
     return request;
 };
 
@@ -192,13 +203,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     !token.displayName ||
                     Date.now() - lastSyncedAt > MEMBER_PROFILE_REFRESH_MS);
             if (shouldRefreshMemberProfile) {
-                const result = await resolveMemberProfile(token.studentId as string);
+                const result = await resolveMemberProfile(token.studentId as string, "session");
                 if (result.isMember) {
                     token.memberName = result.name;
                     token.nickname = result.nickname;
                     token.displayName = result.displayName;
                     token.permission = result.permission || undefined;
-                    token.memberProfileSyncedAt = Date.now();
+                    token.memberProfileSyncedAt = result.fetchedAt;
                 }
             }
 
