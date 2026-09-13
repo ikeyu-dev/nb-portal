@@ -1,6 +1,6 @@
 import { auth } from "@/src/auth";
-import { NextResponse } from "next/server";
-import type { NextRequest, NextFetchEvent } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import type { NextFetchEvent } from "next/server";
 
 const authenticatedProxy = auth((request, _event: NextFetchEvent) => {
     void _event;
@@ -44,7 +44,37 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
         return NextResponse.next();
     }
 
-    return authenticatedProxy(request, event);
+    const response = await authenticatedProxy(request, event);
+    if (!response || response.headers.get("x-middleware-next") !== "1") {
+        return response;
+    }
+
+    // Auth.jsのレスポンスCookieを、同じリクエスト内のauth()にも引き継ぐ。
+    const sessionCookies = new NextResponse(null, { headers: response.headers })
+        .cookies.getAll()
+        .filter(({ name }) => /^(?:__Secure-)?authjs\.session-token(?:\.\d+)?$/.test(name));
+    if (sessionCookies.length === 0) return response;
+
+    const headers = new Headers(request.headers);
+    for (const name of [...headers.keys()]) {
+        if (name.startsWith("x-middleware-")) headers.delete(name);
+    }
+    const forwarded = new NextRequest(request.url, { headers });
+    for (const cookie of sessionCookies) {
+        const expired = cookie.expires !== undefined && new Date(cookie.expires).getTime() <= Date.now();
+        if (!cookie.value || cookie.maxAge === 0 || expired) {
+            forwarded.cookies.delete(cookie.name);
+        } else {
+            forwarded.cookies.set(cookie.name, cookie.value);
+        }
+    }
+    const override = NextResponse.next({ request: { headers: forwarded.headers } });
+    override.headers.forEach((value, name) => {
+        if (name === "x-middleware-override-headers" || name.startsWith("x-middleware-request-")) {
+            response.headers.set(name, value);
+        }
+    });
+    return response;
 }
 
 export const config = {

@@ -24,6 +24,14 @@ it("別の部員の取得を共有しない", async () => {
     expect(fetch).toHaveBeenCalledTimes(2);
 });
 
+it("セッション再同期と更新操作の権限確認を共有しない", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ success: true, isMember: true })));
+    await Promise.all([resolveMemberProfile("a123456", "session"), resolveMemberProfile("a123456")]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const urls = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)).searchParams.get("path"));
+    expect(urls).toEqual(["session-member-profile", "verify-member"]);
+});
+
 it("失敗した取得を保持せず次回に再試行する", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     await Promise.all([resolveMemberProfile("a123456"), resolveMemberProfile("a123456")]);

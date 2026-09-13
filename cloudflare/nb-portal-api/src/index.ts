@@ -1,3 +1,6 @@
+import { readMemberProfile } from "./member-profile";
+export { MemberProfileRefresh } from "./member-profile";
+
 type ApiResponse<T> = {
 	success: boolean;
 	data?: T;
@@ -663,19 +666,18 @@ const deleteMember = async (request: Request, env: Env) => {
 
 const verifyMember = async (url: URL, env: Env) => {
 	const identifier = normalizeStudentId(url.searchParams.get("identifier"));
-	const row = await env.DB.prepare(
-		`SELECT name, nickname, permission FROM members
-		WHERE lower(student_number) = lower(?) AND is_active = 1`
-	)
-		.bind(identifier)
-		.first<{ name: string; nickname: string | null; permission: string }>();
+	return json(await readMemberProfile(env.DB, identifier));
+};
 
-	return json({
-		success: true,
-		isMember: Boolean(row),
-		name: row?.name || null,
-		nickname: row?.nickname || null,
-		permission: row?.permission || null,
+const refreshSessionMemberProfile = async (url: URL, env: Env) => {
+	const identifier = normalizeStudentId(url.searchParams.get("identifier")).toLowerCase();
+	if (!identifier || identifier.length > 128) return error("Invalid identifier", 400);
+	const result = await env.MEMBER_PROFILE_REFRESH.getByName(identifier).getProfile(identifier);
+	console.info(JSON.stringify({
+		event: "member_profile_refresh", source: result.source, lookupId: result.lookupId,
+	}));
+	return json({ ...result.profile, fetchedAt: result.fetchedAt }, {
+		headers: { "Cache-Control": "no-store" },
 	});
 };
 
@@ -2068,6 +2070,8 @@ const routeGet = (url: URL, env: Env) => {
 			return getMembers(env);
 		case "verify-member":
 			return verifyMember(url, env);
+		case "session-member-profile":
+			return refreshSessionMemberProfile(url, env);
 		case "schedules":
 			return getSchedules(env);
 		case "absences":

@@ -11,6 +11,10 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
+	"durable_objects": {
+		"bindings": [{ "name": "MEMBER_PROFILE_REFRESH", "class_name": "MemberProfileRefresh" }]
+	},
+	"migrations": [{ "tag": "member-profile-refresh-v1", "new_sqlite_classes": ["MemberProfileRefresh"] }],
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
@@ -32,6 +36,9 @@
 	"env": {
 		"production": {
 			"name": "nb-portal-api-production",
+			"durable_objects": {
+				"bindings": [{ "name": "MEMBER_PROFILE_REFRESH", "class_name": "MemberProfileRefresh" }]
+			},
 			"triggers": {
 				"crons": [
 					"0 15 * * *",

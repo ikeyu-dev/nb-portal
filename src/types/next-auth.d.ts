@@ -14,10 +14,10 @@ declare module "next-auth" {
 
 declare module "next-auth/jwt" {
     interface JWT {
-        studentId?: string;
-        memberName?: string;
-        nickname?: string;
-        displayName?: string;
+        studentId?: string | null;
+        memberName?: string | null;
+        nickname?: string | null;
+        displayName?: string | null;
         permission?: MemberPermission;
         profileImage?: string;
         profileImageFetched?: boolean;
