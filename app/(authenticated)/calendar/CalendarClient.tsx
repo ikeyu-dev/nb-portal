@@ -450,8 +450,8 @@ export default function CalendarClient({
         const values = Object.values(event);
         const rawTimeHH = values[4];
         const rawTimeMM = values[5];
-        const rawEndTimeHH = values[18];
-        const rawEndTimeMM = values[19];
+        const rawEndTimeHH = event.END_TIME_HH;
+        const rawEndTimeMM = event.END_TIME_MM;
         const rawEndYear = values[9];
         const rawEndMonth = values[10];
         const rawEndDate = values[11];
@@ -693,8 +693,8 @@ export default function CalendarClient({
                     END_DD: scheduleData.endDate || "",
                     COLOR: scheduleData.color || "primary",
                     ATTENDANCE_MODE: scheduleData.attendanceMode || "ABSENCE",
-                    END_TIME_HH: scheduleData.endTimeHH || "",
-                    END_TIME_MM: scheduleData.endTimeMM || "",
+                    END_TIME_HH: scheduleData.endTimeHH ?? "",
+                    END_TIME_MM: scheduleData.endTimeMM ?? "",
                     ATTENDANCE_DEADLINE:
                         scheduleData.attendanceDeadline ||
                         addForm.attendanceDeadline,
@@ -878,8 +878,8 @@ export default function CalendarClient({
                                 DETAIL: scheduleData.detail,
                                 TIME_HH: scheduleData.timeHH || "",
                                 TIME_MM: scheduleData.timeMM || "",
-                                END_TIME_HH: scheduleData.endTimeHH || "",
-                                END_TIME_MM: scheduleData.endTimeMM || "",
+                                END_TIME_HH: scheduleData.endTimeHH ?? "",
+                                END_TIME_MM: scheduleData.endTimeMM ?? "",
                                 END_YYYY: scheduleData.endYear || "",
                                 END_MM: scheduleData.endMonth || "",
                                 END_DD: scheduleData.endDate || "",
@@ -1021,8 +1021,8 @@ export default function CalendarClient({
         const values = Object.values(schedule);
         const rawTimeHH = values[4];
         const rawTimeMM = values[5];
-        const rawEndTimeHH = values[18];
-        const rawEndTimeMM = values[19];
+        const rawEndTimeHH = schedule.END_TIME_HH;
+        const rawEndTimeMM = schedule.END_TIME_MM;
         const hasTime =
             rawTimeHH !== "" &&
             rawTimeHH !== null &&
@@ -1592,8 +1592,8 @@ export default function CalendarClient({
                                             const startDay = Number(values[3]);
                                             const rawTimeHH = values[4];
                                             const rawTimeMM = values[5];
-                                            const rawEndTimeHH = values[18];
-                                            const rawEndTimeMM = values[19];
+                                            const rawEndTimeHH = schedule.END_TIME_HH;
+                                            const rawEndTimeMM = schedule.END_TIME_MM;
                                             const title = String(
                                                 values[6] ?? "予定"
                                             );
@@ -2221,8 +2221,8 @@ export default function CalendarClient({
                     const date = Number(values[3]);
                     const rawTimeHH = values[4];
                     const rawTimeMM = values[5];
-                    const rawEndTimeHH = values[18];
-                    const rawEndTimeMM = values[19];
+                    const rawEndTimeHH = selectedEvent.END_TIME_HH;
+                    const rawEndTimeMM = selectedEvent.END_TIME_MM;
                     const rawEndYear = values[9];
                     const rawEndMonth = values[10];
                     const rawEndDate = values[11];

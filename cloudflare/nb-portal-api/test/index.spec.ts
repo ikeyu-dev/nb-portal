@@ -777,6 +777,33 @@ describe("Hello World worker", () => {
 		expect(body.data?.eventId).not.toBe("MEETING-MISSING");
 	});
 
+	it("round trips schedule end time through create, update and clear", async () => {
+		const payload = { year: "2099", month: "9", date: "15", timeHH: "18", timeMM: "0", endTimeHH: "20", endTimeMM: "30", title: "End time test" };
+		const save = async (path: string, body: object) => {
+			const response = await fetchWorker(new IncomingRequest(`http://example.com/${path}`, {
+				method: "POST", headers: authorizedHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body),
+			}), authorizedEnv, createExecutionContext());
+			expect(response.status).toBe(200);
+			return response.json<{ success: boolean; data: { eventId: string } }>();
+		};
+		const created = await save("schedules", payload);
+		expect(created.success).toBe(true);
+		const eventId = created.data.eventId;
+		const read = async () => {
+			const response = await fetchWorker(new IncomingRequest("http://example.com/schedules", { headers: authorizedHeaders() }), authorizedEnv, createExecutionContext());
+			const body = await response.json<{ data: Array<Record<string, unknown>> }>();
+			return body.data.find(schedule => schedule.EVENT_ID === eventId);
+		};
+		expect(await read()).toMatchObject({ END_TIME_HH: "20", END_TIME_MM: "30" });
+		await save("schedules/update", { ...payload, eventId, title: "Renamed" });
+		expect(await read()).toMatchObject({ TITLE: "Renamed", END_TIME_HH: "20", END_TIME_MM: "30" });
+		await save("schedules/update", { ...payload, eventId, endTimeHH: 0, endTimeMM: 0 });
+		expect(await read()).toMatchObject({ END_TIME_HH: "0", END_TIME_MM: "0" });
+		await save("schedules/update", { ...payload, eventId, endTimeHH: "", endTimeMM: "" });
+		expect(await read()).toMatchObject({ END_TIME_HH: "", END_TIME_MM: "" });
+		expect(await env.DB.prepare("SELECT end_time FROM schedules WHERE id = ?").bind(eventId).first()).toEqual({ end_time: null });
+	});
+
 	it("stores and returns schedule end date", async () => {
 		const request = new IncomingRequest("http://example.com/schedules", {
 			method: "POST",
