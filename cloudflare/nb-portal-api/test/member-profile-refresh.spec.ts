@@ -76,3 +76,42 @@ it("does not cache missing members or errors", async () => {
 it("rejects requests without the API key", async () => {
 	expect((await call("session-member-profile", "test001", false)).status).toBe(401);
 });
+
+it("records correlated timings without counting a cached lookup as a new D1 read", async () => {
+	const logs = vi.spyOn(console, "info").mockImplementation(() => {});
+	const traceId = crypto.randomUUID();
+	for (let i = 0; i < 2; i++) {
+		const response = await worker.fetch(new Request("https://example.com/?path=session-member-profile&identifier=test001", {
+			headers: { "x-nb-portal-api-key": key, "x-nb-profile-trace-id": traceId },
+		}), authorizedEnv);
+		expect(response.status).toBe(200);
+	}
+	const records = logs.mock.calls.map(([message]) => JSON.parse(String(message)));
+	expect(records[0]).toMatchObject({ traceId, source: "d1", rpcMs: expect.any(Number), lookupD1Ms: expect.any(Number), cacheAgeMs: expect.any(Number) });
+	expect(records[1]).toMatchObject({ traceId, source: "cache", d1Ms: 0 });
+	expect(records[0].d1Ms).toBe(records[0].lookupD1Ms);
+	expect(records.every(record => record.rpcMs >= 0 && record.cacheAgeMs >= 0)).toBe(true);
+	expect(JSON.stringify(records)).not.toMatch(/test001|Before|NORMAL/);
+});
+
+it("does not log arbitrary trace header contents", async () => {
+	const logs = vi.spyOn(console, "info").mockImplementation(() => {});
+	await worker.fetch(new Request("https://example.com/?path=session-member-profile&identifier=test001", {
+		headers: { "x-nb-portal-api-key": key, "x-nb-profile-trace-id": "private detail" },
+	}), authorizedEnv);
+	expect(JSON.parse(String(logs.mock.calls[0][0]))).not.toHaveProperty("traceId");
+});
+
+it("returns a sanitized retryable error when the profile RPC fails", async () => {
+	const logs = vi.spyOn(console, "info").mockImplementation(() => {});
+	const failedEnv = { ...authorizedEnv, MEMBER_PROFILE_REFRESH: {
+		getByName: () => ({ getProfile: async () => { throw new Error("private detail"); } }),
+	} } as unknown as Env;
+	const response = await worker.fetch(new Request("https://example.com/?path=session-member-profile&identifier=missing", {
+		headers: { "x-nb-portal-api-key": key },
+	}), failedEnv);
+	expect(response.status).toBe(503);
+	expect(await response.text()).not.toMatch(/SELECT|members|missing/);
+	expect(JSON.parse(String(logs.mock.calls[0][0]))).toMatchObject({ outcome: "rpc-error", rpcMs: expect.any(Number) });
+	expect(JSON.stringify(logs.mock.calls)).not.toMatch(/SELECT|missing|private detail/);
+});

@@ -669,12 +669,29 @@ const verifyMember = async (url: URL, env: Env) => {
 	return json(await readMemberProfile(env.DB, identifier));
 };
 
-const refreshSessionMemberProfile = async (url: URL, env: Env) => {
+const refreshSessionMemberProfile = async (url: URL, env: Env, request: Request) => {
 	const identifier = normalizeStudentId(url.searchParams.get("identifier")).toLowerCase();
 	if (!identifier || identifier.length > 128) return error("Invalid identifier", 400);
-	const result = await env.MEMBER_PROFILE_REFRESH.getByName(identifier).getProfile(identifier);
+	const header = request.headers.get("x-nb-profile-trace-id") || "";
+	const traceId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(header) ? header : undefined;
+	const startedAt = performance.now();
+	let result;
+	try {
+		result = await env.MEMBER_PROFILE_REFRESH.getByName(identifier).getProfile(identifier);
+	} catch {
+		console.info(JSON.stringify({
+			event: "member_profile_refresh", traceId, outcome: "rpc-error",
+			rpcMs: Math.max(0, performance.now() - startedAt),
+		}));
+		return error("Member profile temporarily unavailable", 503);
+	}
 	console.info(JSON.stringify({
 		event: "member_profile_refresh", source: result.source, lookupId: result.lookupId,
+		traceId, outcome: result.profile.isMember ? "member" : "not-member",
+		rpcMs: Math.max(0, performance.now() - startedAt),
+		lookupD1Ms: result.lookupD1Ms,
+		d1Ms: result.source === "d1" ? result.lookupD1Ms : 0,
+		cacheAgeMs: Math.max(0, Date.now() - result.fetchedAt),
 	}));
 	return json({ ...result.profile, fetchedAt: result.fetchedAt }, {
 		headers: { "Cache-Control": "no-store" },
@@ -2060,7 +2077,7 @@ const health = async (env: Env) => {
 	});
 };
 
-const routeGet = (url: URL, env: Env) => {
+const routeGet = (url: URL, env: Env, request: Request) => {
 	const path = getRequestPath(url);
 
 	switch (path) {
@@ -2071,7 +2088,7 @@ const routeGet = (url: URL, env: Env) => {
 		case "verify-member":
 			return verifyMember(url, env);
 		case "session-member-profile":
-			return refreshSessionMemberProfile(url, env);
+			return refreshSessionMemberProfile(url, env, request);
 		case "schedules":
 			return getSchedules(env);
 		case "absences":
@@ -2156,7 +2173,7 @@ export default {
 			if (authorizationError) return authorizationError;
 
 			if (request.method === "GET") {
-				return routeGet(url, env);
+				return routeGet(url, env, request);
 			}
 
 			if (request.method === "POST") {
