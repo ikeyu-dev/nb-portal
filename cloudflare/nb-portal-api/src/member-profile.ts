@@ -18,6 +18,7 @@ type Snapshot = {
 	profile: Awaited<ReturnType<typeof readMemberProfile>>;
 	fetchedAt: number;
 	lookupId: string;
+	lookupD1Ms: number;
 };
 
 export class MemberProfileRefresh extends DurableObject<Env> {
@@ -36,8 +37,10 @@ export class MemberProfileRefresh extends DurableObject<Env> {
 		if (this.pending) return { ...await this.pending, source: "inflight" as const };
 
 		const fetchedAt = Date.now();
+		const startedAt = performance.now();
 		this.pending = readMemberProfile(this.env.DB, identifier).then(profile => ({
 			profile, fetchedAt, lookupId: crypto.randomUUID(),
+			lookupD1Ms: Math.max(0, performance.now() - startedAt),
 		}));
 		try {
 			const snapshot = await this.pending;

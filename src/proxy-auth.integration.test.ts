@@ -26,6 +26,28 @@ afterEach(() => {
 });
 afterAll(() => vi.unstubAllEnvs());
 
+it.each(["not-member", "http-error", "network-error", "invalid-response"])("再同期の%sで既存セッションを保持し、次回も再試行する", async outcome => {
+    const now = Date.now();
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const fetchMock = vi.fn(async () => {
+        if (outcome === "network-error") throw new Error("offline");
+        if (outcome === "invalid-response") return new Response("broken");
+        return Response.json({ success: true, isMember: outcome !== "not-member", name: "採用しない", permission: "HEAD" }, {
+            status: outcome === "http-error" ? 503 : 200,
+        });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const name = "__Secure-authjs.session-token";
+    const token = await encode({ secret, salt: name, token: {
+        sub: "test-member", studentId: "a123456", memberName: "更新前", displayName: "更新前",
+        permission: "NORMAL", memberProfileSyncedAt: now - 61_000,
+    } });
+    context.headers = new Headers({ cookie: `${name}=${token}`, "x-forwarded-proto": "https", host: "localhost" });
+    expect(await auth()).toMatchObject({ memberName: "更新前", permission: "NORMAL" });
+    expect(await auth()).toMatchObject({ memberName: "更新前", permission: "NORMAL" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
 it.each([
     { imageSize: 0, cacheAge: 0 },
     { imageSize: 6000, cacheAge: 4000 },

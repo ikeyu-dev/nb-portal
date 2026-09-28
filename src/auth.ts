@@ -56,6 +56,8 @@ const getDisplayName = (
     return normalizedMemberName || null;
 };
 
+type ProfileOutcome = "member" | "not-member" | "http-error" | "invalid-response" | "network-error" | "not-configured";
+
 /** 部員確認API呼び出し（あだ名も同時に取得） */
 const fetchMemberProfile = async (
     identifier: string,
@@ -67,28 +69,37 @@ const fetchMemberProfile = async (
     displayName: string | null;
     permission: MemberPermission | null;
     fetchedAt?: number;
+    outcome: ProfileOutcome;
 }> => {
+    const startedAt = performance.now();
+    const sampleRate = Number(process.env.AUTH_PROFILE_TIMING_SAMPLE_RATE);
+    const traceId = sampleRate > 0 && sampleRate <= 1 && Math.random() < sampleRate
+        ? crypto.randomUUID() : undefined;
+    let outcome: ProfileOutcome = "network-error";
+    let status: number | undefined;
+    const failure = (reason: ProfileOutcome) => {
+        outcome = reason;
+        return { isMember: false, name: null, nickname: null, displayName: null, permission: null, outcome };
+    };
     try {
         const requestedAt = Date.now();
         const apiUrl = getBackendApiUrl();
         if (!apiUrl) {
-            return {
-                isMember: false,
-                name: null,
-                nickname: null,
-                displayName: null,
-                permission: null,
-            };
+            return failure("not-configured");
         }
 
         const url = new URL(apiUrl);
         url.searchParams.set("path", purpose === "session" ? "session-member-profile" : "verify-member");
         url.searchParams.set("identifier", identifier);
+        const headers = new Headers(getBackendApiHeaders());
+        if (traceId) headers.set("x-nb-profile-trace-id", traceId);
         const res = await fetch(
             url.toString(),
-            { cache: "no-store", headers: getBackendApiHeaders() }
+            { cache: "no-store", headers }
         );
-        const data = (await res.json()) as {
+        status = res.status;
+        if (!res.ok) return failure("http-error");
+        const data = (await res.json().catch(() => null)) as {
             success?: boolean;
             isMember?: boolean;
             name?: string;
@@ -96,10 +107,19 @@ const fetchMemberProfile = async (
             permission?: string;
             fetchedAt?: number;
         };
+        if (!data || data.success !== true || typeof data.isMember !== "boolean"
+            || (data.name != null && typeof data.name !== "string")
+            || (data.nickname != null && typeof data.nickname !== "string")
+            || (data.permission != null && typeof data.permission !== "string")) {
+            return failure("invalid-response");
+        }
+        if (!data.isMember) return failure("not-member");
+        outcome = "member";
         const name = data.name || null;
         const nickname = data.nickname || null;
         const permission = normalizeMemberPermission(data.permission);
         return {
+            outcome,
             isMember: data.success === true && data.isMember === true,
             name,
             nickname,
@@ -110,13 +130,12 @@ const fetchMemberProfile = async (
                 : requestedAt,
         };
     } catch {
-        return {
-            isMember: false,
-            name: null,
-            nickname: null,
-            displayName: null,
-            permission: null,
-        };
+        return failure("network-error");
+    } finally {
+        if (traceId) console.info(JSON.stringify({
+            event: "member_profile_fetch", traceId, purpose, outcome, status,
+            totalMs: Math.max(0, performance.now() - startedAt),
+        }));
     }
 };
 
