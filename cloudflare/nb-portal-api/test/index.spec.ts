@@ -4,6 +4,7 @@ import {
 	fetchMock,
 	waitOnExecutionContext,
 	SELF,
+	applyD1Migrations,
 } from "cloudflare:test";
 import { beforeAll, describe, it, expect } from "vitest";
 import worker from "../src/index";
@@ -63,6 +64,114 @@ const fetchWorker = worker.fetch as unknown as (
 ) => Promise<Response>;
 
 describe("Hello World worker", () => {
+	const post = (path: string, body: Record<string, unknown>) => worker.fetch(new Request(`https://example.com/${path}`, {
+		method: "POST", headers: authorizedHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body),
+	}), authorizedEnv);
+	const assigned = (extra: Record<string, unknown> = {}) => ({
+		eventId: "assigned-test", title: "指定予定", year: 2099, month: 10, date: 5,
+		attendanceMode: "ASSIGNED", createdBy: "owner01", assignedStudentNumbers: [], ...extra,
+	});
+	it("creates an assigned event including OBOG and rejects edits by anyone but its owner", async () => {
+		await env.DB.exec("INSERT INTO members (student_number,name,permission) VALUES ('ob00001','卒業生','OBOG'),('tmp0001','仮入部','TMP_NORMAL')");
+		expect((await post("schedules", assigned({ assignedStudentNumbers: ["OB00001", "ob00001", "tmp0001"] }))).status).toBe(200);
+		const read = () => worker.fetch(new Request("https://example.com/schedule-participants?eventId=assigned-test", { headers: authorizedHeaders() }), authorizedEnv);
+		const response = await read();
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ data: { revision: 0, participants: [{ studentNumber: "ob00001" }, { studentNumber: "tmp0001" }] } });
+		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: [], expectedRevision: 0, actor: "tmp0001" })).status).toBe(403);
+		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: [], expectedRevision: 0, actor: "owner01" })).status).toBe(200);
+		expect(await (await read()).json()).toMatchObject({ data: { revision: 1, participants: [] } });
+		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: ["ob00001"], expectedRevision: 0, actor: "owner01" })).status).toBe(409);
+	});
+	it("does not create an event with unknown participants or an invalid attendance mode", async () => {
+		expect((await post("schedules", assigned({ assignedStudentNumbers: ["missing"] }))).status).toBe(400);
+		expect(await env.DB.prepare("SELECT id FROM schedules WHERE id = 'assigned-test'").first()).toBeNull();
+		expect((await post("schedules", assigned({ attendanceMode: "INVALID" }))).status).toBe(400);
+		expect((await post("schedules", { eventId: "bad-mode", title: "型偽装", year: 2099, month: 10, date: 5, attendanceMode: ["ASSIGNED"] })).status).toBe(400);
+	});
+	it("rolls back both event and participants if a participant insert fails", async () => {
+		await env.DB.exec("INSERT INTO members (student_number,name) VALUES ('one0001','一人目')");
+		await env.DB.exec("CREATE TRIGGER test_participant_failure BEFORE INSERT ON scheduled_participants BEGIN SELECT RAISE(ABORT, 'test_failure'); END;");
+		try {
+			const result = await post("schedules", assigned({ assignedStudentNumbers: ["one0001"] }));
+			expect(result.status).toBe(500);
+			expect(await env.DB.prepare("SELECT id FROM schedules WHERE id='assigned-test'").first()).toBeNull();
+			expect((await env.DB.prepare("SELECT * FROM scheduled_participants").all()).results).toHaveLength(0);
+		} finally { await env.DB.exec("DROP TRIGGER test_participant_failure"); }
+	});
+	it.each(["ABSENCE", "ATTENDANCE"])("keeps legacy %s mode immutable at API and DB boundaries", async (attendanceMode) => {
+		const body = assigned({ attendanceMode });
+		delete body.assignedStudentNumbers;
+		expect((await post("schedules", body)).status).toBe(200);
+		expect((await post("schedules/update", { ...body, attendanceMode: "ASSIGNED" })).status).toBe(409);
+		expect((await post("schedules/update", { ...body, title: "変更" })).status).toBe(200);
+		await expect(env.DB.prepare("UPDATE schedules SET attendance_mode='ASSIGNED' WHERE id='assigned-test'").run()).rejects.toThrow("attendance_mode_immutable");
+		await expect(env.DB.prepare("UPDATE schedules SET created_by='other' WHERE id='assigned-test'").run()).rejects.toThrow("creator_immutable");
+	});
+	it("preserves the attendance mode on updates and refuses switching modes", async () => {
+		await post("schedules", assigned());
+		expect((await post("schedules/update", { ...assigned(), attendanceMode: "ABSENCE", updatedBy: "owner01" })).status).toBe(409);
+		const update = assigned();
+		delete update.attendanceMode;
+		delete update.assignedStudentNumbers;
+		delete update.createdBy;
+		expect((await post("schedules/update", { ...update, title: "日時編集", updatedBy: "owner01" })).status).toBe(200);
+		expect(await env.DB.prepare("SELECT attendance_mode, attendance_deadline FROM schedules WHERE id = 'assigned-test'").first()).toEqual({ attendance_mode: "ASSIGNED", attendance_deadline: null });
+	});
+	it("enforces participant bounds and retains inactive assignments without allowing new ones", async () => {
+		await env.DB.exec("INSERT INTO members (student_number,name,nickname) VALUES ('one0001','本名','指定時の名')");
+		expect((await post("schedules", assigned({ assignedStudentNumbers: Array(301).fill('one0001') }))).status).toBe(400);
+		await post("schedules", assigned({ assignedStudentNumbers: ["one0001"] }));
+		await env.DB.exec("UPDATE members SET is_active=0, nickname='現在の名' WHERE student_number='one0001'");
+		expect((await post("schedules", assigned({ eventId: "second", assignedStudentNumbers: ["one0001"] }))).status).toBe(400);
+		const read = () => worker.fetch(new Request("https://example.com/schedule-participants?eventId=assigned-test", { headers: authorizedHeaders() }), authorizedEnv);
+		expect(await (await read()).json()).toMatchObject({ data: { participants: [{ displayName: "現在の名" }] } });
+		await env.DB.exec("DELETE FROM members WHERE student_number='one0001'");
+		expect(await (await read()).json()).toMatchObject({ data: { participants: [{ displayName: "指定時の名" }] } });
+		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: ["one0001"], actor: "owner01", expectedRevision: 0 })).status).toBe(200);
+	});
+	it("updates legacy blank modes and next-meeting fields without rewriting attendance mode", async () => {
+		await env.DB.exec("INSERT INTO schedules (id,title,date,attendance_mode,created_by) VALUES ('legacy','旧予定','2099-10-05','','owner01'),('meeting','部会','2099-10-05','ATTENDANCE','owner01')");
+		expect((await post("schedules/update", { eventId: "legacy", title: "旧予定", year: 2099, month: 10, date: 5, attendanceMode: "ABSENCE" })).status).toBe(200);
+		await env.DB.exec("INSERT INTO next_meeting_settings (id,event_id,date,time,mode) VALUES (1,'meeting','2099-10-05','18:00','DISCORD')");
+		expect((await post("next-meeting", { date: "2099-10-05", time: "19:00", mode: "DISCORD", updatedBy: "other" })).status).toBe(200);
+		expect(await env.DB.prepare("SELECT attendance_mode,created_by FROM schedules WHERE id='meeting'").first()).toEqual({ attendance_mode: "ATTENDANCE", created_by: "owner01" });
+	});
+	it("rejects self-service responses and attendance checks for assigned events", async () => {
+		await post("schedules", assigned());
+		for (const path of ["absences", "absences/update", "absences/delete", "event-attendance"]) {
+			expect((await post(path, { eventId: "assigned-test", studentNumber: "owner01", type: "出席", studentNumbers: [] })).status).toBe(403);
+		}
+	});
+	it("serializes concurrent replacements, retains assignments after member deletion and cascades event deletion", async () => {
+		await env.DB.exec("INSERT INTO members (student_number,name) VALUES ('one0001','一人目'),('two0002','二人目')");
+		await post("schedules", assigned());
+		const responses = await Promise.all(["one0001", "two0002"].map(id => post("schedule-participants", {
+			eventId: "assigned-test", studentNumbers: [id], expectedRevision: 0, actor: "owner01",
+		})));
+		expect(responses.map(r => r.status).sort()).toEqual([200, 409]);
+		const rows = await env.DB.prepare("SELECT * FROM scheduled_participants").all<{ student_number: string }>();
+		expect(rows.results).toHaveLength(1);
+		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: [rows.results[0].student_number], expectedRevision: 0, actor: "owner01" })).status).toBe(200);
+		await env.DB.exec("DELETE FROM members");
+		const read = await worker.fetch(new Request("https://example.com/schedule-participants?eventId=assigned-test", { headers: authorizedHeaders() }), authorizedEnv);
+		expect(await read.json()).toMatchObject({ data: { count: 1, participants: [{ displayName: expect.any(String) }] } });
+		await post("schedules/delete", { eventId: "assigned-test" });
+		expect((await env.DB.prepare("SELECT * FROM scheduled_participants").all()).results).toHaveLength(0);
+	});
+	it("includes assigned members in the shared Discord summary without recording attendance", async () => {
+		await env.DB.exec("INSERT INTO members (student_number,name,permission) VALUES ('ob00001','卒業生','OBOG')");
+		await post("schedules", assigned({ assignedStudentNumbers: ["ob00001"] }));
+		await post("schedules", assigned({ eventId: "assigned-empty" }));
+		const request = await signedDiscordRequest({ type: 2, guild_id: DISCORD_GUILD_ID, member: { roles: [DISCORD_MEMBER_ROLE_ID] }, data: { name: "absences", options: [{ name: "date", type: 3, value: "2099-10-05" }] } });
+		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
+		const body = await response.json<{ data: { embeds: Array<{ title: string; fields: Array<{ name: string; value: string }> }> } }>();
+		expect(body.data.embeds.every(e => e.title.includes("指定参加者一覧"))).toBe(true);
+		expect(body.data.embeds.flatMap(e => e.fields)).toContainEqual({ name: "卒業生", value: "参加予定", inline: true });
+		expect(body.data.embeds.flatMap(e => e.fields).some(f => f.value === "参加者は指定されていません")).toBe(true);
+		expect((await env.DB.prepare("SELECT * FROM event_attendance").all()).results).toHaveLength(0);
+		expect((await env.DB.prepare("SELECT * FROM absences").all()).results).toHaveLength(0);
+	});
 	beforeAll(async () => {
 		const discordKeyPair = (await crypto.subtle.generateKey(
 			"Ed25519",
@@ -94,6 +203,7 @@ describe("Hello World worker", () => {
 				is_past INTEGER NOT NULL DEFAULT 0
 			)`
 		).run();
+		await applyD1Migrations(env.DB, env.TEST_ASSIGNED_MIGRATIONS);
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS absences (
 				id TEXT PRIMARY KEY,

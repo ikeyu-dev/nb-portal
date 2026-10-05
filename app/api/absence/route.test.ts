@@ -71,6 +71,20 @@ const backendResponse = (data: Record<string, unknown>) =>
     });
 
 describe("/api/absence", () => {
+    it.each(["POST", "PUT"] as const)("%sは参加者指定の出欠連絡を期限によらず拒否する", async (method) => {
+        vi.mocked(fetch).mockResolvedValueOnce(backendResponse({ success: true, data: [{ EVENT_ID: "EVENT-001", ATTENDANCE_MODE: "ASSIGNED" }] }));
+        const result = await (method === "POST" ? POST : PUT)(request(method, { eventId: "EVENT-001", type: "出席" }));
+        expect(result.status).toBe(403);
+        expect(await result.json()).toEqual({ success: false, error: "この予定では出欠連絡を受け付けていません" });
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(mocks.sendDiscordWebhook).not.toHaveBeenCalled();
+    });
+    it("DELETEはWorkerの参加者指定拒否を403で返す", async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(new Response(JSON.stringify({ success: false, error: "この予定では出欠連絡を受け付けていません" }), { status: 403 }));
+        const result = await DELETE(request("DELETE", { eventId: "EVENT-001" }));
+        expect(result.status).toBe(403);
+        expect(mocks.revalidateTag).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.auth.mockResolvedValue(session);

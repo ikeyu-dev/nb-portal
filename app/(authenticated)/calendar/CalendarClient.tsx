@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScheduleCard } from "@/features/schedule-card";
+import { ParticipantPicker } from "@/src/features/schedule-card/ui/ParticipantPicker";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import { AppModal } from "@/src/shared/ui/AppModal";
 import { AsyncButton } from "@/src/shared/ui/AsyncButton";
@@ -210,6 +211,7 @@ export default function CalendarClient({
     const [isDeleting, setIsDeleting] = useState(false);
     const initialDataRef = useRef(initialData);
     const lastFetchAtRef = useRef(initialData === null ? 0 : Date.now());
+    const [assignedStudentNumbers, setAssignedStudentNumbers] = useState<string[]>([]);
     const [addForm, setAddForm] = useState<EventForm>({
         title: "",
         where: "",
@@ -574,6 +576,7 @@ export default function CalendarClient({
                 setSelectedDate(nextSelectedDate);
                 setSelectedEvent(null);
                 setAddForm(buildAddForm(nextSelectedDate.date));
+                setAssignedStudentNumbers([]);
             }
             return;
         }
@@ -668,7 +671,8 @@ export default function CalendarClient({
                         : undefined,
                     color: addForm.color,
                     attendanceMode: addForm.attendanceMode,
-                    attendanceDeadline: addForm.attendanceDeadline,
+                    attendanceDeadline: addForm.attendanceMode === "ASSIGNED" ? "" : addForm.attendanceDeadline,
+                    ...(addForm.attendanceMode === "ASSIGNED" ? { assignedStudentNumbers } : {}),
                 }),
             });
 
@@ -696,7 +700,7 @@ export default function CalendarClient({
                     END_TIME_HH: scheduleData.endTimeHH ?? "",
                     END_TIME_MM: scheduleData.endTimeMM ?? "",
                     ATTENDANCE_DEADLINE:
-                        scheduleData.attendanceDeadline ||
+                        scheduleData.attendanceDeadline ??
                         addForm.attendanceDeadline,
                 };
                 setSchedules((prev) => {
@@ -854,7 +858,7 @@ export default function CalendarClient({
                         : undefined,
                     color: editForm.color,
                     attendanceMode: editForm.attendanceMode,
-                    attendanceDeadline: editForm.attendanceDeadline,
+                    attendanceDeadline: editForm.attendanceMode === "ASSIGNED" ? "" : editForm.attendanceDeadline,
                 }),
             });
 
@@ -887,7 +891,7 @@ export default function CalendarClient({
                                 ATTENDANCE_MODE:
                                     scheduleData.attendanceMode || "ABSENCE",
                                 ATTENDANCE_DEADLINE:
-                                    scheduleData.attendanceDeadline ||
+                                    scheduleData.attendanceDeadline ??
                                     editForm.attendanceDeadline,
                             };
                         }
@@ -1968,8 +1972,13 @@ export default function CalendarClient({
                                             </span>
                                         </span>
                                     </label>
+                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                        <input type="radio" name="addAttendanceMode" className="radio radio-primary mt-1" checked={addForm.attendanceMode === "ASSIGNED"} onChange={() => setAddForm({ ...addForm, attendanceMode: "ASSIGNED" })} />
+                                        <span className="font-medium">参加者指定</span>
+                                    </label>
                                 </div>
                             </div>
+                            {addForm.attendanceMode === "ASSIGNED" ? <ParticipantPicker value={assignedStudentNumbers} onChange={setAssignedStudentNumbers} disabled={isSubmitting} /> : (
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
@@ -1991,6 +2000,7 @@ export default function CalendarClient({
                                     連絡は期限日の8:00まで受け付けます。通常は予定当日の8:00です。
                                 </p>
                             </div>
+                            )}
                             {addForm.isAllDay ? (
                                 <>
                                     <div className="form-control">
@@ -2404,59 +2414,7 @@ export default function CalendarClient({
                                         出欠方式
                                     </span>
                                 </label>
-                                <div className="grid grid-cols-1 gap-2">
-                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
-                                        <input
-                                            type="radio"
-                                            name="editAttendanceMode"
-                                            className="radio radio-primary mt-1"
-                                            checked={
-                                                editForm.attendanceMode ===
-                                                "ABSENCE"
-                                            }
-                                            onChange={() =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    attendanceMode: "ABSENCE",
-                                                })
-                                            }
-                                        />
-                                        <span>
-                                            <span className="block font-medium">
-                                                全員参加
-                                            </span>
-                                            <span className="text-sm text-base-content/70">
-                                                全員参加が原則。欠席者が連絡します。
-                                            </span>
-                                        </span>
-                                    </label>
-                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
-                                        <input
-                                            type="radio"
-                                            name="editAttendanceMode"
-                                            className="radio radio-primary mt-1"
-                                            checked={
-                                                editForm.attendanceMode ===
-                                                "ATTENDANCE"
-                                            }
-                                            onChange={() =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    attendanceMode:
-                                                        "ATTENDANCE",
-                                                })
-                                            }
-                                        />
-                                        <span>
-                                            <span className="block font-medium">
-                                                希望者参加
-                                            </span>
-                                            <span className="text-sm text-base-content/70">
-                                                参加希望者が出席を申告します。
-                                            </span>
-                                        </span>
-                                    </label>
-                                </div>
+                                <p>{SCHEDULE_ATTENDANCE_MODE_LABELS[editForm.attendanceMode]}</p>
                             </div>
                             <div className="form-control">
                                 <label className="label">
@@ -2606,7 +2564,7 @@ export default function CalendarClient({
                                     </div>
                                 </div>
                             )}
-                            <div className="form-control">
+                            {editForm.attendanceMode !== "ASSIGNED" && <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
                                         出欠連絡期限
@@ -2626,7 +2584,7 @@ export default function CalendarClient({
                                 <p className="mt-1 text-xs text-base-content/60">
                                     連絡は期限日の8:00まで受け付けます。通常は予定当日の8:00です。
                                 </p>
-                            </div>
+                            </div>}
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">場所</span>

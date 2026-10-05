@@ -28,6 +28,30 @@ const jsonResponse = (data: unknown) =>
     });
 
 describe("CalendarClient", () => {
+    it("参加者指定を0人で作成でき、作成後は出欠方式を変更できない", async () => {
+        modalState.modal = "schedule-create";
+        vi.mocked(fetch).mockImplementation(async (url, init) => {
+            if (String(url).includes("members")) return jsonResponse({ success: true, data: { members: [], headers: [] } });
+            return jsonResponse({ success: true, data: { ...JSON.parse(String(init?.body)), eventId: "assigned-event" } });
+        });
+        const initialData = { schedules: [], absences: [] };
+        const view = render(<CalendarClient initialData={initialData} />);
+        fireEvent.click(await screen.findByRole("radio", { name: /参加者指定/ }));
+        expect(screen.queryByText("出欠連絡期限")).toBeNull();
+        const title = screen.getByPlaceholderText("予定のタイトル");
+        fireEvent.change(title, { target: { value: "指定の予定" } });
+        fireEvent.submit(title.closest("form")!);
+        await waitFor(() => expect(modalState.close).toHaveBeenCalled());
+        const request = vi.mocked(fetch).mock.calls.find(([url]) => url === "/api/schedule");
+        expect(JSON.parse(String(request?.[1]?.body))).toMatchObject({ attendanceMode: "ASSIGNED", assignedStudentNumbers: [], attendanceDeadline: "" });
+        expect(JSON.parse(localStorage.getItem("nb-portal-calendar-cache-v2")!).data.schedules[0].ATTENDANCE_DEADLINE).toBe("");
+        modalState.event = "assigned-event";
+        modalState.modal = "schedule-edit";
+        view.rerender(<CalendarClient initialData={initialData} />);
+        expect(await screen.findByPlaceholderText("予定のタイトル")).toHaveValue("指定の予定");
+        expect(screen.queryByRole("radio")).toBeNull();
+        expect(screen.queryByText("出欠連絡期限")).toBeNull();
+    });
     beforeEach(() => {
         localStorage.clear();
         modalState.modal = null;

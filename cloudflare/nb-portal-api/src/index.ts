@@ -1,4 +1,5 @@
 import { readMemberProfile } from "./member-profile";
+import { normalizeParticipantIds, validateParticipantIds, participantInsertStatement, assertParticipantCount, scheduleOwner, getScheduledParticipants, updateScheduledParticipants } from "./scheduled-participants";
 export { MemberProfileRefresh } from "./member-profile";
 
 type ApiResponse<T> = {
@@ -350,7 +351,7 @@ const toScheduleResponse = (row: ScheduleRow) => {
 		END_TIME_MM: endTime.minute,
 		IS_PAST: row.is_past === 1,
 		ATTENDANCE_DEADLINE:
-			row.attendance_deadline || getDefaultAttendanceDeadline(row.date) || "",
+			row.attendance_mode === "ASSIGNED" ? "" : row.attendance_deadline || getDefaultAttendanceDeadline(row.date) || "",
 	};
 };
 
@@ -713,18 +714,25 @@ const getSchedules = async (env: Env) => {
 
 const createSchedule = async (request: Request, env: Env) => {
 	const body = await getBody(request);
+	const mode = body.attendanceMode ?? "ABSENCE";
+	if (typeof mode !== "string" || !["ABSENCE", "ATTENDANCE", "ASSIGNED"].includes(mode)) return error("出欠方式が正しくありません", 400);
+	const ids = mode === "ASSIGNED" ? normalizeParticipantIds(body.assignedStudentNumbers) : [];
+	if (!ids || (mode !== "ASSIGNED" && body.assignedStudentNumbers !== undefined)) return error("参加者の指定が正しくありません", 400);
+	if (mode === "ASSIGNED" && (!body.createdBy || body.attendanceDeadline)) return error("作成者と出欠方式を確認してください", 400);
 	const eventId =
 		String(body.eventId ?? "").trim() ||
 		generatePrefixedId("E");
+	if (await scheduleOwner(env.DB, eventId)) return error("この予定はすでに登録されています", 409);
+	if (mode === "ASSIGNED" && !await validateParticipantIds(env.DB, eventId, ids)) return error("指定できない部員が含まれています", 400);
 	const date = buildDate(body.year, body.month, body.date);
 	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
 	if (!date) return error("Schedule date is required", 400);
-	const attendanceDeadline = normalizeAttendanceDeadline(
+	const attendanceDeadline = mode === "ASSIGNED" ? null : normalizeAttendanceDeadline(
 		body.attendanceDeadline,
 		date
 	);
 
-	await env.DB.prepare(
+	const createStatement = env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, end_date, start_time, end_time, location, description,
 			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
@@ -741,13 +749,16 @@ const createSchedule = async (request: Request, env: Env) => {
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
 			String(body.color ?? "primary").trim() || "primary",
-			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
+			String(mode),
 			attendanceDeadline,
 			toScheduleIsPast(date, endDate),
 			String(body.createdBy ?? "").trim(),
 			String(body.createdBy ?? "").trim()
-		)
-		.run();
+		);
+	await env.DB.batch([createStatement, ...(mode === "ASSIGNED" ? [
+		participantInsertStatement(env.DB, eventId, ids, String(body.createdBy).toLowerCase()),
+		assertParticipantCount(env.DB, eventId, ids.length),
+	] : [])]);
 
 	return ok({
 		eventId,
@@ -774,11 +785,17 @@ const updateSchedule = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const eventId = String(body.eventId ?? body.EVENT_ID ?? "").trim();
 	if (!eventId) return error("eventId is required", 400);
+	const existing = await scheduleOwner(env.DB, eventId);
+	if (!existing) return error("予定が見つかりません", 404);
+	if (body.attendanceMode !== undefined && body.attendanceMode !== existing.attendance_mode) return error("作成後の出欠方式は変更できません", 409);
+	if (body.createdBy !== undefined && body.createdBy !== existing.created_by) return error("作成者は変更できません", 403);
+	if (body.assignedStudentNumbers !== undefined) return error("参加者は専用画面から変更してください", 400);
+	if (existing.attendance_mode === "ASSIGNED" && body.attendanceDeadline) return error("参加者指定に出欠連絡期限は設定できません", 400);
 
 	const date = buildDate(body.year, body.month, body.date);
 	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
 	if (!date) return error("Schedule date is required", 400);
-	const attendanceDeadline = normalizeAttendanceDeadline(
+	const attendanceDeadline = existing.attendance_mode === "ASSIGNED" ? null : normalizeAttendanceDeadline(
 		body.attendanceDeadline,
 		date
 	);
@@ -786,7 +803,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 	await env.DB.prepare(
 		`UPDATE schedules SET
 			title = ?, date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?,
-			description = ?, color = ?, attendance_mode = ?, attendance_deadline = ?, is_past = ?, updated_by = ?, updated_at = ${JST_SQL_TIMESTAMP}
+			description = ?, color = ?, attendance_deadline = ?, is_past = ?, updated_by = ?, updated_at = ${JST_SQL_TIMESTAMP}
 		WHERE id = ?`
 	)
 		.bind(
@@ -798,7 +815,6 @@ const updateSchedule = async (request: Request, env: Env) => {
 			String(body.where ?? "").trim(),
 			String(body.detail ?? "").trim(),
 			String(body.color ?? "primary").trim() || "primary",
-			String(body.attendanceMode ?? "ABSENCE").trim() || "ABSENCE",
 			attendanceDeadline,
 			toScheduleIsPast(date, endDate),
 			String(body.updatedBy ?? "").trim(),
@@ -822,7 +838,7 @@ const updateSchedule = async (request: Request, env: Env) => {
 		endMonth: String(body.endMonth ?? ""),
 		endDate: String(body.endDate ?? ""),
 		color: String(body.color ?? "primary"),
-		attendanceMode: String(body.attendanceMode ?? "ABSENCE"),
+		attendanceMode: existing.attendance_mode,
 		attendanceDeadline: attendanceDeadline || "",
 	});
 };
@@ -869,6 +885,7 @@ const getEventAbsences = async (url: URL, env: Env) => {
 const upsertAbsence = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const eventId = String(body.eventId ?? "").trim();
+	if ((await scheduleOwner(env.DB, eventId))?.attendance_mode === "ASSIGNED") return error("この予定では出欠連絡を受け付けていません", 403);
 	const studentNumber = normalizeStudentId(body.studentNumber);
 	if (!eventId || !studentNumber) {
 		return error("eventId and studentNumber are required", 400);
@@ -922,6 +939,7 @@ const upsertAbsence = async (request: Request, env: Env) => {
 
 const deleteAbsence = async (request: Request, env: Env) => {
 	const body = await getBody(request);
+	if ((await scheduleOwner(env.DB, String(body.eventId ?? "")))?.attendance_mode === "ASSIGNED") return error("この予定では出欠連絡を受け付けていません", 403);
 	await env.DB.prepare(
 		"DELETE FROM absences WHERE event_id = ? AND lower(student_number) = lower(?)"
 	)
@@ -954,6 +972,7 @@ const getEventAttendance = async (url: URL, env: Env) => {
 const replaceEventAttendance = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const eventId = String(body.eventId ?? "").trim();
+	if ((await scheduleOwner(env.DB, eventId))?.attendance_mode === "ASSIGNED") return error("参加者指定では当日の出席確認を行いません", 403);
 	const checkedBy = normalizeStudentId(body.checkedBy).toLowerCase();
 	const studentNumbers = Array.isArray(body.studentNumbers)
 		? body.studentNumbers
@@ -1071,8 +1090,7 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			location = excluded.location,
 			description = excluded.description,
 			color = excluded.color,
-			attendance_mode = excluded.attendance_mode,
-			attendance_deadline = excluded.attendance_deadline,
+			attendance_deadline = CASE WHEN schedules.attendance_mode = 'ASSIGNED' THEN NULL ELSE excluded.attendance_deadline END,
 			is_past = excluded.is_past,
 			updated_by = excluded.updated_by,
 			updated_at = ${JST_SQL_TIMESTAMP}`
@@ -1675,8 +1693,10 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 			s.id AS event_id,
 			s.title AS event_title,
 			s.attendance_mode,
-			a.name,
-			a.type,
+			CASE WHEN s.attendance_mode = 'ASSIGNED'
+				THEN COALESCE(NULLIF(NULLIF(trim(m.nickname), ''), '---'), NULLIF(trim(m.name), ''), p.display_name_snapshot)
+				ELSE a.name END AS name,
+			CASE WHEN s.attendance_mode = 'ASSIGNED' THEN CASE WHEN p.student_number IS NOT NULL THEN '指定' END ELSE a.type END AS type,
 			a.time_leaving_early,
 			a.time_step_out,
 			a.time_return
@@ -1686,11 +1706,13 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 				(UPPER(COALESCE(s.attendance_mode, 'ABSENCE')) = 'ATTENDANCE'
 					AND a.type = '出席')
 				OR
-				(UPPER(COALESCE(s.attendance_mode, 'ABSENCE')) != 'ATTENDANCE'
+				(UPPER(COALESCE(s.attendance_mode, 'ABSENCE')) = 'ABSENCE'
 					AND a.type IN ('欠席', '遅刻', '早退', '中抜け'))
 			)
+		LEFT JOIN scheduled_participants p ON p.event_id = s.id AND s.attendance_mode = 'ASSIGNED'
+		LEFT JOIN members m ON lower(m.student_number) = p.student_number
 		WHERE s.date = ?
-		ORDER BY s.start_time, s.id, a.submitted_at`
+		ORDER BY s.start_time, s.id, a.submitted_at, p.student_number`
 	)
 		.bind(date)
 		.all<DailyAttendanceSummaryRow>();
@@ -1700,6 +1722,7 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 		{
 			title: string;
 			isAttendanceEvent: boolean;
+			isAssignedEvent: boolean;
 			responses: DailyAttendanceSummaryRow[];
 		}
 	>();
@@ -1708,6 +1731,7 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 		const group = groups.get(row.event_id) || {
 			title: row.event_title,
 			isAttendanceEvent: row.attendance_mode?.toUpperCase() === "ATTENDANCE",
+			isAssignedEvent: row.attendance_mode === "ASSIGNED",
 			responses: [],
 		};
 		if (row.type) group.responses.push(row);
@@ -1715,7 +1739,7 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 	}
 
 	return Array.from(groups.values()).flatMap((group) => {
-		const responseLabel = group.isAttendanceEvent ? "参加者" : "欠席者";
+		const responseLabel = group.isAssignedEvent ? "指定参加者" : group.isAttendanceEvent ? "参加者" : "欠席者";
 		const responseChunks = chunkArray(
 			group.responses,
 			DISCORD_MAX_EMBED_FIELDS
@@ -1727,13 +1751,13 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 				responses.length > 0
 					? responses.map((row) => ({
 							name: row.name || "不明",
-							value: formatAbsenceTypeWithTime(row),
+							value: group.isAssignedEvent ? "参加予定" : formatAbsenceTypeWithTime(row),
 							inline: true,
 						}))
 					: [
 							{
 								name: "情報",
-								value: `${responseLabel}はいません`,
+								value: group.isAssignedEvent ? "参加者は指定されていません" : `${responseLabel}はいません`,
 								inline: false,
 							},
 						];
@@ -2091,6 +2115,8 @@ const routeGet = (url: URL, env: Env, request: Request) => {
 			return refreshSessionMemberProfile(url, env, request);
 		case "schedules":
 			return getSchedules(env);
+		case "schedule-participants":
+			return getScheduledParticipants(env.DB, url.searchParams.get("eventId") || "");
 		case "absences":
 			return getAbsences(url, env);
 		case "event-absences":
@@ -2126,6 +2152,8 @@ const routePost = (request: Request, url: URL, env: Env) => {
 			return deleteMember(request, env);
 		case "schedules":
 			return createSchedule(request, env);
+		case "schedule-participants":
+			return getBody(request).then(body => updateScheduledParticipants(env.DB, body));
 		case "schedules/update":
 			return updateSchedule(request, env);
 		case "schedules/delete":
@@ -2173,11 +2201,11 @@ export default {
 			if (authorizationError) return authorizationError;
 
 			if (request.method === "GET") {
-				return routeGet(url, env, request);
+				return await routeGet(url, env, request);
 			}
 
 			if (request.method === "POST") {
-				return routePost(request, url, env);
+				return await routePost(request, url, env);
 			}
 
 			return error("Method not allowed", 405);

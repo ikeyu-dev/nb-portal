@@ -17,6 +17,13 @@ vi.mock("@/src/features/help", () => ({
 import { AbsenceFormContent } from "./AbsenceFormContent";
 
 describe("AbsenceFormContent", () => {
+    it("参加者指定の予定には出欠連絡フォームを表示しない", () => {
+        currentQuery = "eventId=EVENT-001&mode=ASSIGNED";
+        render(<AbsenceFormContent studentId="a123456" memberName="部員" />);
+        expect(screen.getByText("この予定では出欠連絡は不要です。")).toBeInTheDocument();
+        expect(screen.queryByRole("textbox")).toBeNull();
+        expect(mocks.submitAbsence).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         currentQuery = "eventId=EVENT-001";
         vi.clearAllMocks();
