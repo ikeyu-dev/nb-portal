@@ -48,6 +48,17 @@ const jsonResponse = (data: Record<string, unknown>, status = 200) =>
     });
 
 describe("/api/schedule", () => {
+    it("指定予定の所有者はメール先頭ではなくセッションの部員IDから決める", async () => {
+        mocks.auth.mockResolvedValue({ user: { email: "different@example.com" }, studentId: "member01" });
+        vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ success: true, data: {} }));
+        await POST(request("POST", { attendanceMode: "ASSIGNED", assignedStudentNumbers: [], createdBy: "spoofed" }));
+        expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).toMatchObject({ createdBy: "member01", assignedStudentNumbers: [] });
+    });
+    it("Workerが方式変更を拒否した場合409を維持する", async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(jsonResponse({ success: false, error: "方式変更不可" }, 409));
+        expect((await PUT(request("PUT", { eventId: "e", attendanceMode: "ASSIGNED" }))).status).toBe(409);
+        expect(mocks.sendPushNotification).not.toHaveBeenCalled();
+    });
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.auth.mockResolvedValue({

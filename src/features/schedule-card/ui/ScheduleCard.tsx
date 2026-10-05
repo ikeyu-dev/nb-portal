@@ -23,6 +23,7 @@ import {
     updateEventAttendance,
 } from "@/src/shared/api/client";
 import { AppModal } from "@/src/shared/ui/AppModal";
+import { AssignedParticipants } from "./AssignedParticipants";
 import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 import { useUrlModal } from "@/src/shared/lib/use-url-modal";
 import {
@@ -233,11 +234,12 @@ export default function ScheduleCard({
         closeModal,
     } = useUrlModal();
     const ownsUrlModal = getModalParam("event") === eventId;
+    const isAssignedEvent = attendanceMode === "ASSIGNED";
     const isAttendanceConfirmOpen =
-        ownsUrlModal && modal === "response-confirm";
-    const isAbsenceFormOpen = ownsUrlModal && modal === "response-form";
-    const isDeleteConfirmOpen = ownsUrlModal && modal === "response-delete";
-    const isEventAttendanceOpen = ownsUrlModal && modal === "event-attendance";
+        !isAssignedEvent && ownsUrlModal && modal === "response-confirm";
+    const isAbsenceFormOpen = !isAssignedEvent && ownsUrlModal && modal === "response-form";
+    const isDeleteConfirmOpen = !isAssignedEvent && ownsUrlModal && modal === "response-delete";
+    const isEventAttendanceOpen = !isAssignedEvent && ownsUrlModal && modal === "event-attendance";
     const isModalOpen =
         ownsUrlModal &&
         [
@@ -1538,6 +1540,14 @@ export default function ScheduleCard({
                                     </div>
                                 )}
 
+                                {isAssignedEvent ? (
+                                    <AssignedParticipants
+                                        key={eventId}
+                                        eventId={eventId}
+                                        onSaved={handleClose}
+                                        onEditSchedule={onEdit}
+                                    />
+                                ) : <>
                                 <div className="py-4 border-t border-base-300">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -1723,8 +1733,9 @@ export default function ScheduleCard({
                                     )}
                                 </div>
 
+                                </>}
                                 <div className="modal-action">
-                                    {onEdit && (
+                                    {onEdit && !isAssignedEvent && (
                                         <button
                                             onClick={onEdit}
                                             className="btn btn-outline btn-primary"
@@ -1732,7 +1743,7 @@ export default function ScheduleCard({
                                             編集
                                         </button>
                                     )}
-                                    {isAttendanceEvent ? (
+                                    {!isAssignedEvent && (isAttendanceEvent ? (
                                         <button
                                             type="button"
                                             className="btn btn-primary"
@@ -1761,7 +1772,7 @@ export default function ScheduleCard({
                                                   ? actionLabel
                                                   : "受付時間外"}
                                         </button>
-                                    )}
+                                    ))}
                                 </div>
                                 {attendanceSubmitMessage && (
                                     <div className="alert alert-success mt-4">

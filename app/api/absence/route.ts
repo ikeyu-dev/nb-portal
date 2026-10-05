@@ -57,10 +57,10 @@ const postToBackend = async (path: string, body: unknown) => {
     try {
         const data = JSON.parse(responseText);
         if (!response.ok) {
-            return {
+            return NextResponse.json({
                 success: false,
                 error: data?.error || `Backend API error: ${response.status}`,
-            };
+            }, { status: response.status });
         }
         return data;
     } catch {
@@ -136,6 +136,10 @@ const getScheduleResponseWindow = (schedule: Record<string, unknown>) => ({
 const validateAttendanceDeadline = async (eventId: string) => {
     const schedule = await fetchScheduleByEventId(eventId);
     if (!schedule) return null;
+
+    if (schedule.ATTENDANCE_MODE === "ASSIGNED") {
+        return NextResponse.json({ success: false, error: "この予定では出欠連絡を受け付けていません" }, { status: 403 });
+    }
 
     if (isAttendanceResponseAllowed(getScheduleResponseWindow(schedule))) {
         return null;
@@ -313,6 +317,7 @@ export async function POST(request: NextRequest) {
         if (deadlineError) return deadlineError;
 
         const data = await postToBackend("absences", validatedData);
+        if (data instanceof NextResponse) return data;
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
@@ -384,6 +389,7 @@ export async function PUT(request: NextRequest) {
         if (deadlineError) return deadlineError;
 
         const data = await postToBackend("absences/update", validationResult.data);
+        if (data instanceof NextResponse) return data;
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");
@@ -452,6 +458,7 @@ export async function DELETE(request: NextRequest) {
         }
 
         const data = await postToBackend("absences/delete", validationResult.data);
+        if (data instanceof NextResponse) return data;
 
         if (data?.success === true) {
             revalidateTag(CACHE_TAGS.absences, "max");

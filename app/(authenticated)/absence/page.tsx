@@ -1,11 +1,26 @@
 import { Suspense } from "react";
 import { auth } from "@/src/auth";
 import { AbsenceFormContent } from "./AbsenceFormContent";
+import { getSchedulesServer } from "@/src/shared/api/server";
+import { normalizeScheduleAttendanceMode } from "@/src/shared/types/api";
 
-export default async function AbsencePage() {
+export default async function AbsencePage({ searchParams }: {
+    searchParams: Promise<{ eventId?: string; mode?: string }>;
+}) {
     const session = await auth();
     const studentId = session?.studentId || null;
     const memberName = session?.displayName || session?.memberName || null;
+    const { eventId } = await searchParams;
+    let resolvedAttendanceMode;
+    if (eventId) {
+        const result = await getSchedulesServer();
+        if (!result.success) {
+            return <div className="p-4" role="alert">予定を取得できませんでした。再読み込みしてください。</div>;
+        }
+        const schedule = result.data?.find((item) => String(item.EVENT_ID ?? item.eventId) === eventId);
+        if (!schedule) return <div className="p-4">予定が見つかりません。</div>;
+        resolvedAttendanceMode = normalizeScheduleAttendanceMode(schedule.ATTENDANCE_MODE ?? schedule.attendanceMode);
+    }
 
     return (
         <Suspense
@@ -30,6 +45,7 @@ export default async function AbsencePage() {
             <AbsenceFormContent
                 studentId={studentId}
                 memberName={memberName}
+                resolvedAttendanceMode={resolvedAttendanceMode}
             />
         </Suspense>
     );

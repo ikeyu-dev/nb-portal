@@ -5,23 +5,26 @@ import { useState } from "react";
 import { submitAbsence } from "@/src/shared/api/client";
 import { HelpButton } from "@/src/features/help";
 import { normalizeScheduleAttendanceMode } from "@/src/shared/types/api";
+import type { ScheduleAttendanceMode } from "@/src/shared/types/api";
 import { AsyncButton } from "@/src/shared/ui/AsyncButton";
 import { AnimatedAlert } from "@/src/shared/ui/AnimatedAlert";
 
 interface AbsenceFormContentProps {
     studentId: string | null;
     memberName: string | null;
+    resolvedAttendanceMode?: ScheduleAttendanceMode;
 }
 
 /** 欠席連絡フォームのクライアントコンポーネント */
 export function AbsenceFormContent({
     studentId,
     memberName,
+    resolvedAttendanceMode,
 }: AbsenceFormContentProps) {
     const searchParams = useSearchParams();
     const eventId = searchParams.get("eventId") || "";
     const attendanceMode = normalizeScheduleAttendanceMode(
-        searchParams.get("mode")
+        resolvedAttendanceMode ?? searchParams.get("mode")
     );
     const isAttendanceEvent = attendanceMode === "ATTENDANCE";
     const pageTitle = isAttendanceEvent ? "参加登録" : "欠席連絡";
@@ -111,6 +114,10 @@ export function AbsenceFormContent({
             setIsSubmitting(false);
         }
     };
+
+    if (attendanceMode === "ASSIGNED") {
+        return <div className="p-4 sm:p-6"><p>この予定では出欠連絡は不要です。</p></div>;
+    }
 
     return (
         <div className="p-4 sm:p-6 max-w-4xl mx-auto">

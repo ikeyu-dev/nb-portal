@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         const body = (await request.json()) as Record<string, unknown>;
 
         // ログインユーザーの学籍番号を作成者として追加
-        const createdBy = extractStudentId(session.user.email);
+        const createdBy = session.studentId?.trim().toLowerCase() || extractStudentId(session.user.email);
 
         // Backend APIに転送
         const url = new URL(BACKEND_API_URL);
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json(data, { status: response.status });
     } catch (error) {
         console.error("API route error:", error);
         return NextResponse.json(
@@ -222,7 +222,7 @@ export async function DELETE(request: NextRequest) {
             );
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json(data, { status: response.status });
     } catch (error) {
         console.error("API route error:", error);
         return NextResponse.json(
@@ -259,7 +259,7 @@ export async function PUT(request: NextRequest) {
         const body = (await request.json()) as Record<string, unknown>;
 
         // ログインユーザーの学籍番号を更新者として追加
-        const updatedBy = extractStudentId(session.user.email);
+        const updatedBy = session.studentId?.trim().toLowerCase() || extractStudentId(session.user.email);
 
         // Backend APIに転送
         const url = new URL(BACKEND_API_URL);
@@ -294,7 +294,7 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        return NextResponse.json(data);
+        return NextResponse.json(data, { status: response.status });
     } catch (error) {
         console.error("API route error:", error);
         return NextResponse.json(

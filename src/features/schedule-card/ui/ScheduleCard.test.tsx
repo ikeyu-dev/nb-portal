@@ -54,6 +54,19 @@ const response = (data: unknown, status = 200) =>
     });
 
 describe("ScheduleCard", () => {
+    it("参加者指定は指定された名前だけを表示し、自己申告や当日確認を表示しない", async () => {
+        vi.mocked(fetch).mockResolvedValue(response({ success: true, data: {
+            eventId: "EVENT-001", revision: 0, canManage: false,
+            participants: [{ studentNumber: "b234567", displayName: "はな" }],
+        } }));
+        render(<ScheduleCard {...baseProps} attendanceMode="ASSIGNED" />);
+        expect(await screen.findByText("はな")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "欠席連絡" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "参加登録" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "閲覧・編集" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "参加者を編集" })).toBeNull();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks();
         vi.stubGlobal("fetch", vi.fn());

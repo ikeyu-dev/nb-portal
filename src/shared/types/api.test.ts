@@ -26,6 +26,9 @@ describe("権限の正規化", () => {
 });
 
 describe("予定の参加形式", () => {
+    it("参加者指定を全員参加に変換しない", () => {
+        expect(normalizeScheduleAttendanceMode(" assigned ")).toBe("ASSIGNED");
+    });
     it("ATTENDANCEだけを希望者参加として扱う", () => {
         expect(normalizeScheduleAttendanceMode(" attendance ")).toBe(
             "ATTENDANCE"
