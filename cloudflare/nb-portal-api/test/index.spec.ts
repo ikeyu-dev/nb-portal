@@ -1,51 +1,40 @@
-import {
-	env,
-	createExecutionContext,
-	fetchMock,
-	waitOnExecutionContext,
-	SELF,
-	applyD1Migrations,
-} from "cloudflare:test";
-import { beforeAll, describe, it, expect } from "vitest";
-import worker from "../src/index";
+import { env, createExecutionContext, fetchMock, waitOnExecutionContext, SELF, applyD1Migrations } from 'cloudflare:test';
+import { beforeAll, describe, it, expect } from 'vitest';
+import worker from '../src/index';
 
 // For now, you'll need to do something like this to get a correctly-typed
 // `Request` to pass to `worker.fetch()`.
 const IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
-const BACKEND_API_KEY = "test-backend-api-key";
-const DISCORD_MEMBER_ROLE_ID = "585047138942189603";
-const DISCORD_GUILD_ID = "1415328783333986430";
+const BACKEND_API_KEY = 'test-backend-api-key';
+const DISCORD_MEMBER_ROLE_ID = '585047138942189603';
+const DISCORD_GUILD_ID = '1415328783333986430';
 const authorizedEnv = {
 	...env,
 	D1_BACKEND_API_KEY: BACKEND_API_KEY,
 };
 const authorizedHeaders = (headers?: HeadersInit) => ({
 	...headers,
-	"x-nb-portal-api-key": BACKEND_API_KEY,
+	'x-nb-portal-api-key': BACKEND_API_KEY,
 });
 let discordPrivateKey: CryptoKey;
-let discordPublicKeyHex = "";
+let discordPublicKeyHex = '';
 
 const bytesToHex = (bytes: ArrayBuffer) =>
 	Array.from(new Uint8Array(bytes))
-		.map((byte) => byte.toString(16).padStart(2, "0"))
-		.join("");
+		.map((byte) => byte.toString(16).padStart(2, '0'))
+		.join('');
 
 const signedDiscordRequest = async (body: Record<string, unknown>) => {
 	const bodyText = JSON.stringify(body);
-	const timestamp = "1700000000";
-	const signature = await crypto.subtle.sign(
-		"Ed25519",
-		discordPrivateKey,
-		new TextEncoder().encode(`${timestamp}${bodyText}`)
-	);
+	const timestamp = '1700000000';
+	const signature = await crypto.subtle.sign('Ed25519', discordPrivateKey, new TextEncoder().encode(`${timestamp}${bodyText}`));
 
-	return new IncomingRequest("http://example.com/discord/interactions", {
-		method: "POST",
+	return new IncomingRequest('http://example.com/discord/interactions', {
+		method: 'POST',
 		headers: {
-			"Content-Type": "application/json",
-			"X-Signature-Ed25519": bytesToHex(signature),
-			"X-Signature-Timestamp": timestamp,
+			'Content-Type': 'application/json',
+			'X-Signature-Ed25519': bytesToHex(signature),
+			'X-Signature-Timestamp': timestamp,
 		},
 		body: bodyText,
 	});
@@ -57,131 +46,214 @@ const discordEnv = () => ({
 	DISCORD_GUILD_ID,
 	DISCORD_MEMBER_ROLE_ID,
 });
-const fetchWorker = worker.fetch as unknown as (
-	request: Request,
-	testEnv: Env,
-	ctx: ExecutionContext
-) => Promise<Response>;
+const fetchWorker = worker.fetch as unknown as (request: Request, testEnv: Env, ctx: ExecutionContext) => Promise<Response>;
 
-describe("Hello World worker", () => {
-	const post = (path: string, body: Record<string, unknown>) => worker.fetch(new Request(`https://example.com/${path}`, {
-		method: "POST", headers: authorizedHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body),
-	}), authorizedEnv);
+describe('Hello World worker', () => {
+	const post = (path: string, body: Record<string, unknown>) =>
+		worker.fetch(
+			new Request(`https://example.com/${path}`, {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
+				body: JSON.stringify(body),
+			}),
+			authorizedEnv,
+		);
 	const assigned = (extra: Record<string, unknown> = {}) => ({
-		eventId: "assigned-test", title: "指定予定", year: 2099, month: 10, date: 5,
-		attendanceMode: "ASSIGNED", createdBy: "owner01", assignedStudentNumbers: [], ...extra,
+		eventId: 'assigned-test',
+		title: '指定予定',
+		year: 2099,
+		month: 10,
+		date: 5,
+		attendanceMode: 'ASSIGNED',
+		createdBy: 'owner01',
+		assignedStudentNumbers: [],
+		...extra,
 	});
-	it("creates an assigned event including OBOG and rejects edits by anyone but its owner", async () => {
-		await env.DB.exec("INSERT INTO members (student_number,name,permission) VALUES ('ob00001','卒業生','OBOG'),('tmp0001','仮入部','TMP_NORMAL')");
-		expect((await post("schedules", assigned({ assignedStudentNumbers: ["OB00001", "ob00001", "tmp0001"] }))).status).toBe(200);
-		const read = () => worker.fetch(new Request("https://example.com/schedule-participants?eventId=assigned-test", { headers: authorizedHeaders() }), authorizedEnv);
+	it('creates an assigned event including OBOG and rejects edits by anyone but its owner', async () => {
+		await env.DB.exec(
+			"INSERT INTO members (student_number,name,permission) VALUES ('ob00001','卒業生','OBOG'),('tmp0001','仮入部','TMP_NORMAL')",
+		);
+		expect((await post('schedules', assigned({ assignedStudentNumbers: ['OB00001', 'ob00001', 'tmp0001'] }))).status).toBe(200);
+		const read = () =>
+			worker.fetch(
+				new Request('https://example.com/schedule-participants?eventId=assigned-test', { headers: authorizedHeaders() }),
+				authorizedEnv,
+			);
 		const response = await read();
 		expect(response.status).toBe(200);
-		expect(await response.json()).toMatchObject({ data: { revision: 0, participants: [{ studentNumber: "ob00001" }, { studentNumber: "tmp0001" }] } });
-		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: [], expectedRevision: 0, actor: "tmp0001" })).status).toBe(403);
-		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: [], expectedRevision: 0, actor: "owner01" })).status).toBe(200);
+		expect(await response.json()).toMatchObject({
+			data: { revision: 0, participants: [{ studentNumber: 'ob00001' }, { studentNumber: 'tmp0001' }] },
+		});
+		expect(
+			(await post('schedule-participants', { eventId: 'assigned-test', studentNumbers: [], expectedRevision: 0, actor: 'tmp0001' })).status,
+		).toBe(403);
+		expect(
+			(await post('schedule-participants', { eventId: 'assigned-test', studentNumbers: [], expectedRevision: 0, actor: 'owner01' })).status,
+		).toBe(200);
 		expect(await (await read()).json()).toMatchObject({ data: { revision: 1, participants: [] } });
-		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: ["ob00001"], expectedRevision: 0, actor: "owner01" })).status).toBe(409);
+		expect(
+			(
+				await post('schedule-participants', {
+					eventId: 'assigned-test',
+					studentNumbers: ['ob00001'],
+					expectedRevision: 0,
+					actor: 'owner01',
+				})
+			).status,
+		).toBe(409);
 	});
-	it("does not create an event with unknown participants or an invalid attendance mode", async () => {
-		expect((await post("schedules", assigned({ assignedStudentNumbers: ["missing"] }))).status).toBe(400);
+	it('does not create an event with unknown participants or an invalid attendance mode', async () => {
+		expect((await post('schedules', assigned({ assignedStudentNumbers: ['missing'] }))).status).toBe(400);
 		expect(await env.DB.prepare("SELECT id FROM schedules WHERE id = 'assigned-test'").first()).toBeNull();
-		expect((await post("schedules", assigned({ attendanceMode: "INVALID" }))).status).toBe(400);
-		expect((await post("schedules", { eventId: "bad-mode", title: "型偽装", year: 2099, month: 10, date: 5, attendanceMode: ["ASSIGNED"] })).status).toBe(400);
+		expect((await post('schedules', assigned({ attendanceMode: 'INVALID' }))).status).toBe(400);
+		expect(
+			(await post('schedules', { eventId: 'bad-mode', title: '型偽装', year: 2099, month: 10, date: 5, attendanceMode: ['ASSIGNED'] }))
+				.status,
+		).toBe(400);
 	});
-	it("rolls back both event and participants if a participant insert fails", async () => {
+	it('rolls back both event and participants if a participant insert fails', async () => {
 		await env.DB.exec("INSERT INTO members (student_number,name) VALUES ('one0001','一人目')");
-		await env.DB.exec("CREATE TRIGGER test_participant_failure BEFORE INSERT ON scheduled_participants BEGIN SELECT RAISE(ABORT, 'test_failure'); END;");
+		await env.DB.exec(
+			"CREATE TRIGGER test_participant_failure BEFORE INSERT ON scheduled_participants BEGIN SELECT RAISE(ABORT, 'test_failure'); END;",
+		);
 		try {
-			const result = await post("schedules", assigned({ assignedStudentNumbers: ["one0001"] }));
+			const result = await post('schedules', assigned({ assignedStudentNumbers: ['one0001'] }));
 			expect(result.status).toBe(500);
 			expect(await env.DB.prepare("SELECT id FROM schedules WHERE id='assigned-test'").first()).toBeNull();
-			expect((await env.DB.prepare("SELECT * FROM scheduled_participants").all()).results).toHaveLength(0);
-		} finally { await env.DB.exec("DROP TRIGGER test_participant_failure"); }
+			expect((await env.DB.prepare('SELECT * FROM scheduled_participants').all()).results).toHaveLength(0);
+		} finally {
+			await env.DB.exec('DROP TRIGGER test_participant_failure');
+		}
 	});
-	it.each(["ABSENCE", "ATTENDANCE"])("keeps legacy %s mode immutable at API and DB boundaries", async (attendanceMode) => {
+	it.each(['ABSENCE', 'ATTENDANCE'])('keeps legacy %s mode immutable at API and DB boundaries', async (attendanceMode) => {
 		const body = assigned({ attendanceMode });
 		delete body.assignedStudentNumbers;
-		expect((await post("schedules", body)).status).toBe(200);
-		expect((await post("schedules/update", { ...body, attendanceMode: "ASSIGNED" })).status).toBe(409);
-		expect((await post("schedules/update", { ...body, title: "変更" })).status).toBe(200);
-		await expect(env.DB.prepare("UPDATE schedules SET attendance_mode='ASSIGNED' WHERE id='assigned-test'").run()).rejects.toThrow("attendance_mode_immutable");
-		await expect(env.DB.prepare("UPDATE schedules SET created_by='other' WHERE id='assigned-test'").run()).rejects.toThrow("creator_immutable");
+		expect((await post('schedules', body)).status).toBe(200);
+		expect((await post('schedules/update', { ...body, attendanceMode: 'ASSIGNED' })).status).toBe(409);
+		expect((await post('schedules/update', { ...body, title: '変更' })).status).toBe(200);
+		await expect(env.DB.prepare("UPDATE schedules SET attendance_mode='ASSIGNED' WHERE id='assigned-test'").run()).rejects.toThrow(
+			'attendance_mode_immutable',
+		);
+		await expect(env.DB.prepare("UPDATE schedules SET created_by='other' WHERE id='assigned-test'").run()).rejects.toThrow(
+			'creator_immutable',
+		);
 	});
-	it("preserves the attendance mode on updates and refuses switching modes", async () => {
-		await post("schedules", assigned());
-		expect((await post("schedules/update", { ...assigned(), attendanceMode: "ABSENCE", updatedBy: "owner01" })).status).toBe(409);
+	it('preserves the attendance mode on updates and refuses switching modes', async () => {
+		await post('schedules', assigned());
+		expect((await post('schedules/update', { ...assigned(), attendanceMode: 'ABSENCE', updatedBy: 'owner01' })).status).toBe(409);
 		const update = assigned();
 		delete update.attendanceMode;
 		delete update.assignedStudentNumbers;
 		delete update.createdBy;
-		expect((await post("schedules/update", { ...update, title: "日時編集", updatedBy: "owner01" })).status).toBe(200);
-		expect(await env.DB.prepare("SELECT attendance_mode, attendance_deadline FROM schedules WHERE id = 'assigned-test'").first()).toEqual({ attendance_mode: "ASSIGNED", attendance_deadline: null });
+		expect((await post('schedules/update', { ...update, title: '日時編集', updatedBy: 'owner01' })).status).toBe(200);
+		expect(await env.DB.prepare("SELECT attendance_mode, attendance_deadline FROM schedules WHERE id = 'assigned-test'").first()).toEqual({
+			attendance_mode: 'ASSIGNED',
+			attendance_deadline: null,
+		});
 	});
-	it("enforces participant bounds and retains inactive assignments without allowing new ones", async () => {
+	it('enforces participant bounds and retains inactive assignments without allowing new ones', async () => {
 		await env.DB.exec("INSERT INTO members (student_number,name,nickname) VALUES ('one0001','本名','指定時の名')");
-		expect((await post("schedules", assigned({ assignedStudentNumbers: Array(301).fill('one0001') }))).status).toBe(400);
-		await post("schedules", assigned({ assignedStudentNumbers: ["one0001"] }));
+		expect((await post('schedules', assigned({ assignedStudentNumbers: Array(301).fill('one0001') }))).status).toBe(400);
+		await post('schedules', assigned({ assignedStudentNumbers: ['one0001'] }));
 		await env.DB.exec("UPDATE members SET is_active=0, nickname='現在の名' WHERE student_number='one0001'");
-		expect((await post("schedules", assigned({ eventId: "second", assignedStudentNumbers: ["one0001"] }))).status).toBe(400);
-		const read = () => worker.fetch(new Request("https://example.com/schedule-participants?eventId=assigned-test", { headers: authorizedHeaders() }), authorizedEnv);
-		expect(await (await read()).json()).toMatchObject({ data: { participants: [{ displayName: "現在の名" }] } });
+		expect((await post('schedules', assigned({ eventId: 'second', assignedStudentNumbers: ['one0001'] }))).status).toBe(400);
+		const read = () =>
+			worker.fetch(
+				new Request('https://example.com/schedule-participants?eventId=assigned-test', { headers: authorizedHeaders() }),
+				authorizedEnv,
+			);
+		expect(await (await read()).json()).toMatchObject({ data: { participants: [{ displayName: '現在の名' }] } });
 		await env.DB.exec("DELETE FROM members WHERE student_number='one0001'");
-		expect(await (await read()).json()).toMatchObject({ data: { participants: [{ displayName: "指定時の名" }] } });
-		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: ["one0001"], actor: "owner01", expectedRevision: 0 })).status).toBe(200);
+		expect(await (await read()).json()).toMatchObject({ data: { participants: [{ displayName: '指定時の名' }] } });
+		expect(
+			(
+				await post('schedule-participants', {
+					eventId: 'assigned-test',
+					studentNumbers: ['one0001'],
+					actor: 'owner01',
+					expectedRevision: 0,
+				})
+			).status,
+		).toBe(200);
 	});
-	it("updates legacy blank modes and next-meeting fields without rewriting attendance mode", async () => {
-		await env.DB.exec("INSERT INTO schedules (id,title,date,attendance_mode,created_by) VALUES ('legacy','旧予定','2099-10-05','','owner01'),('meeting','部会','2099-10-05','ATTENDANCE','owner01')");
-		expect((await post("schedules/update", { eventId: "legacy", title: "旧予定", year: 2099, month: 10, date: 5, attendanceMode: "ABSENCE" })).status).toBe(200);
+	it('updates legacy blank modes and next-meeting fields without rewriting attendance mode', async () => {
+		await env.DB.exec(
+			"INSERT INTO schedules (id,title,date,attendance_mode,created_by) VALUES ('legacy','旧予定','2099-10-05','','owner01'),('meeting','部会','2099-10-05','ATTENDANCE','owner01')",
+		);
+		expect(
+			(await post('schedules/update', { eventId: 'legacy', title: '旧予定', year: 2099, month: 10, date: 5, attendanceMode: 'ABSENCE' }))
+				.status,
+		).toBe(200);
 		await env.DB.exec("INSERT INTO next_meeting_settings (id,event_id,date,time,mode) VALUES (1,'meeting','2099-10-05','18:00','DISCORD')");
-		expect((await post("next-meeting", { date: "2099-10-05", time: "19:00", mode: "DISCORD", updatedBy: "other" })).status).toBe(200);
-		expect(await env.DB.prepare("SELECT attendance_mode,created_by FROM schedules WHERE id='meeting'").first()).toEqual({ attendance_mode: "ATTENDANCE", created_by: "owner01" });
+		expect((await post('next-meeting', { date: '2099-10-05', time: '19:00', mode: 'DISCORD', updatedBy: 'other' })).status).toBe(200);
+		expect(await env.DB.prepare("SELECT attendance_mode,created_by FROM schedules WHERE id='meeting'").first()).toEqual({
+			attendance_mode: 'ATTENDANCE',
+			created_by: 'owner01',
+		});
 	});
-	it("rejects self-service responses and attendance checks for assigned events", async () => {
-		await post("schedules", assigned());
-		for (const path of ["absences", "absences/update", "absences/delete", "event-attendance"]) {
-			expect((await post(path, { eventId: "assigned-test", studentNumber: "owner01", type: "出席", studentNumbers: [] })).status).toBe(403);
+	it('rejects self-service responses and attendance checks for assigned events', async () => {
+		await post('schedules', assigned());
+		for (const path of ['absences', 'absences/update', 'absences/delete', 'event-attendance']) {
+			expect((await post(path, { eventId: 'assigned-test', studentNumber: 'owner01', type: '出席', studentNumbers: [] })).status).toBe(403);
 		}
 	});
-	it("serializes concurrent replacements, retains assignments after member deletion and cascades event deletion", async () => {
+	it('serializes concurrent replacements, retains assignments after member deletion and cascades event deletion', async () => {
 		await env.DB.exec("INSERT INTO members (student_number,name) VALUES ('one0001','一人目'),('two0002','二人目')");
-		await post("schedules", assigned());
-		const responses = await Promise.all(["one0001", "two0002"].map(id => post("schedule-participants", {
-			eventId: "assigned-test", studentNumbers: [id], expectedRevision: 0, actor: "owner01",
-		})));
-		expect(responses.map(r => r.status).sort()).toEqual([200, 409]);
-		const rows = await env.DB.prepare("SELECT * FROM scheduled_participants").all<{ student_number: string }>();
+		await post('schedules', assigned());
+		const responses = await Promise.all(
+			['one0001', 'two0002'].map((id) =>
+				post('schedule-participants', {
+					eventId: 'assigned-test',
+					studentNumbers: [id],
+					expectedRevision: 0,
+					actor: 'owner01',
+				}),
+			),
+		);
+		expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+		const rows = await env.DB.prepare('SELECT * FROM scheduled_participants').all<{ student_number: string }>();
 		expect(rows.results).toHaveLength(1);
-		expect((await post("schedule-participants", { eventId: "assigned-test", studentNumbers: [rows.results[0].student_number], expectedRevision: 0, actor: "owner01" })).status).toBe(200);
-		await env.DB.exec("DELETE FROM members");
-		const read = await worker.fetch(new Request("https://example.com/schedule-participants?eventId=assigned-test", { headers: authorizedHeaders() }), authorizedEnv);
+		expect(
+			(
+				await post('schedule-participants', {
+					eventId: 'assigned-test',
+					studentNumbers: [rows.results[0].student_number],
+					expectedRevision: 0,
+					actor: 'owner01',
+				})
+			).status,
+		).toBe(200);
+		await env.DB.exec('DELETE FROM members');
+		const read = await worker.fetch(
+			new Request('https://example.com/schedule-participants?eventId=assigned-test', { headers: authorizedHeaders() }),
+			authorizedEnv,
+		);
 		expect(await read.json()).toMatchObject({ data: { count: 1, participants: [{ displayName: expect.any(String) }] } });
-		await post("schedules/delete", { eventId: "assigned-test" });
-		expect((await env.DB.prepare("SELECT * FROM scheduled_participants").all()).results).toHaveLength(0);
+		await post('schedules/delete', { eventId: 'assigned-test' });
+		expect((await env.DB.prepare('SELECT * FROM scheduled_participants').all()).results).toHaveLength(0);
 	});
-	it("includes assigned members in the shared Discord summary without recording attendance", async () => {
+	it('includes assigned members in the shared Discord summary without recording attendance', async () => {
 		await env.DB.exec("INSERT INTO members (student_number,name,permission) VALUES ('ob00001','卒業生','OBOG')");
-		await post("schedules", assigned({ assignedStudentNumbers: ["ob00001"] }));
-		await post("schedules", assigned({ eventId: "assigned-empty" }));
-		const request = await signedDiscordRequest({ type: 2, guild_id: DISCORD_GUILD_ID, member: { roles: [DISCORD_MEMBER_ROLE_ID] }, data: { name: "absences", options: [{ name: "date", type: 3, value: "2099-10-05" }] } });
+		await post('schedules', assigned({ assignedStudentNumbers: ['ob00001'] }));
+		await post('schedules', assigned({ eventId: 'assigned-empty' }));
+		const request = await signedDiscordRequest({
+			type: 2,
+			guild_id: DISCORD_GUILD_ID,
+			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
+			data: { name: 'absences', options: [{ name: 'date', type: 3, value: '2099-10-05' }] },
+		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
 		const body = await response.json<{ data: { embeds: Array<{ title: string; fields: Array<{ name: string; value: string }> }> } }>();
-		expect(body.data.embeds.every(e => e.title.includes("指定参加者一覧"))).toBe(true);
-		expect(body.data.embeds.flatMap(e => e.fields)).toContainEqual({ name: "卒業生", value: "参加予定", inline: true });
-		expect(body.data.embeds.flatMap(e => e.fields).some(f => f.value === "参加者は指定されていません")).toBe(true);
-		expect((await env.DB.prepare("SELECT * FROM event_attendance").all()).results).toHaveLength(0);
-		expect((await env.DB.prepare("SELECT * FROM absences").all()).results).toHaveLength(0);
+		expect(body.data.embeds.every((e) => e.title.includes('出席者一覧'))).toBe(true);
+		expect(body.data.embeds.flatMap((e) => e.fields)).toContainEqual({ name: '卒業生', value: '参加予定', inline: true });
+		expect(body.data.embeds.flatMap((e) => e.fields).some((f) => f.value === '出席者はいません')).toBe(true);
+		expect((await env.DB.prepare('SELECT * FROM event_attendance').all()).results).toHaveLength(0);
+		expect((await env.DB.prepare('SELECT * FROM absences').all()).results).toHaveLength(0);
 	});
 	beforeAll(async () => {
-		const discordKeyPair = (await crypto.subtle.generateKey(
-			"Ed25519",
-			true,
-			["sign", "verify"]
-		)) as CryptoKeyPair;
+		const discordKeyPair = (await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify'])) as CryptoKeyPair;
 		discordPrivateKey = discordKeyPair.privateKey;
-		discordPublicKeyHex = bytesToHex(
-			(await crypto.subtle.exportKey("raw", discordKeyPair.publicKey)) as ArrayBuffer
-		);
+		discordPublicKeyHex = bytesToHex((await crypto.subtle.exportKey('raw', discordKeyPair.publicKey)) as ArrayBuffer);
 
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS schedules (
@@ -201,7 +273,7 @@ describe("Hello World worker", () => {
 				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				is_past INTEGER NOT NULL DEFAULT 0
-			)`
+			)`,
 		).run();
 		await applyD1Migrations(env.DB, env.TEST_ASSIGNED_MIGRATIONS);
 		await env.DB.prepare(
@@ -223,7 +295,7 @@ describe("Hello World worker", () => {
 				submitted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				UNIQUE(event_id, student_number)
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS next_meeting_settings (
@@ -234,7 +306,7 @@ describe("Hello World worker", () => {
 				mode TEXT NOT NULL,
 				updated_by TEXT,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS cron_executions (
@@ -246,7 +318,7 @@ describe("Hello World worker", () => {
 				completed_at TEXT,
 				error TEXT,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS event_attendance (
@@ -256,7 +328,7 @@ describe("Hello World worker", () => {
 				checked_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY (event_id, student_number)
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS members (
@@ -271,7 +343,7 @@ describe("Hello World worker", () => {
 				is_active INTEGER NOT NULL DEFAULT 1,
 				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS tasks (
@@ -284,7 +356,7 @@ describe("Hello World worker", () => {
 				updated_by TEXT,
 				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS task_assignees (
@@ -292,7 +364,7 @@ describe("Hello World worker", () => {
 				student_number TEXT NOT NULL,
 				assigned_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY (task_id, student_number)
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS push_subscriptions (
@@ -302,7 +374,7 @@ describe("Hello World worker", () => {
 				auth TEXT NOT NULL,
 				created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`
+			)`,
 		).run();
 		await env.DB.prepare(
 			`CREATE TABLE IF NOT EXISTS access_logs (
@@ -316,12 +388,12 @@ describe("Hello World worker", () => {
 				method TEXT NOT NULL,
 				user_agent TEXT,
 				ip_hash TEXT
-			)`
+			)`,
 		).run();
 	});
 
-	it("responds with health status (unit style)", async () => {
-		const request = new IncomingRequest("http://example.com/health");
+	it('responds with health status (unit style)', async () => {
+		const request = new IncomingRequest('http://example.com/health');
 		// Create an empty context to pass to `worker.fetch()`.
 		const ctx = createExecutionContext();
 		const response = await fetchWorker(request, env, ctx);
@@ -331,148 +403,111 @@ describe("Hello World worker", () => {
 		expect(await response.json()).toMatchObject({
 			success: true,
 			data: {
-				status: "ok",
+				status: 'ok',
 			},
 		});
 	});
 
-	it("responds with health status (integration style)", async () => {
-		const response = await SELF.fetch("https://example.com/health");
+	it('responds with health status (integration style)', async () => {
+		const response = await SELF.fetch('https://example.com/health');
 		expect(response.status).toBe(200);
 	});
 
-	it("rejects non-health requests without backend API key", async () => {
-		const response = await fetchWorker(
-			new IncomingRequest("http://example.com/members"),
-			authorizedEnv,
-			createExecutionContext()
-		);
+	it('rejects non-health requests without backend API key', async () => {
+		const response = await fetchWorker(new IncomingRequest('http://example.com/members'), authorizedEnv, createExecutionContext());
 		expect(response.status).toBe(401);
 		expect(await response.json()).toMatchObject({
 			success: false,
-			error: "Unauthorized",
+			error: 'Unauthorized',
 		});
 	});
 
-	it("returns service unavailable when the backend API key is not configured", async () => {
-		const response = await fetchWorker(
-			new IncomingRequest("http://example.com/members"),
-			env,
-			createExecutionContext()
-		);
+	it('returns service unavailable when the backend API key is not configured', async () => {
+		const response = await fetchWorker(new IncomingRequest('http://example.com/members'), env, createExecutionContext());
 		expect(response.status).toBe(503);
 		expect(await response.json()).toMatchObject({
 			success: false,
-			error: "Backend API key is not configured",
+			error: 'Backend API key is not configured',
 		});
 	});
 
-	it("creates, verifies, updates, and soft-deletes a member", async () => {
+	it('creates, verifies, updates, and soft-deletes a member', async () => {
 		const createResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/members", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/members', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
-					values: [
-						"26D1001",
-						"試験 太郎",
-						"テスト",
-						true,
-						"test-line",
-						false,
-						true,
-						"SUB_HEAD",
-					],
+					values: ['26D1001', '試験 太郎', 'テスト', true, 'test-line', false, true, 'SUB_HEAD'],
 				}),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(createResponse.status).toBe(200);
 		expect(await createResponse.json()).toMatchObject({
 			success: true,
-			values: [
-				"26D1001",
-				"試験 太郎",
-				"テスト",
-				true,
-				"test-line",
-				false,
-				true,
-				"SUB_HEAD",
-			],
+			values: ['26D1001', '試験 太郎', 'テスト', true, 'test-line', false, true, 'SUB_HEAD'],
 		});
 
 		const verifyResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/verify-member?identifier=26D1001", {
+			new IncomingRequest('http://example.com/verify-member?identifier=26D1001', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(await verifyResponse.json()).toEqual({
 			success: true,
 			isMember: true,
-			name: "試験 太郎",
-			nickname: "テスト",
-			permission: "SUB_HEAD",
+			name: '試験 太郎',
+			nickname: 'テスト',
+			permission: 'SUB_HEAD',
 		});
 
 		const membersResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/members", {
+			new IncomingRequest('http://example.com/members', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		const membersBody = (await membersResponse.json()) as {
 			data?: { members?: Array<{ rowNumber: number; values: unknown[] }> };
 		};
-		const member = membersBody.data?.members?.find(
-			(row) => row.values[0] === "26D1001"
-		);
+		const member = membersBody.data?.members?.find((row) => row.values[0] === '26D1001');
 		expect(member).toBeDefined();
 
 		const updateResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/members/update", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/members/update', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
 					rowNumber: member?.rowNumber,
-					values: [
-						"26D1001",
-						"試験 太郎",
-						"更新後",
-						true,
-						"test-line",
-						true,
-						true,
-						"HEAD",
-					],
+					values: ['26D1001', '試験 太郎', '更新後', true, 'test-line', true, true, 'HEAD'],
 				}),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(updateResponse.status).toBe(200);
 
 		const deleteResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/members/delete", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/members/delete', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({ rowNumber: member?.rowNumber }),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(deleteResponse.status).toBe(200);
 
 		const deletedVerifyResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/verify-member?identifier=26D1001", {
+			new IncomingRequest('http://example.com/verify-member?identifier=26D1001', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(await deletedVerifyResponse.json()).toMatchObject({
 			success: true,
@@ -480,104 +515,104 @@ describe("Hello World worker", () => {
 		});
 	});
 
-	it("creates, updates, returns, and deletes a task with unique assignees", async () => {
+	it('creates, updates, returns, and deletes a task with unique assignees', async () => {
 		await env.DB.prepare(
 			`INSERT INTO members (student_number, name, nickname, permission, is_active)
-			VALUES ('26D2001', '担当 太郎', '担当者', 'NORMAL', 1)`
+			VALUES ('26D2001', '担当 太郎', '担当者', 'NORMAL', 1)`,
 		).run();
 
 		const createResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/tasks", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/tasks', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
-					id: "TASK-CHARACTERIZATION",
-					title: "特性化テスト",
-					description: "現在の挙動を固定する",
-					status: "invalid-status",
-					dueDate: "2099-12-01",
-					createdBy: "26D2001",
-					assigneeStudentNumbers: ["26D2001", "26D2001"],
+					id: 'TASK-CHARACTERIZATION',
+					title: '特性化テスト',
+					description: '現在の挙動を固定する',
+					status: 'invalid-status',
+					dueDate: '2099-12-01',
+					createdBy: '26D2001',
+					assigneeStudentNumbers: ['26D2001', '26D2001'],
 				}),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(createResponse.status).toBe(200);
 		const createBody = (await createResponse.json()) as {
 			data?: Array<Record<string, unknown>>;
 		};
-		expect(createBody.data?.find((task) => task.id === "TASK-CHARACTERIZATION")).toMatchObject({
-			title: "特性化テスト",
-			status: "TODO",
-			createdBy: "26D2001",
+		expect(createBody.data?.find((task) => task.id === 'TASK-CHARACTERIZATION')).toMatchObject({
+			title: '特性化テスト',
+			status: 'TODO',
+			createdBy: '26D2001',
 			assignees: [
 				expect.objectContaining({
-					studentNumber: "26D2001",
-					displayName: "担当者",
+					studentNumber: '26D2001',
+					displayName: '担当者',
 				}),
 			],
 		});
 
 		const updateResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/tasks/update", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/tasks/update', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
-					id: "TASK-CHARACTERIZATION",
-					title: "更新済みタスク",
-					status: "DONE",
-					updatedBy: "26D2001",
+					id: 'TASK-CHARACTERIZATION',
+					title: '更新済みタスク',
+					status: 'DONE',
+					updatedBy: '26D2001',
 					assigneeStudentNumbers: [],
 				}),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		const updateBody = (await updateResponse.json()) as {
 			data?: Array<Record<string, unknown>>;
 		};
-		expect(updateBody.data?.find((task) => task.id === "TASK-CHARACTERIZATION")).toMatchObject({
-			title: "更新済みタスク",
-			status: "DONE",
-			updatedBy: "26D2001",
+		expect(updateBody.data?.find((task) => task.id === 'TASK-CHARACTERIZATION')).toMatchObject({
+			title: '更新済みタスク',
+			status: 'DONE',
+			updatedBy: '26D2001',
 			assignees: [],
 		});
 
 		const deleteResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/tasks/delete", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
-				body: JSON.stringify({ id: "TASK-CHARACTERIZATION" }),
+			new IncomingRequest('http://example.com/tasks/delete', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
+				body: JSON.stringify({ id: 'TASK-CHARACTERIZATION' }),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(await deleteResponse.json()).toMatchObject({ success: true });
 
 		const getResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/tasks", {
+			new IncomingRequest('http://example.com/tasks', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		const getBody = (await getResponse.json()) as {
 			data?: Array<{ id: string }>;
 		};
-		expect(getBody.data?.some((task) => task.id === "TASK-CHARACTERIZATION")).toBe(false);
+		expect(getBody.data?.some((task) => task.id === 'TASK-CHARACTERIZATION')).toBe(false);
 	});
 
-	it("upserts, returns, and deletes a push subscription by endpoint", async () => {
-		const endpoint = "https://push.example.test/characterization";
+	it('upserts, returns, and deletes a push subscription by endpoint', async () => {
+		const endpoint = 'https://push.example.test/characterization';
 		for (const [studentId, p256dh, auth] of [
-			["26D3001", "first-key", "first-auth"],
-			["26D3002", "updated-key", "updated-auth"],
+			['26D3001', 'first-key', 'first-auth'],
+			['26D3002', 'updated-key', 'updated-auth'],
 		]) {
 			const response = await fetchWorker(
-				new IncomingRequest("http://example.com/push-subscribe", {
-					method: "POST",
-					headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				new IncomingRequest('http://example.com/push-subscribe', {
+					method: 'POST',
+					headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 					body: JSON.stringify({
 						studentId,
 						subscription: {
@@ -587,101 +622,97 @@ describe("Hello World worker", () => {
 					}),
 				}),
 				authorizedEnv,
-				createExecutionContext()
+				createExecutionContext(),
 			);
 			expect(response.status).toBe(200);
 		}
 
 		const getResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/push-subscriptions", {
+			new IncomingRequest('http://example.com/push-subscriptions', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		const getBody = (await getResponse.json()) as {
 			data?: Array<Record<string, unknown>>;
 		};
 		expect(getBody.data?.filter((item) => item.endpoint === endpoint)).toEqual([
 			expect.objectContaining({
-				studentId: "26D3002",
-				p256dh: "updated-key",
-				auth: "updated-auth",
+				studentId: '26D3002',
+				p256dh: 'updated-key',
+				auth: 'updated-auth',
 			}),
 		]);
 
 		await fetchWorker(
-			new IncomingRequest("http://example.com/push-unsubscribe", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/push-unsubscribe', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({ endpoint }),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
-		const row = await env.DB.prepare(
-			"SELECT endpoint FROM push_subscriptions WHERE endpoint = ?"
-		)
-			.bind(endpoint)
-			.first();
+		const row = await env.DB.prepare('SELECT endpoint FROM push_subscriptions WHERE endpoint = ?').bind(endpoint).first();
 		expect(row).toBeNull();
 	});
 
-	it("stores access log fields and reports the inserted count", async () => {
+	it('stores access log fields and reports the inserted count', async () => {
 		const response = await fetchWorker(
-			new IncomingRequest("http://example.com/access-logs", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/access-logs', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
 					logs: [
 						{
-							timestamp: "2026-08-28T12:34:56+09:00",
-							clientTimestamp: "2026-08-28T12:34:55+09:00",
-							studentId: "26D4001",
-							displayName: "ログ試験",
-							permission: "NORMAL",
-							path: "/calendar",
-							method: "GET",
-							userAgent: "vitest",
-							ipHash: "hash",
+							timestamp: '2026-08-28T12:34:56+09:00',
+							clientTimestamp: '2026-08-28T12:34:55+09:00',
+							studentId: '26D4001',
+							displayName: 'ログ試験',
+							permission: 'NORMAL',
+							path: '/calendar',
+							method: 'GET',
+							userAgent: 'vitest',
+							ipHash: 'hash',
 						},
 					],
 				}),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(await response.json()).toMatchObject({ success: true, count: 1 });
 
 		const row = await env.DB.prepare(
 			`SELECT timestamp, client_timestamp, student_id, display_name, permission,
 				path, method, user_agent, ip_hash
-			FROM access_logs WHERE student_id = ?`
+			FROM access_logs WHERE student_id = ?`,
 		)
-			.bind("26D4001")
+			.bind('26D4001')
 			.first<Record<string, unknown>>();
 		expect(row).toEqual({
-			timestamp: "2026-08-28T12:34:56+09:00",
-			client_timestamp: "2026-08-28T12:34:55+09:00",
-			student_id: "26D4001",
-			display_name: "ログ試験",
-			permission: "NORMAL",
-			path: "/calendar",
-			method: "GET",
-			user_agent: "vitest",
-			ip_hash: "hash",
+			timestamp: '2026-08-28T12:34:56+09:00',
+			client_timestamp: '2026-08-28T12:34:55+09:00',
+			student_id: '26D4001',
+			display_name: 'ログ試験',
+			permission: 'NORMAL',
+			path: '/calendar',
+			method: 'GET',
+			user_agent: 'vitest',
+			ip_hash: 'hash',
 		});
 	});
 
-	it("creates a schedule when next meeting is updated", async () => {
-		const request = new IncomingRequest("http://example.com/next-meeting", {
-			method: "POST",
-			headers: authorizedHeaders({ "Content-Type": "application/json" }),
+	it('creates a schedule when next meeting is updated', async () => {
+		const request = new IncomingRequest('http://example.com/next-meeting', {
+			method: 'POST',
+			headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 			body: JSON.stringify({
-				date: "2099-01-23",
-				time: "18:00",
-				mode: "DISCORD",
-				updatedBy: "test",
+				date: '2099-01-23',
+				time: '18:00',
+				mode: 'DISCORD',
+				updatedBy: 'test',
 			}),
 		});
 		const ctx = createExecutionContext();
@@ -697,46 +728,44 @@ describe("Hello World worker", () => {
 		expect(responseBody.data?.eventId).toBeTruthy();
 
 		const schedulesResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/schedules", {
+			new IncomingRequest('http://example.com/schedules', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		const schedulesBody = (await schedulesResponse.json()) as {
 			success?: boolean;
 			data?: Array<Record<string, unknown>>;
 		};
-		const meetingSchedule = schedulesBody.data?.find(
-			(schedule) => schedule.EVENT_ID === responseBody.data?.eventId
-		);
+		const meetingSchedule = schedulesBody.data?.find((schedule) => schedule.EVENT_ID === responseBody.data?.eventId);
 
 		expect(meetingSchedule).toMatchObject({
-			TITLE: "部会",
-			YYYY: "2099",
-			MM: "1",
-			DD: "23",
-			TIME_HH: "18",
-			TIME_MM: "0",
-			WHERE: "Discord",
-			ATTENDANCE_DEADLINE: "2099-01-23",
+			TITLE: '部会',
+			YYYY: '2099',
+			MM: '1',
+			DD: '23',
+			TIME_HH: '18',
+			TIME_MM: '0',
+			WHERE: 'Discord',
+			ATTENDANCE_DEADLINE: '2099-01-23',
 		});
 	});
 
-	it("creates a separate event when the next meeting date changes", async () => {
-		await env.DB.prepare("DELETE FROM absences").run();
-		await env.DB.prepare("DELETE FROM schedules").run();
-		await env.DB.prepare("DELETE FROM next_meeting_settings").run();
+	it('creates a separate event when the next meeting date changes', async () => {
+		await env.DB.prepare('DELETE FROM absences').run();
+		await env.DB.prepare('DELETE FROM schedules').run();
+		await env.DB.prepare('DELETE FROM next_meeting_settings').run();
 
 		const updateNextMeeting = async (date: string, time: string) => {
-			const request = new IncomingRequest("http://example.com/next-meeting", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			const request = new IncomingRequest('http://example.com/next-meeting', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
 					date,
 					time,
-					mode: "IN_PERSON",
-					updatedBy: "test",
+					mode: 'IN_PERSON',
+					updatedBy: 'test',
 				}),
 			});
 			const ctx = createExecutionContext();
@@ -749,50 +778,36 @@ describe("Hello World worker", () => {
 			};
 		};
 
-		const firstUpdate = await updateNextMeeting("2099-06-01", "18:00");
+		const firstUpdate = await updateNextMeeting('2099-06-01', '18:00');
 		const firstEventId = firstUpdate.data?.eventId;
 		expect(firstEventId).toBeTruthy();
 
 		await env.DB.prepare(
 			`INSERT INTO absences (
 				id, event_id, student_number, name, type
-			) VALUES (?, ?, ?, ?, ?)`
+			) VALUES (?, ?, ?, ?, ?)`,
 		)
-			.bind(
-			`${firstEventId}:26D4001`,
-			firstEventId,
-			"26D4001",
-			"過去の欠席者",
-			"欠席"
-			)
+			.bind(`${firstEventId}:26D4001`, firstEventId, '26D4001', '過去の欠席者', '欠席')
 			.run();
 
-		const secondUpdate = await updateNextMeeting("2099-06-08", "19:00");
+		const secondUpdate = await updateNextMeeting('2099-06-08', '19:00');
 		const secondEventId = secondUpdate.data?.eventId;
 		expect(secondEventId).toBeTruthy();
 		expect(secondEventId).not.toBe(firstEventId);
 
-		const oldSchedule = await env.DB.prepare(
-			"SELECT id, date FROM schedules WHERE id = ?"
-		)
+		const oldSchedule = await env.DB.prepare('SELECT id, date FROM schedules WHERE id = ?')
 			.bind(firstEventId)
 			.first<{ id: string; date: string }>();
-		const currentSchedule = await env.DB.prepare(
-			"SELECT id, date FROM schedules WHERE id = ?"
-		)
+		const currentSchedule = await env.DB.prepare('SELECT id, date FROM schedules WHERE id = ?')
 			.bind(secondEventId)
 			.first<{ id: string; date: string }>();
-		const oldAbsence = await env.DB.prepare(
-			"SELECT event_id FROM absences WHERE event_id = ?"
-		)
+		const oldAbsence = await env.DB.prepare('SELECT event_id FROM absences WHERE event_id = ?')
 			.bind(firstEventId)
 			.first<{ event_id: string }>();
-		const settings = await env.DB.prepare(
-			"SELECT event_id FROM next_meeting_settings WHERE id = 1"
-		).first<{ event_id: string }>();
+		const settings = await env.DB.prepare('SELECT event_id FROM next_meeting_settings WHERE id = 1').first<{ event_id: string }>();
 
-		expect(oldSchedule).toEqual({ id: firstEventId, date: "2099-06-01" });
-		expect(currentSchedule).toEqual({ id: secondEventId, date: "2099-06-08" });
+		expect(oldSchedule).toEqual({ id: firstEventId, date: '2099-06-01' });
+		expect(currentSchedule).toEqual({ id: secondEventId, date: '2099-06-08' });
 		expect(oldAbsence).toEqual({ event_id: firstEventId });
 		expect(settings).toEqual({ event_id: secondEventId });
 
@@ -801,39 +816,35 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-06-08" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-06-08' }],
 			},
 		});
-		const discordResponse = await fetchWorker(
-			discordRequest,
-			discordEnv(),
-			createExecutionContext()
-		);
+		const discordResponse = await fetchWorker(discordRequest, discordEnv(), createExecutionContext());
 		const discordBody = await discordResponse.text();
-		expect(discordBody).toContain("欠席者はいません");
-		expect(discordBody).not.toContain("過去の欠席者");
+		expect(discordBody).toContain('欠席者はいません');
+		expect(discordBody).not.toContain('過去の欠席者');
 	});
 
-	it("keeps the event ID when the next meeting date stays the same", async () => {
-		await env.DB.prepare("DELETE FROM next_meeting_settings").run();
-		await env.DB.prepare("DELETE FROM schedules").run();
+	it('keeps the event ID when the next meeting date stays the same', async () => {
+		await env.DB.prepare('DELETE FROM next_meeting_settings').run();
+		await env.DB.prepare('DELETE FROM schedules').run();
 
 		const update = async (time: string) => {
 			const ctx = createExecutionContext();
 			const response = await fetchWorker(
-				new IncomingRequest("http://example.com/next-meeting", {
-					method: "POST",
-					headers: authorizedHeaders({ "Content-Type": "application/json" }),
+				new IncomingRequest('http://example.com/next-meeting', {
+					method: 'POST',
+					headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 					body: JSON.stringify({
-						date: "2099-07-01",
+						date: '2099-07-01',
 						time,
-						mode: "DISCORD",
-						updatedBy: "test",
+						mode: 'DISCORD',
+						updatedBy: 'test',
 					}),
-					}),
-					authorizedEnv,
-					ctx
+				}),
+				authorizedEnv,
+				ctx,
 			);
 			await waitOnExecutionContext(ctx);
 			return (await response.json()) as {
@@ -841,97 +852,118 @@ describe("Hello World worker", () => {
 			};
 		};
 
-		const first = await update("18:00");
-		const second = await update("19:00");
+		const first = await update('18:00');
+		const second = await update('19:00');
 		expect(second.data?.eventId).toBe(first.data?.eventId);
 
-		const schedules = await env.DB.prepare(
-			"SELECT id, date, start_time FROM schedules"
-		).all<{ id: string; date: string; start_time: string }>();
+		const schedules = await env.DB.prepare('SELECT id, date, start_time FROM schedules').all<{
+			id: string;
+			date: string;
+			start_time: string;
+		}>();
 		expect(schedules.results).toEqual([
 			{
 				id: first.data?.eventId,
-				date: "2099-07-01",
-				start_time: "19:00",
+				date: '2099-07-01',
+				start_time: '19:00',
 			},
 		]);
 	});
 
-	it("creates a new event when the configured event no longer exists", async () => {
-		await env.DB.prepare("DELETE FROM schedules").run();
-		await env.DB.prepare("DELETE FROM next_meeting_settings").run();
+	it('creates a new event when the configured event no longer exists', async () => {
+		await env.DB.prepare('DELETE FROM schedules').run();
+		await env.DB.prepare('DELETE FROM next_meeting_settings').run();
 		await env.DB.prepare(
 			`INSERT INTO next_meeting_settings (id, event_id, date, time, mode)
-			VALUES (1, 'MEETING-MISSING', '2099-08-01', '18:00', 'IN_PERSON')`
+			VALUES (1, 'MEETING-MISSING', '2099-08-01', '18:00', 'IN_PERSON')`,
 		).run();
 
 		const ctx = createExecutionContext();
 		const response = await fetchWorker(
-			new IncomingRequest("http://example.com/next-meeting", {
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
+			new IncomingRequest('http://example.com/next-meeting', {
+				method: 'POST',
+				headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 				body: JSON.stringify({
-					date: "2099-08-08",
-					time: "18:00",
-					mode: "IN_PERSON",
-					updatedBy: "test",
+					date: '2099-08-08',
+					time: '18:00',
+					mode: 'IN_PERSON',
+					updatedBy: 'test',
 				}),
 			}),
 			authorizedEnv,
-			ctx
+			ctx,
 		);
 		await waitOnExecutionContext(ctx);
 		const body = (await response.json()) as { data?: { eventId?: string } };
 
 		expect(body.data?.eventId).toMatch(/^MEETING-/);
-		expect(body.data?.eventId).not.toBe("MEETING-MISSING");
+		expect(body.data?.eventId).not.toBe('MEETING-MISSING');
 	});
 
-	it("round trips schedule end time through create, update and clear", async () => {
-		const payload = { year: "2099", month: "9", date: "15", timeHH: "18", timeMM: "0", endTimeHH: "20", endTimeMM: "30", title: "End time test" };
+	it('round trips schedule end time through create, update and clear', async () => {
+		const payload = {
+			year: '2099',
+			month: '9',
+			date: '15',
+			timeHH: '18',
+			timeMM: '0',
+			endTimeHH: '20',
+			endTimeMM: '30',
+			title: 'End time test',
+		};
 		const save = async (path: string, body: object) => {
-			const response = await fetchWorker(new IncomingRequest(`http://example.com/${path}`, {
-				method: "POST", headers: authorizedHeaders({ "Content-Type": "application/json" }), body: JSON.stringify(body),
-			}), authorizedEnv, createExecutionContext());
+			const response = await fetchWorker(
+				new IncomingRequest(`http://example.com/${path}`, {
+					method: 'POST',
+					headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
+					body: JSON.stringify(body),
+				}),
+				authorizedEnv,
+				createExecutionContext(),
+			);
 			expect(response.status).toBe(200);
 			return response.json<{ success: boolean; data: { eventId: string } }>();
 		};
-		const created = await save("schedules", payload);
+		const created = await save('schedules', payload);
 		expect(created.success).toBe(true);
 		const eventId = created.data.eventId;
 		const read = async () => {
-			const response = await fetchWorker(new IncomingRequest("http://example.com/schedules", { headers: authorizedHeaders() }), authorizedEnv, createExecutionContext());
+			const response = await fetchWorker(
+				new IncomingRequest('http://example.com/schedules', { headers: authorizedHeaders() }),
+				authorizedEnv,
+				createExecutionContext(),
+			);
 			const body = await response.json<{ data: Array<Record<string, unknown>> }>();
-			return body.data.find(schedule => schedule.EVENT_ID === eventId);
+			return body.data.find((schedule) => schedule.EVENT_ID === eventId);
 		};
-		expect(await read()).toMatchObject({ END_TIME_HH: "20", END_TIME_MM: "30" });
-		await save("schedules/update", { ...payload, eventId, title: "Renamed" });
-		expect(await read()).toMatchObject({ TITLE: "Renamed", END_TIME_HH: "20", END_TIME_MM: "30" });
-		await save("schedules/update", { ...payload, eventId, endTimeHH: 0, endTimeMM: 0 });
-		expect(await read()).toMatchObject({ END_TIME_HH: "0", END_TIME_MM: "0" });
-		await save("schedules/update", { ...payload, eventId, endTimeHH: "", endTimeMM: "" });
-		expect(await read()).toMatchObject({ END_TIME_HH: "", END_TIME_MM: "" });
-		expect(await env.DB.prepare("SELECT end_time FROM schedules WHERE id = ?").bind(eventId).first()).toEqual({ end_time: null });
+		expect(await read()).toMatchObject({ END_TIME_HH: '20', END_TIME_MM: '30' });
+		await save('schedules/update', { ...payload, eventId, title: 'Renamed' });
+		expect(await read()).toMatchObject({ TITLE: 'Renamed', END_TIME_HH: '20', END_TIME_MM: '30' });
+		await save('schedules/update', { ...payload, eventId, endTimeHH: 0, endTimeMM: 0 });
+		expect(await read()).toMatchObject({ END_TIME_HH: '0', END_TIME_MM: '0' });
+		await save('schedules/update', { ...payload, eventId, endTimeHH: '', endTimeMM: '' });
+		expect(await read()).toMatchObject({ END_TIME_HH: '', END_TIME_MM: '' });
+		expect(await env.DB.prepare('SELECT end_time FROM schedules WHERE id = ?').bind(eventId).first()).toEqual({ end_time: null });
 	});
 
-	it("stores and returns schedule end date", async () => {
-		const request = new IncomingRequest("http://example.com/schedules", {
-			method: "POST",
-			headers: authorizedHeaders({ "Content-Type": "application/json" }),
+	it('stores and returns schedule end date', async () => {
+		const request = new IncomingRequest('http://example.com/schedules', {
+			method: 'POST',
+			headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
 			body: JSON.stringify({
-				year: "2099",
-				month: "2",
-				date: "10",
-				endYear: "2099",
-				endMonth: "2",
-				endDate: "12",
-				title: "合宿",
-				where: "校外",
-				detail: "終日イベント",
-				color: "green",
-				attendanceMode: "ABSENCE",
-				attendanceDeadline: "2099-02-08",
-				createdBy: "test",
+				year: '2099',
+				month: '2',
+				date: '10',
+				endYear: '2099',
+				endMonth: '2',
+				endDate: '12',
+				title: '合宿',
+				where: '校外',
+				detail: '終日イベント',
+				color: 'green',
+				attendanceMode: 'ABSENCE',
+				attendanceDeadline: '2099-02-08',
+				createdBy: 'test',
 			}),
 		});
 		const ctx = createExecutionContext();
@@ -950,38 +982,36 @@ describe("Hello World worker", () => {
 		};
 		expect(responseBody.success).toBe(true);
 		expect(responseBody.data).toMatchObject({
-			endYear: "2099",
-			endMonth: "2",
-			endDate: "12",
+			endYear: '2099',
+			endMonth: '2',
+			endDate: '12',
 		});
 
 		const schedulesResponse = await fetchWorker(
-			new IncomingRequest("http://example.com/schedules", {
+			new IncomingRequest('http://example.com/schedules', {
 				headers: authorizedHeaders(),
 			}),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		const schedulesBody = (await schedulesResponse.json()) as {
 			success?: boolean;
 			data?: Array<Record<string, unknown>>;
 		};
-		const schedule = schedulesBody.data?.find(
-			(item) => item.EVENT_ID === responseBody.data?.eventId
-		);
+		const schedule = schedulesBody.data?.find((item) => item.EVENT_ID === responseBody.data?.eventId);
 
 		expect(schedule).toMatchObject({
-			TITLE: "合宿",
-			COLOR: "green",
-			END_YYYY: "2099",
-			END_MM: "2",
-			END_DD: "12",
-			ATTENDANCE_DEADLINE: "2099-02-08",
+			TITLE: '合宿',
+			COLOR: 'green',
+			END_YYYY: '2099',
+			END_MM: '2',
+			END_DD: '12',
+			ATTENDANCE_DEADLINE: '2099-02-08',
 			IS_PAST: false,
 		});
 	});
 
-	it("replaces and returns event attendance", async () => {
+	it('replaces and returns event attendance', async () => {
 		await env.DB.prepare(
 			`INSERT INTO members (
 				student_number, name, nickname, permission, is_active
@@ -991,7 +1021,7 @@ describe("Hello World worker", () => {
 				name = excluded.name,
 				nickname = excluded.nickname,
 				permission = excluded.permission,
-				is_active = excluded.is_active`
+				is_active = excluded.is_active`,
 		).run();
 		await env.DB.prepare(
 			`INSERT INTO members (
@@ -1002,21 +1032,18 @@ describe("Hello World worker", () => {
 				name = excluded.name,
 				nickname = excluded.nickname,
 				permission = excluded.permission,
-				is_active = excluded.is_active`
+				is_active = excluded.is_active`,
 		).run();
 
-		const updateRequest = new IncomingRequest(
-			"http://example.com/event-attendance",
-			{
-				method: "POST",
-				headers: authorizedHeaders({ "Content-Type": "application/json" }),
-				body: JSON.stringify({
-					eventId: "event-attendance-test",
-					studentNumbers: ["25D0001", "25d0001", "25d9999"],
-					checkedBy: "25D9999",
-				}),
-			}
-		);
+		const updateRequest = new IncomingRequest('http://example.com/event-attendance', {
+			method: 'POST',
+			headers: authorizedHeaders({ 'Content-Type': 'application/json' }),
+			body: JSON.stringify({
+				eventId: 'event-attendance-test',
+				studentNumbers: ['25D0001', '25d0001', '25d9999'],
+				checkedBy: '25D9999',
+			}),
+		});
 		const ctx = createExecutionContext();
 		const updateResponse = await fetchWorker(updateRequest, authorizedEnv, ctx);
 		await waitOnExecutionContext(ctx);
@@ -1025,19 +1052,16 @@ describe("Hello World worker", () => {
 			success: true,
 			count: 1,
 			data: {
-				eventId: "event-attendance-test",
-				studentNumbers: ["25d0001"],
-				checkedBy: "25d9999",
+				eventId: 'event-attendance-test',
+				studentNumbers: ['25d0001'],
+				checkedBy: '25d9999',
 			},
 		});
 
 		const response = await fetchWorker(
-			new IncomingRequest(
-				"http://example.com/event-attendance?eventId=event-attendance-test",
-				{ headers: authorizedHeaders() }
-			),
+			new IncomingRequest('http://example.com/event-attendance?eventId=event-attendance-test', { headers: authorizedHeaders() }),
 			authorizedEnv,
-			createExecutionContext()
+			createExecutionContext(),
 		);
 		expect(response.status).toBe(200);
 		const body = (await response.json()) as {
@@ -1047,66 +1071,62 @@ describe("Hello World worker", () => {
 		expect(body.success).toBe(true);
 		expect(body.data).toEqual([
 			expect.objectContaining({
-				eventId: "event-attendance-test",
-				studentNumber: "25d0001",
-				name: "山田 太郎",
-				displayName: "やまだ",
-				permission: "NORMAL",
-				checkedBy: "25d9999",
+				eventId: 'event-attendance-test',
+				studentNumber: '25d0001',
+				name: '山田 太郎',
+				displayName: 'やまだ',
+				permission: 'NORMAL',
+				checkedBy: '25d9999',
 			}),
 		]);
 	});
 
-	it("handles Discord interaction ping without backend API key", async () => {
+	it('handles Discord interaction ping without backend API key', async () => {
 		const request = await signedDiscordRequest({ type: 1 });
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ type: 1 });
 	});
 
-	it("rejects Discord commands without the member role", async () => {
+	it('rejects Discord commands without the member role', async () => {
 		const request = await signedDiscordRequest({
 			type: 2,
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [] },
-			data: { name: "schedule", options: [] },
+			data: { name: 'schedule', options: [] },
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
 		expect(response.status).toBe(200);
 		expect(await response.json()).toMatchObject({
 			type: 4,
 			data: {
-				content: "このコマンドを実行する権限がありません。",
+				content: 'このコマンドを実行する権限がありません。',
 				flags: 64,
 			},
 		});
 	});
 
-	it("rejects Discord commands when the guild is not configured", async () => {
+	it('rejects Discord commands when the guild is not configured', async () => {
 		const envWithoutGuild = discordEnv();
 		delete (envWithoutGuild as Record<string, unknown>).DISCORD_GUILD_ID;
 		const request = await signedDiscordRequest({
 			type: 2,
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
-			data: { name: "schedule", options: [] },
+			data: { name: 'schedule', options: [] },
 		});
-		const response = await fetchWorker(
-			request,
-			envWithoutGuild,
-			createExecutionContext()
-		);
+		const response = await fetchWorker(request, envWithoutGuild, createExecutionContext());
 		expect(response.status).toBe(200);
 		expect(await response.json()).toMatchObject({
 			type: 4,
 			data: {
-				content: "このサーバーでは利用できません。",
+				content: 'このサーバーでは利用できません。',
 				flags: 64,
 			},
 		});
 	});
 
-	it("returns Discord schedule results for multi-day date matches", async () => {
+	it('returns Discord schedule results for multi-day date matches', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1119,7 +1139,7 @@ describe("Hello World worker", () => {
 			ON CONFLICT(id) DO UPDATE SET
 				title = excluded.title,
 				date = excluded.date,
-				end_date = excluded.end_date`
+				end_date = excluded.end_date`,
 		).run();
 
 		const request = await signedDiscordRequest({
@@ -1127,8 +1147,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "schedule",
-				options: [{ name: "date", type: 3, value: "2099-07-04" }],
+				name: 'schedule',
+				options: [{ name: 'date', type: 3, value: '2099-07-04' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1142,15 +1162,15 @@ describe("Hello World worker", () => {
 		};
 		expect(body.type).toBe(4);
 		expect(body.data?.flags).toBe(64);
-		expect(body.data?.embeds?.[0]?.title).toBe("2099/07/04(土)の予定");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**合宿**");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("時間：終日");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("場所：校外");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("詳細:");
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain("出欠締切:");
+		expect(body.data?.embeds?.[0]?.title).toBe('2099/07/04(土)の予定');
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain('**合宿**');
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain('時間：終日');
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain('場所：校外');
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain('詳細:');
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).not.toContain('出欠締切:');
 	});
 
-	it("returns Discord schedule results publicly when public option is true", async () => {
+	it('returns Discord schedule results publicly when public option is true', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1162,7 +1182,7 @@ describe("Hello World worker", () => {
 			)
 			ON CONFLICT(id) DO UPDATE SET
 				title = excluded.title,
-				date = excluded.date`
+				date = excluded.date`,
 		).run();
 
 		const request = await signedDiscordRequest({
@@ -1170,10 +1190,10 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "schedule",
+				name: 'schedule',
 				options: [
-					{ name: "date", type: 3, value: "2099-07-06" },
-					{ name: "public", type: 5, value: true },
+					{ name: 'date', type: 3, value: '2099-07-06' },
+					{ name: 'public', type: 5, value: true },
 				],
 			},
 		});
@@ -1185,10 +1205,10 @@ describe("Hello World worker", () => {
 			};
 		};
 		expect(body.data?.flags).toBeUndefined();
-		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain("**公開予定**");
+		expect(body.data?.embeds?.[0]?.fields?.[0]?.value).toContain('**公開予定**');
 	});
 
-	it("returns only upcoming schedules by default for Discord schedule command", async () => {
+	it('returns only upcoming schedules by default for Discord schedule command', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1200,14 +1220,14 @@ describe("Hello World worker", () => {
 			ON CONFLICT(id) DO UPDATE SET
 				title = excluded.title,
 				date = excluded.date,
-				end_date = excluded.end_date`
+				end_date = excluded.end_date`,
 		).run();
 
 		const request = await signedDiscordRequest({
 			type: 2,
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
-			data: { name: "schedule", options: [] },
+			data: { name: 'schedule', options: [] },
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
 		const body = (await response.json()) as {
@@ -1215,13 +1235,13 @@ describe("Hello World worker", () => {
 		};
 		const values = body.data?.embeds
 			?.flatMap((embed) => embed.fields || [])
-			.map((field) => field.value || "")
-			.join("\n");
-		expect(values).toContain("未来予定");
-		expect(values).not.toContain("過去予定");
+			.map((field) => field.value || '')
+			.join('\n');
+		expect(values).toContain('未来予定');
+		expect(values).not.toContain('過去予定');
 	});
 
-	it("omits excess Discord schedule results with a footer note", async () => {
+	it('omits excess Discord schedule results with a footer note', async () => {
 		for (let index = 1; index <= 22; index += 1) {
 			await env.DB.prepare(
 				`INSERT INTO schedules (
@@ -1229,7 +1249,7 @@ describe("Hello World worker", () => {
 					color, attendance_mode, attendance_deadline, is_past
 				)
 				VALUES (?, ?, '2099-10-01', NULL, NULL, NULL, '', '', 'primary', 'ABSENCE', NULL, 0)
-				ON CONFLICT(id) DO UPDATE SET title = excluded.title`
+				ON CONFLICT(id) DO UPDATE SET title = excluded.title`,
 			)
 				.bind(`discord-many-schedule-${index}`, `多数予定${index}`)
 				.run();
@@ -1240,8 +1260,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "schedule",
-				options: [{ name: "date", type: 3, value: "2099-10-01" }],
+				name: 'schedule',
+				options: [{ name: 'date', type: 3, value: '2099-10-01' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1256,19 +1276,17 @@ describe("Hello World worker", () => {
 		const embeds = body.data?.embeds || [];
 		const fields = embeds.flatMap((embed) => embed.fields || []);
 		expect(fields).toHaveLength(20);
-		expect(embeds.at(-1)?.footer?.text).toBe(
-			"Discordの表示制限により、ほか2件を省略しました"
-		);
+		expect(embeds.at(-1)?.footer?.text).toBe('Discordの表示制限により、ほか2件を省略しました');
 	});
 
-	it("shows the requested date when no Discord attendance schedules exist", async () => {
+	it('shows the requested date when no Discord attendance schedules exist', async () => {
 		const request = await signedDiscordRequest({
 			type: 2,
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-12-31" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-12-31' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1277,12 +1295,12 @@ describe("Hello World worker", () => {
 		};
 
 		expect(body.data?.embeds?.[0]).toMatchObject({
-			title: "2099/12/31(木) 出欠状況",
-			description: "2099/12/31(木)の予定はありません。",
+			title: '2099/12/31(木) 出欠状況',
+			description: '2099/12/31(木)の予定はありません。',
 		});
 	});
 
-	it("returns Discord absence command using the daily absence embed", async () => {
+	it('returns Discord absence command using the daily absence embed', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1292,7 +1310,7 @@ describe("Hello World worker", () => {
 				'discord-absence-schedule', '部会', '2099-09-01', NULL,
 				'18:00', NULL, 'Discord', '', 'primary', 'ABSENCE', '2099-08-30', 0
 			)
-			ON CONFLICT(id) DO UPDATE SET title = excluded.title`
+			ON CONFLICT(id) DO UPDATE SET title = excluded.title`,
 		).run();
 		await env.DB.prepare(
 			`INSERT INTO absences (
@@ -1306,7 +1324,7 @@ describe("Hello World worker", () => {
 			ON CONFLICT(id) DO UPDATE SET
 				name = excluded.name,
 				type = excluded.type,
-				time_leaving_early = excluded.time_leaving_early`
+				time_leaving_early = excluded.time_leaving_early`,
 		).run();
 
 		const request = await signedDiscordRequest({
@@ -1314,8 +1332,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-09-01" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-09-01' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1326,16 +1344,14 @@ describe("Hello World worker", () => {
 			};
 		};
 		expect(body.data?.flags).toBe(64);
-		expect(body.data?.embeds?.[0]?.title).toBe(
-			"2099/09/01(火) 部会 欠席者一覧"
-		);
+		expect(body.data?.embeds?.[0]?.title).toBe('2099/09/01(火) 部会 欠席者一覧');
 		expect(body.data?.embeds?.[0]?.fields?.[0]).toMatchObject({
-			name: "佐藤 次郎",
-			value: "早退（19:00）",
+			name: '佐藤 次郎',
+			value: '早退（19:00）',
 		});
 	});
 
-	it("separates Discord summaries by attendance mode", async () => {
+	it('separates Discord summaries by attendance mode', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1345,7 +1361,7 @@ describe("Hello World worker", () => {
 				('discord-attendance-mode', '希望者参加イベント', '2099-09-03', NULL,
 					'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', '2099-09-03', 0),
 				('discord-absence-mode', '全員参加イベント', '2099-09-03', NULL,
-					'18:00', NULL, '部室', '', 'primary', 'ABSENCE', '2099-09-03', 0)`
+					'18:00', NULL, '部室', '', 'primary', 'ABSENCE', '2099-09-03', 0)`,
 		).run();
 		await env.DB.prepare(
 			`INSERT INTO absences (
@@ -1360,7 +1376,7 @@ describe("Hello World worker", () => {
 				('discord-absentee', 'discord-absence-mode', '25d0012',
 					'欠席 次郎', '欠席', '', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
 				('discord-wrong-attendee', 'discord-absence-mode', '25d0013',
-					'出席 四郎', '出席', '出席', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+					'出席 四郎', '出席', '出席', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 		).run();
 
 		const request = await signedDiscordRequest({
@@ -1368,8 +1384,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-09-03" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-09-03' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1382,22 +1398,14 @@ describe("Hello World worker", () => {
 			};
 		};
 
-		const attendanceEmbed = body.data?.embeds?.find((embed) =>
-				embed.title?.includes("希望者参加イベント 参加者一覧")
-		);
-		const absenceEmbed = body.data?.embeds?.find((embed) =>
-			embed.title?.includes("全員参加イベント 欠席者一覧")
-		);
+		const attendanceEmbed = body.data?.embeds?.find((embed) => embed.title?.includes('希望者参加イベント 参加者一覧'));
+		const absenceEmbed = body.data?.embeds?.find((embed) => embed.title?.includes('全員参加イベント 欠席者一覧'));
 
-		expect(attendanceEmbed?.fields).toEqual([
-			expect.objectContaining({ name: "出席 太郎", value: "出席" }),
-		]);
-		expect(absenceEmbed?.fields).toEqual([
-			expect.objectContaining({ name: "欠席 次郎", value: "欠席" }),
-		]);
+		expect(attendanceEmbed?.fields).toEqual([expect.objectContaining({ name: '出席 太郎', value: '出席' })]);
+		expect(absenceEmbed?.fields).toEqual([expect.objectContaining({ name: '欠席 次郎', value: '欠席' })]);
 	});
 
-	it("shows an attendee-specific empty state for attendance events", async () => {
+	it('shows an attendee-specific empty state for attendance events', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1406,7 +1414,7 @@ describe("Hello World worker", () => {
 			VALUES (
 				'discord-empty-attendance', '申告なしイベント', '2099-09-04', NULL,
 				'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', '2099-09-04', 0
-			)`
+			)`,
 		).run();
 
 		const request = await signedDiscordRequest({
@@ -1414,8 +1422,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-09-04" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-09-04' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1428,18 +1436,16 @@ describe("Hello World worker", () => {
 			};
 		};
 
-		expect(body.data?.embeds?.[0]?.title).toContain(
-			"申告なしイベント 参加者一覧"
-		);
+		expect(body.data?.embeds?.[0]?.title).toContain('申告なしイベント 参加者一覧');
 		expect(body.data?.embeds?.[0]?.fields).toEqual([
 			expect.objectContaining({
-				name: "情報",
-				value: "参加者はいません",
+				name: '情報',
+				value: '参加者はいません',
 			}),
 		]);
 	});
 
-	it("splits attendance summaries at the Discord embed field limit", async () => {
+	it('splits attendance summaries at the Discord embed field limit', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1448,7 +1454,7 @@ describe("Hello World worker", () => {
 			VALUES (
 				'discord-many-attendees', '大人数イベント', '2099-09-05', NULL,
 				'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', '2099-09-05', 0
-			)`
+			)`,
 		).run();
 		await env.DB.batch(
 			Array.from({ length: 26 }, (_, index) =>
@@ -1457,15 +1463,15 @@ describe("Hello World worker", () => {
 						id, event_id, student_number, name, type, reason, reason_detail,
 						time_leaving_early, time_step_out, time_return, submitted_at, updated_at
 					)
-					VALUES (?, 'discord-many-attendees', ?, ?, '出席', '出席', '', '', '', '', ?, ?)`
+					VALUES (?, 'discord-many-attendees', ?, ?, '出席', '出席', '', '', '', '', ?, ?)`,
 				).bind(
 					`discord-many-attendee-${index}`,
-					`25d${String(index).padStart(4, "0")}`,
-					`出席者 ${String(index + 1).padStart(2, "0")}`,
-					`2099-08-01 00:00:${String(index).padStart(2, "0")}`,
-					`2099-08-01 00:00:${String(index).padStart(2, "0")}`
-				)
-			)
+					`25d${String(index).padStart(4, '0')}`,
+					`出席者 ${String(index + 1).padStart(2, '0')}`,
+					`2099-08-01 00:00:${String(index).padStart(2, '0')}`,
+					`2099-08-01 00:00:${String(index).padStart(2, '0')}`,
+				),
+			),
 		);
 
 		const request = await signedDiscordRequest({
@@ -1473,8 +1479,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-09-05" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-09-05' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1490,12 +1496,10 @@ describe("Hello World worker", () => {
 		expect(body.data?.embeds).toHaveLength(2);
 		expect(body.data?.embeds?.[0]?.fields).toHaveLength(25);
 		expect(body.data?.embeds?.[1]?.fields).toHaveLength(1);
-		expect(body.data?.embeds?.[1]?.title).toContain(
-			"大人数イベント 参加者一覧（2）"
-		);
+		expect(body.data?.embeds?.[1]?.title).toContain('大人数イベント 参加者一覧（2）');
 	});
 
-	it("limits Discord command embeds and reports omitted summaries", async () => {
+	it('limits Discord command embeds and reports omitted summaries', async () => {
 		await env.DB.batch(
 			Array.from({ length: 11 }, (_, index) =>
 				env.DB.prepare(
@@ -1504,13 +1508,9 @@ describe("Hello World worker", () => {
 						color, attendance_mode, attendance_deadline, is_past
 					)
 					VALUES (?, ?, '2099-09-06', NULL, ?, NULL, '部室', '',
-						'primary', 'ATTENDANCE', '2099-09-06', 0)`
-				).bind(
-					`discord-many-events-${index}`,
-					`希望者参加イベント ${index + 1}`,
-					`${String(index).padStart(2, "0")}:00`
-				)
-			)
+						'primary', 'ATTENDANCE', '2099-09-06', 0)`,
+				).bind(`discord-many-events-${index}`, `希望者参加イベント ${index + 1}`, `${String(index).padStart(2, '0')}:00`),
+			),
 		);
 
 		const request = await signedDiscordRequest({
@@ -1518,8 +1518,8 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: "2099-09-06" }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: '2099-09-06' }],
 			},
 		});
 		const response = await fetchWorker(request, discordEnv(), createExecutionContext());
@@ -1531,12 +1531,10 @@ describe("Hello World worker", () => {
 		};
 
 		expect(body.data?.embeds).toHaveLength(10);
-		expect(body.data?.content).toBe(
-			"Discordの表示制限により、ほか1件の一覧を省略しました。"
-		);
+		expect(body.data?.content).toBe('Discordの表示制限により、ほか1件の一覧を省略しました。');
 	});
 
-	it("returns Discord absence command publicly when public option is true", async () => {
+	it('returns Discord absence command publicly when public option is true', async () => {
 		await env.DB.prepare(
 			`INSERT INTO schedules (
 				id, title, date, end_date, start_time, end_time, location, description,
@@ -1546,7 +1544,7 @@ describe("Hello World worker", () => {
 				'discord-public-absence-schedule', '公開部会', '2099-09-02', NULL,
 				'18:00', NULL, 'Discord', '', 'primary', 'ABSENCE', '2099-09-02', 0
 			)
-			ON CONFLICT(id) DO UPDATE SET title = excluded.title`
+			ON CONFLICT(id) DO UPDATE SET title = excluded.title`,
 		).run();
 		await env.DB.prepare(
 			`INSERT INTO absences (
@@ -1559,7 +1557,7 @@ describe("Hello World worker", () => {
 			)
 			ON CONFLICT(id) DO UPDATE SET
 				name = excluded.name,
-				type = excluded.type`
+				type = excluded.type`,
 		).run();
 
 		const request = await signedDiscordRequest({
@@ -1567,10 +1565,10 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
+				name: 'absences',
 				options: [
-					{ name: "date", type: 3, value: "2099-09-02" },
-					{ name: "public", type: 5, value: true },
+					{ name: 'date', type: 3, value: '2099-09-02' },
+					{ name: 'public', type: 5, value: true },
 				],
 			},
 		});
@@ -1583,17 +1581,17 @@ describe("Hello World worker", () => {
 		};
 		expect(body.data?.flags).toBeUndefined();
 		expect(body.data?.embeds?.[0]?.fields?.[0]).toMatchObject({
-			name: "公開 太郎",
-			value: "欠席",
+			name: '公開 太郎',
+			value: '欠席',
 		});
 	});
 
-	it("sends the same attendance embeds from cron and the Discord command", async () => {
-		const today = new Intl.DateTimeFormat("en-CA", {
-			timeZone: "Asia/Tokyo",
-			year: "numeric",
-			month: "2-digit",
-			day: "2-digit",
+	it('sends the same attendance embeds from cron and the Discord command', async () => {
+		const today = new Intl.DateTimeFormat('en-CA', {
+			timeZone: 'Asia/Tokyo',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
 		}).format(new Date());
 		await env.DB.prepare(
 			`INSERT INTO schedules (
@@ -1603,7 +1601,7 @@ describe("Hello World worker", () => {
 			VALUES (
 				'cron-attendance-mode', 'Cron希望者参加', ?, NULL,
 				'10:00', NULL, '部室', '', 'primary', 'ATTENDANCE', ?, 0
-			)`
+			)`,
 		)
 			.bind(today, today)
 			.run();
@@ -1615,7 +1613,7 @@ describe("Hello World worker", () => {
 			VALUES (
 				'cron-attendee', 'cron-attendance-mode', '25d0020',
 				'Cron 出席者', '出席', '出席', '', '', '', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-			)`
+			)`,
 		).run();
 
 		const commandRequest = await signedDiscordRequest({
@@ -1623,44 +1621,40 @@ describe("Hello World worker", () => {
 			guild_id: DISCORD_GUILD_ID,
 			member: { roles: [DISCORD_MEMBER_ROLE_ID] },
 			data: {
-				name: "absences",
-				options: [{ name: "date", type: 3, value: today }],
+				name: 'absences',
+				options: [{ name: 'date', type: 3, value: today }],
 			},
 		});
-		const commandResponse = await fetchWorker(
-			commandRequest,
-			discordEnv(),
-			createExecutionContext()
-		);
+		const commandResponse = await fetchWorker(commandRequest, discordEnv(), createExecutionContext());
 		const commandBody = (await commandResponse.json()) as {
 			data?: { embeds?: Array<Record<string, unknown>> };
 		};
 
-		let cronRequestBody = "";
+		let cronRequestBody = '';
 		fetchMock.activate();
 		fetchMock.disableNetConnect();
 		fetchMock
-			.get("https://example.com")
-			.intercept({ path: "/api/discord-send", method: "POST" })
+			.get('https://example.com')
+			.intercept({ path: '/api/discord-send', method: 'POST' })
 			.reply(200, (options) => {
-				cronRequestBody = String(options.body || "");
-				return "ok";
+				cronRequestBody = String(options.body || '');
+				return 'ok';
 			});
 
 		try {
 			const ctx = createExecutionContext();
 			await worker.scheduled(
 				{
-					cron: "0 23 * * *",
+					cron: '0 23 * * *',
 					scheduledTime: Date.now(),
 					noRetry: () => {},
 				} as ScheduledController,
 				{
 					...env,
-					PUSH_API_SECRET: "test-push-secret",
-					APP_DISCORD_SEND_URL: "https://example.com/api/discord-send",
+					PUSH_API_SECRET: 'test-push-secret',
+					APP_DISCORD_SEND_URL: 'https://example.com/api/discord-send',
 				},
-				ctx
+				ctx,
 			);
 			await waitOnExecutionContext(ctx);
 			fetchMock.assertNoPendingInterceptors();
@@ -1672,16 +1666,16 @@ describe("Hello World worker", () => {
 			target?: string;
 			embeds?: Array<Record<string, unknown>>;
 		};
-		expect(cronPayload.target).toBe("attendance");
+		expect(cronPayload.target).toBe('attendance');
 		expect(cronPayload.embeds).toEqual(commandBody.data?.embeds);
 	});
 
-	it("splits cron attendance summaries across Discord messages", async () => {
-		const today = new Intl.DateTimeFormat("en-CA", {
-			timeZone: "Asia/Tokyo",
-			year: "numeric",
-			month: "2-digit",
-			day: "2-digit",
+	it('splits cron attendance summaries across Discord messages', async () => {
+		const today = new Intl.DateTimeFormat('en-CA', {
+			timeZone: 'Asia/Tokyo',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
 		}).format(new Date());
 		await env.DB.batch(
 			Array.from({ length: 11 }, (_, index) =>
@@ -1691,44 +1685,36 @@ describe("Hello World worker", () => {
 						color, attendance_mode, attendance_deadline, is_past
 					)
 					VALUES (?, ?, ?, NULL, ?, NULL, '部室', '',
-						'primary', 'ATTENDANCE', ?, 0)`
-				).bind(
-					`cron-many-events-${index}`,
-					`Cron希望者参加 ${index + 1}`,
-					today,
-					`${String(index).padStart(2, "0")}:00`,
-					today
-				)
-			)
+						'primary', 'ATTENDANCE', ?, 0)`,
+				).bind(`cron-many-events-${index}`, `Cron希望者参加 ${index + 1}`, today, `${String(index).padStart(2, '0')}:00`, today),
+			),
 		);
 
 		const cronRequestBodies: string[] = [];
 		fetchMock.activate();
 		fetchMock.disableNetConnect();
-		const mockOrigin = fetchMock.get("https://example.com");
+		const mockOrigin = fetchMock.get('https://example.com');
 		for (let index = 0; index < 2; index += 1) {
-			mockOrigin
-				.intercept({ path: "/api/discord-send", method: "POST" })
-				.reply(200, (options) => {
-					cronRequestBodies.push(String(options.body || ""));
-					return "ok";
-				});
+			mockOrigin.intercept({ path: '/api/discord-send', method: 'POST' }).reply(200, (options) => {
+				cronRequestBodies.push(String(options.body || ''));
+				return 'ok';
+			});
 		}
 
 		try {
 			const ctx = createExecutionContext();
 			await worker.scheduled(
 				{
-					cron: "0 23 * * *",
+					cron: '0 23 * * *',
 					scheduledTime: Date.now(),
 					noRetry: () => {},
 				} as ScheduledController,
 				{
 					...env,
-					PUSH_API_SECRET: "test-push-secret",
-					APP_DISCORD_SEND_URL: "https://example.com/api/discord-send",
+					PUSH_API_SECRET: 'test-push-secret',
+					APP_DISCORD_SEND_URL: 'https://example.com/api/discord-send',
 				},
-				ctx
+				ctx,
 			);
 			await waitOnExecutionContext(ctx);
 			fetchMock.assertNoPendingInterceptors();
@@ -1743,26 +1729,26 @@ describe("Hello World worker", () => {
 		expect(embedCounts).toEqual([10, 1]);
 	});
 
-	it("skips scheduled Discord sends when there is no event today", async () => {
+	it('skips scheduled Discord sends when there is no event today', async () => {
 		const ctx = createExecutionContext();
 		await worker.scheduled(
 			{
-				cron: "0 23 * * *",
+				cron: '0 23 * * *',
 				scheduledTime: Date.now(),
 				noRetry: () => {},
 			} as ScheduledController,
 			env,
-			ctx
+			ctx,
 		);
 		await waitOnExecutionContext(ctx);
 	});
 
-	it("skips meeting reminder when next meeting settings have no schedule row", async () => {
-		const today = new Intl.DateTimeFormat("en-CA", {
-			timeZone: "Asia/Tokyo",
-			year: "numeric",
-			month: "2-digit",
-			day: "2-digit",
+	it('skips meeting reminder when next meeting settings have no schedule row', async () => {
+		const today = new Intl.DateTimeFormat('en-CA', {
+			timeZone: 'Asia/Tokyo',
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
 		}).format(new Date());
 		await env.DB.prepare(
 			`INSERT INTO next_meeting_settings (id, event_id, date, time, mode, updated_by, updated_at)
@@ -1773,7 +1759,7 @@ describe("Hello World worker", () => {
 				time = excluded.time,
 				mode = excluded.mode,
 				updated_by = excluded.updated_by,
-				updated_at = CURRENT_TIMESTAMP`
+				updated_at = CURRENT_TIMESTAMP`,
 		)
 			.bind(today)
 			.run();
@@ -1781,12 +1767,12 @@ describe("Hello World worker", () => {
 		const ctx = createExecutionContext();
 		await worker.scheduled(
 			{
-				cron: "0 9 * * *",
+				cron: '0 9 * * *',
 				scheduledTime: Date.now(),
 				noRetry: () => {},
 			} as ScheduledController,
 			env,
-			ctx
+			ctx,
 		);
 		await waitOnExecutionContext(ctx);
 	});

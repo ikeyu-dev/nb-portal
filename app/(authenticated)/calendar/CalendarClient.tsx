@@ -21,10 +21,7 @@ import {
     getStaleClientCacheEntry,
     setClientCache,
 } from "@/src/shared/lib/client-cache";
-import {
-    CACHE_TTL_MS,
-    CLIENT_CACHE_KEYS,
-} from "@/src/shared/lib/cache-policy";
+import { CACHE_TTL_MS, CLIENT_CACHE_KEYS } from "@/src/shared/lib/cache-policy";
 import {
     formatDateInput,
     getDefaultAttendanceDeadline,
@@ -211,7 +208,9 @@ export default function CalendarClient({
     const [isDeleting, setIsDeleting] = useState(false);
     const initialDataRef = useRef(initialData);
     const lastFetchAtRef = useRef(initialData === null ? 0 : Date.now());
-    const [assignedStudentNumbers, setAssignedStudentNumbers] = useState<string[]>([]);
+    const [assignedStudentNumbers, setAssignedStudentNumbers] = useState<
+        string[]
+    >([]);
     const [addForm, setAddForm] = useState<EventForm>({
         title: "",
         where: "",
@@ -271,10 +270,7 @@ export default function CalendarClient({
             lastFetchAtRef.current = cached.timestamp;
         }
 
-        const fetchData = async (
-            showLoading: boolean,
-            force = false
-        ) => {
+        const fetchData = async (showLoading: boolean, force = false) => {
             const now = Date.now();
             if (
                 !force &&
@@ -295,8 +291,9 @@ export default function CalendarClient({
                 ]);
                 const schedulesData =
                     (await schedulesRes.json()) as ApiResponse<Schedule[]>;
-                const absencesData =
-                    (await absencesRes.json()) as ApiResponse<Absence[]>;
+                const absencesData = (await absencesRes.json()) as ApiResponse<
+                    Absence[]
+                >;
 
                 if (isCancelled) return;
 
@@ -582,11 +579,9 @@ export default function CalendarClient({
         }
 
         if (
-            [
-                "schedule-detail",
-                "schedule-edit",
-                "schedule-delete",
-            ].includes(modal || "") &&
+            ["schedule-detail", "schedule-edit", "schedule-delete"].includes(
+                modal || ""
+            ) &&
             modalEventId
         ) {
             const event = schedules.find(
@@ -671,8 +666,13 @@ export default function CalendarClient({
                         : undefined,
                     color: addForm.color,
                     attendanceMode: addForm.attendanceMode,
-                    attendanceDeadline: addForm.attendanceMode === "ASSIGNED" ? "" : addForm.attendanceDeadline,
-                    ...(addForm.attendanceMode === "ASSIGNED" ? { assignedStudentNumbers } : {}),
+                    attendanceDeadline:
+                        addForm.attendanceMode === "ASSIGNED"
+                            ? ""
+                            : addForm.attendanceDeadline,
+                    ...(addForm.attendanceMode === "ASSIGNED"
+                        ? { assignedStudentNumbers }
+                        : {}),
                 }),
             });
 
@@ -858,7 +858,10 @@ export default function CalendarClient({
                         : undefined,
                     color: editForm.color,
                     attendanceMode: editForm.attendanceMode,
-                    attendanceDeadline: editForm.attendanceMode === "ASSIGNED" ? "" : editForm.attendanceDeadline,
+                    attendanceDeadline:
+                        editForm.attendanceMode === "ASSIGNED"
+                            ? ""
+                            : editForm.attendanceDeadline,
                 }),
             });
 
@@ -1561,165 +1564,182 @@ export default function CalendarClient({
                     }月${selectedDate.date.getDate()}日の予定`}
                     boxClassName="max-w-2xl max-h-[calc(100dvh-8rem)] overflow-hidden bg-base-200 p-6 sm:max-h-[calc(100dvh-10rem)] flex flex-col"
                 >
-                        <button
-                            onClick={closeModal}
-                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                        >
-                            ✕
-                        </button>
-                        <h3 className="font-bold text-xl mb-4">
-                            {selectedDate.date.getFullYear()}年
-                            {selectedDate.date.getMonth() + 1}月
-                            {selectedDate.date.getDate()}
-                            日の予定
-                            <span className="badge badge-primary ml-2">
-                                {selectedDate.events.length}件
-                            </span>
-                        </h3>
-                        <div className="flex-1 overflow-y-auto">
-                            {selectedDate.events.length === 0 ? (
-                                <div className="text-center py-8 text-base-content/60">
-                                    この日の予定はありません
-                                </div>
-                            ) : (
-                                <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
-                                    {selectedDate.events.map(
-                                        (eventWithPos, index) => {
-                                            const { schedule, position } =
-                                                eventWithPos;
-                                            const values =
-                                                Object.values(schedule);
-                                            const startYear = Number(values[1]);
-                                            const startMonth = Number(
-                                                values[2]
-                                            );
-                                            const startDay = Number(values[3]);
-                                            const rawTimeHH = values[4];
-                                            const rawTimeMM = values[5];
-                                            const rawEndTimeHH = schedule.END_TIME_HH;
-                                            const rawEndTimeMM = schedule.END_TIME_MM;
-                                            const title = String(
-                                                values[6] ?? "予定"
-                                            );
-                                            const where = String(
-                                                values[7] ?? ""
-                                            );
-                                            const attendanceMode =
-                                                getScheduleAttendanceMode(
-                                                    schedule
-                                                );
-                                            const attendanceModeBadgeClass =
-                                                "border-base-content/35 bg-base-200/70 text-base-content/70";
-                                            const endYear = values[9]
-                                                ? Number(values[9])
-                                                : 0;
-                                            const endMonth = values[10]
-                                                ? Number(values[10])
-                                                : 0;
-                                            const endDay = values[11]
-                                                ? Number(values[11])
-                                                : 0;
+                    <button
+                        onClick={closeModal}
+                        className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                    >
+                        ✕
+                    </button>
+                    <h3 className="font-bold text-xl mb-4">
+                        {selectedDate.date.getFullYear()}年
+                        {selectedDate.date.getMonth() + 1}月
+                        {selectedDate.date.getDate()}
+                        日の予定
+                        <span className="badge badge-primary ml-2">
+                            {selectedDate.events.length}件
+                        </span>
+                    </h3>
+                    <div className="flex-1 overflow-y-auto">
+                        {selectedDate.events.length === 0 ? (
+                            <div className="text-center py-8 text-base-content/60">
+                                この日の予定はありません
+                            </div>
+                        ) : (
+                            <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
+                                {selectedDate.events.map(
+                                    (eventWithPos, index) => {
+                                        const { schedule, position } =
+                                            eventWithPos;
+                                        const values = Object.values(schedule);
+                                        const startYear = Number(values[1]);
+                                        const startMonth = Number(values[2]);
+                                        const startDay = Number(values[3]);
+                                        const rawTimeHH = values[4];
+                                        const rawTimeMM = values[5];
+                                        const rawEndTimeHH =
+                                            schedule.END_TIME_HH;
+                                        const rawEndTimeMM =
+                                            schedule.END_TIME_MM;
+                                        const title = String(
+                                            values[6] ?? "予定"
+                                        );
+                                        const where = String(values[7] ?? "");
+                                        const attendanceMode =
+                                            getScheduleAttendanceMode(schedule);
+                                        const attendanceModeBadgeClass =
+                                            "border-base-content/35 bg-base-200/70 text-base-content/70";
+                                        const endYear = values[9]
+                                            ? Number(values[9])
+                                            : 0;
+                                        const endMonth = values[10]
+                                            ? Number(values[10])
+                                            : 0;
+                                        const endDay = values[11]
+                                            ? Number(values[11])
+                                            : 0;
 
-                                            const hasTime =
-                                                rawTimeHH !== "" &&
-                                                rawTimeHH !== null &&
-                                                rawTimeHH !== undefined &&
-                                                rawTimeMM !== "" &&
-                                                rawTimeMM !== null &&
-                                                rawTimeMM !== undefined;
-                                            const timeLabel = hasTime
-                                                ? `${String(rawTimeHH).padStart(2, "0")}:${String(
-                                                      rawTimeMM
-                                                  ).padStart(2, "0")}`
-                                                : null;
-                                            const hasEndTime =
-                                                rawEndTimeHH !== "" &&
-                                                rawEndTimeHH !== null &&
-                                                rawEndTimeHH !== undefined &&
-                                                rawEndTimeMM !== "" &&
-                                                rawEndTimeMM !== null &&
-                                                rawEndTimeMM !== undefined;
-                                            const endTimeLabel = hasEndTime
-                                                ? `${String(rawEndTimeHH).padStart(2, "0")}:${String(
-                                                      rawEndTimeMM
-                                                  ).padStart(2, "0")}`
-                                                : null;
-                                            const timeRangeLabel =
-                                                timeLabel && endTimeLabel
-                                                    ? `${timeLabel}-${endTimeLabel}`
-                                                    : timeLabel;
-                                            const startDate = new Date(
-                                                startYear,
-                                                startMonth - 1,
-                                                startDay
-                                            );
-                                            const startDayOfWeek = [
-                                                "日",
-                                                "月",
-                                                "火",
-                                                "水",
-                                                "木",
-                                                "金",
-                                                "土",
-                                            ][startDate.getDay()];
-                                            const startDateLabel = `${startMonth}/${startDay}(${startDayOfWeek})`;
+                                        const hasTime =
+                                            rawTimeHH !== "" &&
+                                            rawTimeHH !== null &&
+                                            rawTimeHH !== undefined &&
+                                            rawTimeMM !== "" &&
+                                            rawTimeMM !== null &&
+                                            rawTimeMM !== undefined;
+                                        const timeLabel = hasTime
+                                            ? `${String(rawTimeHH).padStart(2, "0")}:${String(
+                                                  rawTimeMM
+                                              ).padStart(2, "0")}`
+                                            : null;
+                                        const hasEndTime =
+                                            rawEndTimeHH !== "" &&
+                                            rawEndTimeHH !== null &&
+                                            rawEndTimeHH !== undefined &&
+                                            rawEndTimeMM !== "" &&
+                                            rawEndTimeMM !== null &&
+                                            rawEndTimeMM !== undefined;
+                                        const endTimeLabel = hasEndTime
+                                            ? `${String(rawEndTimeHH).padStart(2, "0")}:${String(
+                                                  rawEndTimeMM
+                                              ).padStart(2, "0")}`
+                                            : null;
+                                        const timeRangeLabel =
+                                            timeLabel && endTimeLabel
+                                                ? `${timeLabel}-${endTimeLabel}`
+                                                : timeLabel;
+                                        const startDate = new Date(
+                                            startYear,
+                                            startMonth - 1,
+                                            startDay
+                                        );
+                                        const startDayOfWeek = [
+                                            "日",
+                                            "月",
+                                            "火",
+                                            "水",
+                                            "木",
+                                            "金",
+                                            "土",
+                                        ][startDate.getDay()];
+                                        const startDateLabel = `${startMonth}/${startDay}(${startDayOfWeek})`;
 
-                                            // 複数日イベントの期間表示
-                                            const isMultiDay =
-                                                position !== "single";
-                                            const dateRangeLabel =
-                                                isMultiDay &&
-                                                endYear &&
-                                                endMonth &&
-                                                endDay
-                                                    ? `${startYear}年 ${startMonth}月 ${startDay}日 〜 ${endYear}年 ${endMonth}月 ${endDay}日`
-                                                    : startDateLabel;
-                                            const dateTimeLabel = [
-                                                dateRangeLabel,
-                                                timeRangeLabel,
-                                            ]
-                                                .filter(Boolean)
-                                                .join(" ");
+                                        // 複数日イベントの期間表示
+                                        const isMultiDay =
+                                            position !== "single";
+                                        const dateRangeLabel =
+                                            isMultiDay &&
+                                            endYear &&
+                                            endMonth &&
+                                            endDay
+                                                ? `${startYear}年 ${startMonth}月 ${startDay}日 〜 ${endYear}年 ${endMonth}月 ${endDay}日`
+                                                : startDateLabel;
+                                        const dateTimeLabel = [
+                                            dateRangeLabel,
+                                            timeRangeLabel,
+                                        ]
+                                            .filter(Boolean)
+                                            .join(" ");
 
-                                            // イベントの色を取得
-                                            const eventColor = getColorHex(
-                                                String(values[12] || "primary")
-                                            );
+                                        // イベントの色を取得
+                                        const eventColor = getColorHex(
+                                            String(values[12] || "primary")
+                                        );
 
-                                            return (
-                                                <div
-                                                    key={index}
-                                                    onClick={() =>
-                                                        handleEventSelect(
-                                                            schedule
-                                                        )
-                                                    }
-                                                    className="group bg-base-100 px-4 py-4 transition-colors hover:bg-base-200/50 cursor-pointer sm:px-5"
-                                                >
-                                                    <div className="flex items-stretch gap-4">
-                                                        <div
-                                                            className="w-1 rounded-full"
-                                                            style={{
-                                                                backgroundColor:
-                                                                    eventColor,
-                                                            }}
-                                                        />
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="text-lg font-bold">
-                                                                {title}
-                                                            </div>
-                                                            <div className="mt-0">
-                                                                <span
-                                                                    className={`badge badge-outline badge-sm ${attendanceModeBadgeClass}`}
+                                        return (
+                                            <div
+                                                key={index}
+                                                onClick={() =>
+                                                    handleEventSelect(schedule)
+                                                }
+                                                className="group bg-base-100 px-4 py-4 transition-colors hover:bg-base-200/50 cursor-pointer sm:px-5"
+                                            >
+                                                <div className="flex items-stretch gap-4">
+                                                    <div
+                                                        className="w-1 rounded-full"
+                                                        style={{
+                                                            backgroundColor:
+                                                                eventColor,
+                                                        }}
+                                                    />
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-lg font-bold">
+                                                            {title}
+                                                        </div>
+                                                        <div className="mt-0">
+                                                            <span
+                                                                className={`badge badge-outline badge-sm ${attendanceModeBadgeClass}`}
+                                                            >
+                                                                {
+                                                                    SCHEDULE_ATTENDANCE_MODE_LABELS[
+                                                                        attendanceMode
+                                                                    ]
+                                                                }
+                                                            </span>
+                                                        </div>
+                                                        <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-base-content/80">
+                                                            <div className="flex items-center gap-1">
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    className="h-4 w-4 text-primary"
+                                                                    fill="none"
+                                                                    viewBox="0 0 24 24"
+                                                                    stroke="currentColor"
                                                                 >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={
+                                                                            2
+                                                                        }
+                                                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                    />
+                                                                </svg>
+                                                                <span className="font-medium">
                                                                     {
-                                                                        SCHEDULE_ATTENDANCE_MODE_LABELS[
-                                                                            attendanceMode
-                                                                        ]
+                                                                        dateTimeLabel
                                                                     }
                                                                 </span>
                                                             </div>
-                                                            <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-base-content/80">
+                                                            {where && (
                                                                 <div className="flex items-center gap-1">
                                                                     <svg
                                                                         xmlns="http://www.w3.org/2000/svg"
@@ -1734,94 +1754,68 @@ export default function CalendarClient({
                                                                             strokeWidth={
                                                                                 2
                                                                             }
-                                                                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                                                        />
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={
+                                                                                2
+                                                                            }
+                                                                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                                                                         />
                                                                     </svg>
                                                                     <span className="font-medium">
-                                                                        {
-                                                                            dateTimeLabel
-                                                                        }
+                                                                        {where}
                                                                     </span>
                                                                 </div>
-                                                                {where && (
-                                                                    <div className="flex items-center gap-1">
-                                                                        <svg
-                                                                            xmlns="http://www.w3.org/2000/svg"
-                                                                            className="h-4 w-4 text-primary"
-                                                                            fill="none"
-                                                                            viewBox="0 0 24 24"
-                                                                            stroke="currentColor"
-                                                                        >
-                                                                            <path
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                strokeWidth={
-                                                                                    2
-                                                                                }
-                                                                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                                                                            />
-                                                                            <path
-                                                                                strokeLinecap="round"
-                                                                                strokeLinejoin="round"
-                                                                                strokeWidth={
-                                                                                    2
-                                                                                }
-                                                                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                                                                            />
-                                                                        </svg>
-                                                                        <span className="font-medium">
-                                                                            {
-                                                                                where
-                                                                            }
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                            )}
                                                         </div>
-                                                        <svg
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            className="mt-1 h-5 w-5 shrink-0 text-base-content/40 transition-transform group-hover:translate-x-0.5 group-hover:text-base-content/60"
-                                                            fill="none"
-                                                            viewBox="0 0 24 24"
-                                                            stroke="currentColor"
-                                                        >
-                                                            <path
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                                strokeWidth={2}
-                                                                d="M9 5l7 7-7 7"
-                                                            />
-                                                        </svg>
                                                     </div>
+                                                    <svg
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        className="mt-1 h-5 w-5 shrink-0 text-base-content/40 transition-transform group-hover:translate-x-0.5 group-hover:text-base-content/60"
+                                                        fill="none"
+                                                        viewBox="0 0 24 24"
+                                                        stroke="currentColor"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M9 5l7 7-7 7"
+                                                        />
+                                                    </svg>
                                                 </div>
-                                            );
-                                        }
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <div className="modal-action justify-end mt-4">
-                            <button
-                                onClick={openAddModal}
-                                className="btn btn-primary"
+                                            </div>
+                                        );
+                                    }
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <div className="modal-action justify-end mt-4">
+                        <button
+                            onClick={openAddModal}
+                            className="btn btn-primary"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-5 w-5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
                             >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    className="h-5 w-5"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M12 4v16m8-8H4"
-                                    />
-                                </svg>
-                                追加
-                            </button>
-                        </div>
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 4v16m8-8H4"
+                                />
+                            </svg>
+                            追加
+                        </button>
+                    </div>
                 </AppModal>
             )}
 
@@ -1833,152 +1827,168 @@ export default function CalendarClient({
                     ariaLabel="予定を追加"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
-                        <button
-                            onClick={closeAddModal}
-                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                        >
-                            ✕
-                        </button>
-                        <h3 className="font-bold text-xl mb-4">
-                            {selectedDate.date.getFullYear()}年
-                            {selectedDate.date.getMonth() + 1}月
-                            {selectedDate.date.getDate()}
-                            日に予定を追加
-                        </h3>
-                        <form
-                            onSubmit={handleAddSubmit}
-                            className="space-y-4"
-                        >
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">
-                                        タイトル{" "}
-                                        <span className="text-error">*</span>
-                                    </span>
-                                </label>
+                    <button
+                        onClick={closeAddModal}
+                        className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                    >
+                        ✕
+                    </button>
+                    <h3 className="font-bold text-xl mb-4">
+                        {selectedDate.date.getFullYear()}年
+                        {selectedDate.date.getMonth() + 1}月
+                        {selectedDate.date.getDate()}
+                        日に予定を追加
+                    </h3>
+                    <form
+                        onSubmit={handleAddSubmit}
+                        className="space-y-4"
+                    >
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">
+                                    タイトル{" "}
+                                    <span className="text-error">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="予定のタイトル"
+                                className="input input-bordered w-full"
+                                value={addForm.title}
+                                onChange={(e) =>
+                                    setAddForm({
+                                        ...addForm,
+                                        title: e.target.value,
+                                    })
+                                }
+                                required
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label cursor-pointer justify-start gap-3">
                                 <input
-                                    type="text"
-                                    placeholder="予定のタイトル"
-                                    className="input input-bordered w-full"
-                                    value={addForm.title}
+                                    type="checkbox"
+                                    className="toggle toggle-primary"
+                                    checked={addForm.isAllDay}
                                     onChange={(e) =>
                                         setAddForm({
                                             ...addForm,
-                                            title: e.target.value,
+                                            isAllDay: e.target.checked,
+                                            // 終日をオンにしたら時刻をクリア
+                                            timeHH: e.target.checked
+                                                ? ""
+                                                : addForm.timeHH,
+                                            timeMM: e.target.checked
+                                                ? ""
+                                                : addForm.timeMM,
+                                            endTimeHH: e.target.checked
+                                                ? ""
+                                                : addForm.endTimeHH,
+                                            endTimeMM: e.target.checked
+                                                ? ""
+                                                : addForm.endTimeMM,
+                                            endYear:
+                                                e.target.checked &&
+                                                !addForm.endYear
+                                                    ? addForm.year
+                                                    : addForm.endYear,
+                                            endMonth:
+                                                e.target.checked &&
+                                                !addForm.endMonth
+                                                    ? addForm.month
+                                                    : addForm.endMonth,
+                                            endDate:
+                                                e.target.checked &&
+                                                !addForm.endDate
+                                                    ? addForm.date
+                                                    : addForm.endDate,
                                         })
                                     }
-                                    required
                                 />
-                            </div>
-                            <div className="form-control">
-                                <label className="label cursor-pointer justify-start gap-3">
+                                <span className="label-text">終日</span>
+                            </label>
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">出欠方式</span>
+                            </label>
+                            <div className="grid grid-cols-1 gap-2">
+                                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
                                     <input
-                                        type="checkbox"
-                                        className="toggle toggle-primary"
-                                        checked={addForm.isAllDay}
-                                        onChange={(e) =>
+                                        type="radio"
+                                        name="addAttendanceMode"
+                                        className="radio radio-primary mt-1"
+                                        checked={
+                                            addForm.attendanceMode === "ABSENCE"
+                                        }
+                                        onChange={() =>
                                             setAddForm({
                                                 ...addForm,
-                                                isAllDay: e.target.checked,
-                                                // 終日をオンにしたら時刻をクリア
-                                                timeHH: e.target.checked
-                                                    ? ""
-                                                    : addForm.timeHH,
-                                                timeMM: e.target.checked
-                                                    ? ""
-                                                    : addForm.timeMM,
-                                                endTimeHH: e.target.checked
-                                                    ? ""
-                                                    : addForm.endTimeHH,
-                                                endTimeMM: e.target.checked
-                                                    ? ""
-                                                    : addForm.endTimeMM,
-                                                endYear:
-                                                    e.target.checked &&
-                                                    !addForm.endYear
-                                                        ? addForm.year
-                                                        : addForm.endYear,
-                                                endMonth:
-                                                    e.target.checked &&
-                                                    !addForm.endMonth
-                                                        ? addForm.month
-                                                        : addForm.endMonth,
-                                                endDate:
-                                                    e.target.checked &&
-                                                    !addForm.endDate
-                                                        ? addForm.date
-                                                        : addForm.endDate,
+                                                attendanceMode: "ABSENCE",
                                             })
                                         }
                                     />
-                                    <span className="label-text">終日</span>
-                                </label>
-                            </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">
-                                        出欠方式
+                                    <span>
+                                        <span className="block font-medium">
+                                            全員参加
+                                        </span>
+                                        <span className="text-sm text-base-content/70">
+                                            全員参加が原則。欠席者が連絡します。
+                                        </span>
                                     </span>
                                 </label>
-                                <div className="grid grid-cols-1 gap-2">
-                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
-                                        <input
-                                            type="radio"
-                                            name="addAttendanceMode"
-                                            className="radio radio-primary mt-1"
-                                            checked={
-                                                addForm.attendanceMode ===
-                                                "ABSENCE"
-                                            }
-                                            onChange={() =>
-                                                setAddForm({
-                                                    ...addForm,
-                                                    attendanceMode: "ABSENCE",
-                                                })
-                                            }
-                                        />
-                                        <span>
-                                            <span className="block font-medium">
-                                                全員参加
-                                            </span>
-                                            <span className="text-sm text-base-content/70">
-                                                全員参加が原則。欠席者が連絡します。
-                                            </span>
+                                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                    <input
+                                        type="radio"
+                                        name="addAttendanceMode"
+                                        className="radio radio-primary mt-1"
+                                        checked={
+                                            addForm.attendanceMode ===
+                                            "ATTENDANCE"
+                                        }
+                                        onChange={() =>
+                                            setAddForm({
+                                                ...addForm,
+                                                attendanceMode: "ATTENDANCE",
+                                            })
+                                        }
+                                    />
+                                    <span>
+                                        <span className="block font-medium">
+                                            希望者参加
                                         </span>
-                                    </label>
-                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
-                                        <input
-                                            type="radio"
-                                            name="addAttendanceMode"
-                                            className="radio radio-primary mt-1"
-                                            checked={
-                                                addForm.attendanceMode ===
-                                                "ATTENDANCE"
-                                            }
-                                            onChange={() =>
-                                                setAddForm({
-                                                    ...addForm,
-                                                    attendanceMode:
-                                                        "ATTENDANCE",
-                                                })
-                                            }
-                                        />
-                                        <span>
-                                            <span className="block font-medium">
-                                                希望者参加
-                                            </span>
-                                            <span className="text-sm text-base-content/70">
-                                                参加希望者が出席を申告します。
-                                            </span>
+                                        <span className="text-sm text-base-content/70">
+                                            参加希望者が出席を申告します。
                                         </span>
-                                    </label>
-                                    <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
-                                        <input type="radio" name="addAttendanceMode" className="radio radio-primary mt-1" checked={addForm.attendanceMode === "ASSIGNED"} onChange={() => setAddForm({ ...addForm, attendanceMode: "ASSIGNED" })} />
-                                        <span className="font-medium">参加者指定</span>
-                                    </label>
-                                </div>
+                                    </span>
+                                </label>
+                                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 p-3">
+                                    <input
+                                        type="radio"
+                                        name="addAttendanceMode"
+                                        className="radio radio-primary mt-1"
+                                        checked={
+                                            addForm.attendanceMode ===
+                                            "ASSIGNED"
+                                        }
+                                        onChange={() =>
+                                            setAddForm({
+                                                ...addForm,
+                                                attendanceMode: "ASSIGNED",
+                                            })
+                                        }
+                                    />
+                                    <span className="font-medium">出席者</span>
+                                </label>
                             </div>
-                            {addForm.attendanceMode === "ASSIGNED" ? <ParticipantPicker value={assignedStudentNumbers} onChange={setAssignedStudentNumbers} disabled={isSubmitting} /> : (
+                        </div>
+                        {addForm.attendanceMode === "ASSIGNED" ? (
+                            <ParticipantPicker
+                                value={assignedStudentNumbers}
+                                onChange={setAssignedStudentNumbers}
+                                disabled={isSubmitting}
+                            />
+                        ) : (
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
@@ -2000,223 +2010,216 @@ export default function CalendarClient({
                                     連絡は期限日の8:00まで受け付けます。通常は予定当日の8:00です。
                                 </p>
                             </div>
-                            )}
-                            {addForm.isAllDay ? (
-                                <>
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text">
-                                                開始日
-                                            </span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-base-content/70">
-                                                {selectedDate.date.getFullYear()}
-                                                年
-                                                {selectedDate.date.getMonth() +
-                                                    1}
-                                                月{selectedDate.date.getDate()}
-                                                日
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text">
-                                                終了日{" "}
-                                                <span className="text-error">
-                                                    *
-                                                </span>
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="date"
-                                            className="input input-bordered w-full"
-                                            value={buildDateInput(
-                                                addForm.endYear,
-                                                addForm.endMonth,
-                                                addForm.endDate
-                                            )}
-                                            onChange={(e) => {
-                                                const next = splitDateInput(
-                                                    e.target.value
-                                                );
-                                                setAddForm({
-                                                    ...addForm,
-                                                    endYear: next.year,
-                                                    endMonth: next.month,
-                                                    endDate: next.date,
-                                                });
-                                            }}
-                                            required
-                                        />
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text">
-                                                開始時刻
-                                            </span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder="時"
-                                                min="0"
-                                                max="23"
-                                                className="input input-bordered w-20"
-                                                value={addForm.timeHH}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        timeHH:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                            <span>:</span>
-                                            <input
-                                                type="number"
-                                                placeholder="分"
-                                                min="0"
-                                                max="59"
-                                                className="input input-bordered w-20"
-                                                value={addForm.timeMM}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        timeMM:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text">
-                                                終了時刻
-                                            </span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder="時"
-                                                min="0"
-                                                max="23"
-                                                className="input input-bordered w-20"
-                                                value={addForm.endTimeHH}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        endTimeHH:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                            <span>:</span>
-                                            <input
-                                                type="number"
-                                                placeholder="分"
-                                                min="0"
-                                                max="59"
-                                                className="input input-bordered w-20"
-                                                value={addForm.endTimeMM}
-                                                onChange={(e) =>
-                                                    setAddForm({
-                                                        ...addForm,
-                                                        endTimeMM:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        </div>
+                        )}
+                        {addForm.isAllDay ? (
+                            <>
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            開始日
+                                        </span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-base-content/70">
+                                            {selectedDate.date.getFullYear()}年
+                                            {selectedDate.date.getMonth() + 1}月
+                                            {selectedDate.date.getDate()}日
+                                        </span>
                                     </div>
                                 </div>
-                            )}
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">場所</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="場所"
-                                    className="input input-bordered w-full"
-                                    value={addForm.where}
-                                    onChange={(e) =>
-                                        setAddForm({
-                                            ...addForm,
-                                            where: e.target.value,
-                                        })
-                                    }
-                                />
-                            </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">詳細</span>
-                                </label>
-                                <textarea
-                                    placeholder="詳細"
-                                    className="textarea textarea-bordered w-full"
-                                    rows={3}
-                                    value={addForm.detail}
-                                    onChange={(e) =>
-                                        setAddForm({
-                                            ...addForm,
-                                            detail: e.target.value,
-                                        })
-                                    }
-                                />
-                            </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">カラー</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {EVENT_COLORS.map((color) => (
-                                        <button
-                                            key={color.id}
-                                            type="button"
-                                            onClick={() =>
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            終了日{" "}
+                                            <span className="text-error">
+                                                *
+                                            </span>
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        className="input input-bordered w-full"
+                                        value={buildDateInput(
+                                            addForm.endYear,
+                                            addForm.endMonth,
+                                            addForm.endDate
+                                        )}
+                                        onChange={(e) => {
+                                            const next = splitDateInput(
+                                                e.target.value
+                                            );
+                                            setAddForm({
+                                                ...addForm,
+                                                endYear: next.year,
+                                                endMonth: next.month,
+                                                endDate: next.date,
+                                            });
+                                        }}
+                                        required
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            開始時刻
+                                        </span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="時"
+                                            min="0"
+                                            max="23"
+                                            className="input input-bordered w-20"
+                                            value={addForm.timeHH}
+                                            onChange={(e) =>
                                                 setAddForm({
                                                     ...addForm,
-                                                    color: color.id,
+                                                    timeHH: e.target.value,
                                                 })
                                             }
-                                            className={`w-8 h-8 rounded-full border-2 transition-all ${
-                                                addForm.color === color.id
-                                                    ? "border-base-content scale-110"
-                                                    : "border-transparent hover:scale-105"
-                                            }`}
-                                            style={{
-                                                backgroundColor: color.hex,
-                                            }}
-                                            title={color.label}
                                         />
-                                    ))}
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            placeholder="分"
+                                            min="0"
+                                            max="59"
+                                            className="input input-bordered w-20"
+                                            value={addForm.timeMM}
+                                            onChange={(e) =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    timeMM: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            終了時刻
+                                        </span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="時"
+                                            min="0"
+                                            max="23"
+                                            className="input input-bordered w-20"
+                                            value={addForm.endTimeHH}
+                                            onChange={(e) =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    endTimeHH: e.target.value,
+                                                })
+                                            }
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            placeholder="分"
+                                            min="0"
+                                            max="59"
+                                            className="input input-bordered w-20"
+                                            value={addForm.endTimeMM}
+                                            onChange={(e) =>
+                                                setAddForm({
+                                                    ...addForm,
+                                                    endTimeMM: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                            <div className="modal-action">
-                                <button
-                                    type="button"
-                                    className="btn btn-ghost"
-                                    onClick={closeAddModal}
-                                >
-                                    キャンセル
-                                </button>
-                                <AsyncButton
-                                    type="submit"
-                                    className="btn btn-primary"
-                                    disabled={!addForm.title.trim()}
-                                    loading={isSubmitting}
-                                    loadingLabel="追加中"
-                                >
-                                    追加
-                                </AsyncButton>
+                        )}
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">場所</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="場所"
+                                className="input input-bordered w-full"
+                                value={addForm.where}
+                                onChange={(e) =>
+                                    setAddForm({
+                                        ...addForm,
+                                        where: e.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">詳細</span>
+                            </label>
+                            <textarea
+                                placeholder="詳細"
+                                className="textarea textarea-bordered w-full"
+                                rows={3}
+                                value={addForm.detail}
+                                onChange={(e) =>
+                                    setAddForm({
+                                        ...addForm,
+                                        detail: e.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">カラー</span>
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {EVENT_COLORS.map((color) => (
+                                    <button
+                                        key={color.id}
+                                        type="button"
+                                        onClick={() =>
+                                            setAddForm({
+                                                ...addForm,
+                                                color: color.id,
+                                            })
+                                        }
+                                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                            addForm.color === color.id
+                                                ? "border-base-content scale-110"
+                                                : "border-transparent hover:scale-105"
+                                        }`}
+                                        style={{
+                                            backgroundColor: color.hex,
+                                        }}
+                                        title={color.label}
+                                    />
+                                ))}
                             </div>
-                        </form>
+                        </div>
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={closeAddModal}
+                            >
+                                キャンセル
+                            </button>
+                            <AsyncButton
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={!addForm.title.trim()}
+                                loading={isSubmitting}
+                                loadingLabel="追加中"
+                            >
+                                追加
+                            </AsyncButton>
+                        </div>
+                    </form>
                 </AppModal>
             )}
 
@@ -2332,94 +2335,131 @@ export default function CalendarClient({
                     ariaLabel="予定を編集"
                     boxClassName="max-w-md max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)]"
                 >
-                        <button
-                            onClick={closeEditModal}
-                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                        >
-                            ✕
-                        </button>
-                        <h3 className="font-bold text-xl mb-4">予定を編集</h3>
-                        <form
-                            onSubmit={handleEditSubmit}
-                            className="space-y-4"
-                        >
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">
-                                        タイトル{" "}
-                                        <span className="text-error">*</span>
-                                    </span>
-                                </label>
+                    <button
+                        onClick={closeEditModal}
+                        className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+                    >
+                        ✕
+                    </button>
+                    <h3 className="font-bold text-xl mb-4">予定を編集</h3>
+                    <form
+                        onSubmit={handleEditSubmit}
+                        className="space-y-4"
+                    >
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">
+                                    タイトル{" "}
+                                    <span className="text-error">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="予定のタイトル"
+                                className="input input-bordered w-full"
+                                value={editForm.title}
+                                onChange={(e) =>
+                                    setEditForm({
+                                        ...editForm,
+                                        title: e.target.value,
+                                    })
+                                }
+                                required
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label cursor-pointer justify-start gap-3">
                                 <input
-                                    type="text"
-                                    placeholder="予定のタイトル"
-                                    className="input input-bordered w-full"
-                                    value={editForm.title}
+                                    type="checkbox"
+                                    className="toggle toggle-primary"
+                                    checked={editForm.isAllDay}
                                     onChange={(e) =>
                                         setEditForm({
                                             ...editForm,
-                                            title: e.target.value,
+                                            isAllDay: e.target.checked,
+                                            // 終日をオンにしたら時刻をクリア
+                                            timeHH: e.target.checked
+                                                ? ""
+                                                : editForm.timeHH,
+                                            timeMM: e.target.checked
+                                                ? ""
+                                                : editForm.timeMM,
+                                            endTimeHH: e.target.checked
+                                                ? ""
+                                                : editForm.endTimeHH,
+                                            endTimeMM: e.target.checked
+                                                ? ""
+                                                : editForm.endTimeMM,
+                                            endYear:
+                                                e.target.checked &&
+                                                !editForm.endYear
+                                                    ? editForm.year
+                                                    : editForm.endYear,
+                                            endMonth:
+                                                e.target.checked &&
+                                                !editForm.endMonth
+                                                    ? editForm.month
+                                                    : editForm.endMonth,
+                                            endDate:
+                                                e.target.checked &&
+                                                !editForm.endDate
+                                                    ? editForm.date
+                                                    : editForm.endDate,
                                         })
                                     }
-                                    required
                                 />
-                            </div>
-                            <div className="form-control">
-                                <label className="label cursor-pointer justify-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        className="toggle toggle-primary"
-                                        checked={editForm.isAllDay}
-                                        onChange={(e) =>
-                                            setEditForm({
-                                                ...editForm,
-                                                isAllDay: e.target.checked,
-                                                // 終日をオンにしたら時刻をクリア
-                                                timeHH: e.target.checked
-                                                    ? ""
-                                                    : editForm.timeHH,
-                                                timeMM: e.target.checked
-                                                    ? ""
-                                                    : editForm.timeMM,
-                                                endTimeHH: e.target.checked
-                                                    ? ""
-                                                    : editForm.endTimeHH,
-                                                endTimeMM: e.target.checked
-                                                    ? ""
-                                                    : editForm.endTimeMM,
-                                                endYear:
-                                                    e.target.checked &&
-                                                    !editForm.endYear
-                                                        ? editForm.year
-                                                        : editForm.endYear,
-                                                endMonth:
-                                                    e.target.checked &&
-                                                    !editForm.endMonth
-                                                        ? editForm.month
-                                                        : editForm.endMonth,
-                                                endDate:
-                                                    e.target.checked &&
-                                                    !editForm.endDate
-                                                        ? editForm.date
-                                                        : editForm.endDate,
-                                            })
-                                        }
-                                    />
-                                    <span className="label-text">終日</span>
-                                </label>
-                            </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">
-                                        出欠方式
-                                    </span>
-                                </label>
-                                <p>{SCHEDULE_ATTENDANCE_MODE_LABELS[editForm.attendanceMode]}</p>
-                            </div>
+                                <span className="label-text">終日</span>
+                            </label>
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">出欠方式</span>
+                            </label>
+                            <p>
+                                {
+                                    SCHEDULE_ATTENDANCE_MODE_LABELS[
+                                        editForm.attendanceMode
+                                    ]
+                                }
+                            </p>
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">
+                                    {editForm.isAllDay ? "開始日" : "日付"}{" "}
+                                    <span className="text-error">*</span>
+                                </span>
+                            </label>
+                            <input
+                                type="date"
+                                className="input input-bordered w-full"
+                                value={buildDateInput(
+                                    editForm.year,
+                                    editForm.month,
+                                    editForm.date
+                                )}
+                                onChange={(e) => {
+                                    const next = splitDateInput(e.target.value);
+                                    setEditForm({
+                                        ...editForm,
+                                        year: next.year,
+                                        month: next.month,
+                                        date: next.date,
+                                        attendanceDeadline:
+                                            editForm.attendanceDeadline ||
+                                            getDefaultAttendanceDeadline(
+                                                e.target.value
+                                            ),
+                                    });
+                                }}
+                                required
+                            />
+                        </div>
+                        {editForm.isAllDay ? (
                             <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
-                                        {editForm.isAllDay ? "開始日" : "日付"}{" "}
+                                        終了日{" "}
                                         <span className="text-error">*</span>
                                     </span>
                                 </label>
@@ -2427,9 +2467,9 @@ export default function CalendarClient({
                                     type="date"
                                     className="input input-bordered w-full"
                                     value={buildDateInput(
-                                        editForm.year,
-                                        editForm.month,
-                                        editForm.date
+                                        editForm.endYear,
+                                        editForm.endMonth,
+                                        editForm.endDate
                                     )}
                                     onChange={(e) => {
                                         const next = splitDateInput(
@@ -2437,134 +2477,96 @@ export default function CalendarClient({
                                         );
                                         setEditForm({
                                             ...editForm,
-                                            year: next.year,
-                                            month: next.month,
-                                            date: next.date,
-                                            attendanceDeadline:
-                                                editForm.attendanceDeadline ||
-                                                getDefaultAttendanceDeadline(
-                                                    e.target.value
-                                                ),
+                                            endYear: next.year,
+                                            endMonth: next.month,
+                                            endDate: next.date,
                                         });
                                     }}
                                     required
                                 />
                             </div>
-                            {editForm.isAllDay ? (
+                        ) : (
+                            <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="form-control">
                                     <label className="label">
                                         <span className="label-text">
-                                            終了日{" "}
-                                            <span className="text-error">
-                                                *
-                                            </span>
+                                            開始時刻
                                         </span>
                                     </label>
-                                    <input
-                                        type="date"
-                                        className="input input-bordered w-full"
-                                        value={buildDateInput(
-                                            editForm.endYear,
-                                            editForm.endMonth,
-                                            editForm.endDate
-                                        )}
-                                        onChange={(e) => {
-                                            const next = splitDateInput(
-                                                e.target.value
-                                            );
-                                            setEditForm({
-                                                ...editForm,
-                                                endYear: next.year,
-                                                endMonth: next.month,
-                                                endDate: next.date,
-                                            });
-                                        }}
-                                        required
-                                    />
-                                </div>
-                            ) : (
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text">
-                                                開始時刻
-                                            </span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder="時"
-                                                min="0"
-                                                max="23"
-                                                className="input input-bordered w-20"
-                                                value={editForm.timeHH}
-                                                onChange={(e) =>
-                                                    setEditForm({
-                                                        ...editForm,
-                                                        timeHH: e.target.value,
-                                                    })
-                                                }
-                                            />
-                                            <span>:</span>
-                                            <input
-                                                type="number"
-                                                placeholder="分"
-                                                min="0"
-                                                max="59"
-                                                className="input input-bordered w-20"
-                                                value={editForm.timeMM}
-                                                onChange={(e) =>
-                                                    setEditForm({
-                                                        ...editForm,
-                                                        timeMM: e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text">
-                                                終了時刻
-                                            </span>
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                placeholder="時"
-                                                min="0"
-                                                max="23"
-                                                className="input input-bordered w-20"
-                                                value={editForm.endTimeHH}
-                                                onChange={(e) =>
-                                                    setEditForm({
-                                                        ...editForm,
-                                                        endTimeHH:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                            <span>:</span>
-                                            <input
-                                                type="number"
-                                                placeholder="分"
-                                                min="0"
-                                                max="59"
-                                                className="input input-bordered w-20"
-                                                value={editForm.endTimeMM}
-                                                onChange={(e) =>
-                                                    setEditForm({
-                                                        ...editForm,
-                                                        endTimeMM:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                            />
-                                        </div>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="時"
+                                            min="0"
+                                            max="23"
+                                            className="input input-bordered w-20"
+                                            value={editForm.timeHH}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    timeHH: e.target.value,
+                                                })
+                                            }
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            placeholder="分"
+                                            min="0"
+                                            max="59"
+                                            className="input input-bordered w-20"
+                                            value={editForm.timeMM}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    timeMM: e.target.value,
+                                                })
+                                            }
+                                        />
                                     </div>
                                 </div>
-                            )}
-                            {editForm.attendanceMode !== "ASSIGNED" && <div className="form-control">
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            終了時刻
+                                        </span>
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            placeholder="時"
+                                            min="0"
+                                            max="23"
+                                            className="input input-bordered w-20"
+                                            value={editForm.endTimeHH}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    endTimeHH: e.target.value,
+                                                })
+                                            }
+                                        />
+                                        <span>:</span>
+                                        <input
+                                            type="number"
+                                            placeholder="分"
+                                            min="0"
+                                            max="59"
+                                            className="input input-bordered w-20"
+                                            value={editForm.endTimeMM}
+                                            onChange={(e) =>
+                                                setEditForm({
+                                                    ...editForm,
+                                                    endTimeMM: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {editForm.attendanceMode !== "ASSIGNED" && (
+                            <div className="form-control">
                                 <label className="label">
                                     <span className="label-text">
                                         出欠連絡期限
@@ -2584,112 +2586,83 @@ export default function CalendarClient({
                                 <p className="mt-1 text-xs text-base-content/60">
                                     連絡は期限日の8:00まで受け付けます。通常は予定当日の8:00です。
                                 </p>
-                            </div>}
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">場所</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="場所"
-                                    className="input input-bordered w-full"
-                                    value={editForm.where}
-                                    onChange={(e) =>
-                                        setEditForm({
-                                            ...editForm,
-                                            where: e.target.value,
-                                        })
-                                    }
-                                />
                             </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">詳細</span>
-                                </label>
-                                <textarea
-                                    placeholder="詳細"
-                                    className="textarea textarea-bordered w-full"
-                                    rows={3}
-                                    value={editForm.detail}
-                                    onChange={(e) =>
-                                        setEditForm({
-                                            ...editForm,
-                                            detail: e.target.value,
-                                        })
-                                    }
-                                />
+                        )}
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">場所</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="場所"
+                                className="input input-bordered w-full"
+                                value={editForm.where}
+                                onChange={(e) =>
+                                    setEditForm({
+                                        ...editForm,
+                                        where: e.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">詳細</span>
+                            </label>
+                            <textarea
+                                placeholder="詳細"
+                                className="textarea textarea-bordered w-full"
+                                rows={3}
+                                value={editForm.detail}
+                                onChange={(e) =>
+                                    setEditForm({
+                                        ...editForm,
+                                        detail: e.target.value,
+                                    })
+                                }
+                            />
+                        </div>
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text">カラー</span>
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                                {EVENT_COLORS.map((color) => (
+                                    <button
+                                        key={color.id}
+                                        type="button"
+                                        onClick={() =>
+                                            setEditForm({
+                                                ...editForm,
+                                                color: color.id,
+                                            })
+                                        }
+                                        className={`w-8 h-8 rounded-full border-2 transition-all ${
+                                            editForm.color === color.id
+                                                ? "border-base-content scale-110"
+                                                : "border-transparent hover:scale-105"
+                                        }`}
+                                        style={{
+                                            backgroundColor: color.hex,
+                                        }}
+                                        title={color.label}
+                                    />
+                                ))}
                             </div>
-                            <div className="form-control">
-                                <label className="label">
-                                    <span className="label-text">カラー</span>
-                                </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {EVENT_COLORS.map((color) => (
-                                        <button
-                                            key={color.id}
-                                            type="button"
-                                            onClick={() =>
-                                                setEditForm({
-                                                    ...editForm,
-                                                    color: color.id,
-                                                })
-                                            }
-                                            className={`w-8 h-8 rounded-full border-2 transition-all ${
-                                                editForm.color === color.id
-                                                    ? "border-base-content scale-110"
-                                                    : "border-transparent hover:scale-105"
-                                            }`}
-                                            style={{
-                                                backgroundColor: color.hex,
-                                            }}
-                                            title={color.label}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-                            {/* 削除確認 */}
-                            {showDeleteConfirm ? (
-                                <div className="bg-error/10 border border-error rounded-lg p-4">
-                                    <p className="text-sm text-error mb-3">
-                                        この予定を削除しますか？
-                                    </p>
-                                    <div className="flex gap-2 justify-end">
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-ghost"
-                                            onClick={() => {
-                                                if (selectedEvent) {
-                                                    replaceModal("schedule-edit", {
-                                                        event: getScheduleEventId(
-                                                            selectedEvent
-                                                        ),
-                                                        date: null,
-                                                    });
-                                                }
-                                            }}
-                                        >
-                                            キャンセル
-                                        </button>
-                                        <AsyncButton
-                                            type="button"
-                                            className="btn btn-sm btn-error"
-                                            onClick={handleDeleteSubmit}
-                                            loading={isDeleting}
-                                            loadingLabel="削除中"
-                                            spinnerClassName="loading-xs"
-                                        >
-                                            削除する
-                                        </AsyncButton>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="modal-action justify-between">
+                        </div>
+                        {/* 削除確認 */}
+                        {showDeleteConfirm ? (
+                            <div className="bg-error/10 border border-error rounded-lg p-4">
+                                <p className="text-sm text-error mb-3">
+                                    この予定を削除しますか？
+                                </p>
+                                <div className="flex gap-2 justify-end">
                                     <button
                                         type="button"
-                                        className="btn btn-outline btn-error"
+                                        className="btn btn-sm btn-ghost"
                                         onClick={() => {
                                             if (selectedEvent) {
-                                                replaceModal("schedule-delete", {
+                                                replaceModal("schedule-edit", {
                                                     event: getScheduleEventId(
                                                         selectedEvent
                                                     ),
@@ -2698,29 +2671,59 @@ export default function CalendarClient({
                                             }
                                         }}
                                     >
-                                        削除
+                                        キャンセル
                                     </button>
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            className="btn btn-ghost"
-                                            onClick={closeEditModal}
-                                        >
-                                            キャンセル
-                                        </button>
-                                        <AsyncButton
-                                            type="submit"
-                                            className="btn btn-primary"
-                                            disabled={!editForm.title.trim()}
-                                            loading={isSubmitting}
-                                            loadingLabel="保存中"
-                                        >
-                                            保存
-                                        </AsyncButton>
-                                    </div>
+                                    <AsyncButton
+                                        type="button"
+                                        className="btn btn-sm btn-error"
+                                        onClick={handleDeleteSubmit}
+                                        loading={isDeleting}
+                                        loadingLabel="削除中"
+                                        spinnerClassName="loading-xs"
+                                    >
+                                        削除する
+                                    </AsyncButton>
                                 </div>
-                            )}
-                        </form>
+                            </div>
+                        ) : (
+                            <div className="modal-action justify-between">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline btn-error"
+                                    onClick={() => {
+                                        if (selectedEvent) {
+                                            replaceModal("schedule-delete", {
+                                                event: getScheduleEventId(
+                                                    selectedEvent
+                                                ),
+                                                date: null,
+                                            });
+                                        }
+                                    }}
+                                >
+                                    削除
+                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        className="btn btn-ghost"
+                                        onClick={closeEditModal}
+                                    >
+                                        キャンセル
+                                    </button>
+                                    <AsyncButton
+                                        type="submit"
+                                        className="btn btn-primary"
+                                        disabled={!editForm.title.trim()}
+                                        loading={isSubmitting}
+                                        loadingLabel="保存中"
+                                    >
+                                        保存
+                                    </AsyncButton>
+                                </div>
+                            </div>
+                        )}
+                    </form>
                 </AppModal>
             )}
         </div>
