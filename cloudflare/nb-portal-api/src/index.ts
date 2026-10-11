@@ -1,6 +1,14 @@
-import { readMemberProfile } from "./member-profile";
-import { normalizeParticipantIds, validateParticipantIds, participantInsertStatement, assertParticipantCount, scheduleOwner, getScheduledParticipants, updateScheduledParticipants } from "./scheduled-participants";
-export { MemberProfileRefresh } from "./member-profile";
+import { readMemberProfile } from './member-profile';
+import {
+	normalizeParticipantIds,
+	validateParticipantIds,
+	participantInsertStatement,
+	assertParticipantCount,
+	scheduleOwner,
+	getScheduledParticipants,
+	updateScheduledParticipants,
+} from './scheduled-participants';
+export { MemberProfileRefresh } from './member-profile';
 
 type ApiResponse<T> = {
 	success: boolean;
@@ -137,7 +145,7 @@ type DailyAttendanceSummaryRow = {
 };
 
 type CronExecutionRow = {
-	status: "running" | "completed" | "failed";
+	status: 'running' | 'completed' | 'failed';
 	updated_at: string | null;
 };
 
@@ -161,7 +169,7 @@ type NotificationRow = {
 	updated_by_name: string | null;
 };
 
-type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
 
 type TaskRow = {
 	id: string;
@@ -183,114 +191,116 @@ type TaskAssigneeRow = {
 };
 
 const memberHeaders = [
-	"StudentNumber",
-	"Name",
-	"Nickname",
-	"isJoinedLine",
-	"LineName",
-	"isJoinedDiscord",
-	"isSigned",
-	"Permission",
+	'StudentNumber',
+	'Name',
+	'Nickname',
+	'isJoinedLine',
+	'LineName',
+	'isJoinedDiscord',
+	'isSigned',
+	'Permission',
 ] as const;
 
 const json = (body: unknown, init?: ResponseInit) =>
 	new Response(JSON.stringify(body), {
 		...init,
 		headers: {
-			"Content-Type": "application/json; charset=utf-8",
+			'Content-Type': 'application/json; charset=utf-8',
 			...init?.headers,
 		},
 	});
 
-const ok = <T>(data: T, extra?: Omit<ApiResponse<T>, "success" | "data">) =>
+const ok = <T>(data: T, extra?: Omit<ApiResponse<T>, 'success' | 'data'>) =>
 	json({ success: true, data, ...extra } satisfies ApiResponse<T>);
 
-const error = (message: string, status = 500) =>
-	json({ success: false, error: message }, { status });
+const error = (message: string, status = 500) => json({ success: false, error: message }, { status });
 
-const notFound = () => error("Not found", 404);
+const notFound = () => error('Not found', 404);
 
-const normalizeStudentId = (value: unknown) => String(value ?? "").trim();
+const normalizeStudentId = (value: unknown) => String(value ?? '').trim();
 
 const toBool = (value: unknown) => {
-	const normalized = String(value ?? "").trim().toLowerCase();
-	return normalized === "true" || normalized === "1" || normalized === "yes";
+	const normalized = String(value ?? '')
+		.trim()
+		.toLowerCase();
+	return normalized === 'true' || normalized === '1' || normalized === 'yes';
 };
 
 const toSqlBool = (value: unknown) => (toBool(value) ? 1 : 0);
 
 const splitDate = (date: string | null) => {
-	const match = String(date ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	const match = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
 	return {
-		year: match?.[1] || "",
-		month: match?.[2] ? String(Number(match[2])) : "",
-		day: match?.[3] ? String(Number(match[3])) : "",
+		year: match?.[1] || '',
+		month: match?.[2] ? String(Number(match[2])) : '',
+		day: match?.[3] ? String(Number(match[3])) : '',
 	};
 };
 
 const parseDateInput = (date: string) => {
-	const match = String(date ?? "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	const match = String(date ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
 	if (!match) return null;
 	return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
 };
 
 const splitTime = (time: string | null) => {
-	const match = String(time ?? "").match(/^(\d{1,2}):(\d{2})/);
+	const match = String(time ?? '').match(/^(\d{1,2}):(\d{2})/);
 	return {
-		hour: match?.[1] ? String(Number(match[1])) : "",
-		minute: match?.[2] ? String(Number(match[2])) : "",
+		hour: match?.[1] ? String(Number(match[1])) : '',
+		minute: match?.[2] ? String(Number(match[2])) : '',
 	};
 };
 
 const buildDate = (year: unknown, month: unknown, day: unknown) => {
-	const y = String(year ?? "").trim();
-	const m = String(month ?? "").trim().padStart(2, "0");
-	const d = String(day ?? "").trim().padStart(2, "0");
-	return y && m && d ? `${y}-${m}-${d}` : "";
+	const y = String(year ?? '').trim();
+	const m = String(month ?? '')
+		.trim()
+		.padStart(2, '0');
+	const d = String(day ?? '')
+		.trim()
+		.padStart(2, '0');
+	return y && m && d ? `${y}-${m}-${d}` : '';
 };
 
 const buildTime = (hour: unknown, minute: unknown) => {
-	const h = String(hour ?? "").trim();
-	const m = String(minute ?? "").trim();
+	const h = String(hour ?? '').trim();
+	const m = String(minute ?? '').trim();
 	if (!h && !m) return null;
-	return `${h.padStart(2, "0")}:${(m || "0").padStart(2, "0")}`;
+	return `${h.padStart(2, '0')}:${(m || '0').padStart(2, '0')}`;
 };
 
-const JST_SQL_TIMESTAMP =
-	"strftime('%Y-%m-%dT%H:%M:%S+09:00', 'now', '+9 hours')";
+const JST_SQL_TIMESTAMP = "strftime('%Y-%m-%dT%H:%M:%S+09:00', 'now', '+9 hours')";
 
 const getJstDateParts = (date = new Date()) => {
-	const parts = new Intl.DateTimeFormat("en-CA", {
-		timeZone: "Asia/Tokyo",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		hourCycle: "h23",
+	const parts = new Intl.DateTimeFormat('en-CA', {
+		timeZone: 'Asia/Tokyo',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		hourCycle: 'h23',
 	}).formatToParts(date);
-	const value = (type: Intl.DateTimeFormatPartTypes) =>
-		parts.find((part) => part.type === type)?.value || "";
+	const value = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value || '';
 
 	return {
-		date: `${value("year")}-${value("month")}-${value("day")}`,
-		dateLabel: `${value("year")}/${value("month")}/${value("day")}`,
-		hour: value("hour"),
-		minute: value("minute"),
+		date: `${value('year')}-${value('month')}-${value('day')}`,
+		dateLabel: `${value('year')}/${value('month')}/${value('day')}`,
+		hour: value('hour'),
+		minute: value('minute'),
 	};
 };
 
 const getJstTimestamp = (date = new Date()) => {
 	const parts = getJstDateParts(date);
-	const seconds = new Intl.DateTimeFormat("en-CA", {
-		timeZone: "Asia/Tokyo",
-		second: "2-digit",
+	const seconds = new Intl.DateTimeFormat('en-CA', {
+		timeZone: 'Asia/Tokyo',
+		second: '2-digit',
 	}).format(date);
 	return `${parts.date}T${parts.hour}:${parts.minute}:${seconds}+09:00`;
 };
 
-const toScheduleIsPast = (date: string, endDate?: string | null) =>
-	(endDate || date) < getJstDateParts().date ? 1 : 0;
+const toScheduleIsPast = (date: string, endDate?: string | null) => ((endDate || date) < getJstDateParts().date ? 1 : 0);
 
 const getDefaultAttendanceDeadline = (date: string) => {
 	const parsed = parseDateInput(date);
@@ -299,23 +309,20 @@ const getDefaultAttendanceDeadline = (date: string) => {
 };
 
 const normalizeAttendanceDeadline = (value: unknown, date: string) => {
-	const deadline = String(value ?? "").trim();
-	return /^\d{4}-\d{2}-\d{2}$/.test(deadline)
-		? deadline
-		: getDefaultAttendanceDeadline(date);
+	const deadline = String(value ?? '').trim();
+	return /^\d{4}-\d{2}-\d{2}$/.test(deadline) ? deadline : getDefaultAttendanceDeadline(date);
 };
 
-const generatePrefixedId = (prefix: string) =>
-	`${prefix}-${crypto.randomUUID().toUpperCase()}`;
+const generatePrefixedId = (prefix: string) => `${prefix}-${crypto.randomUUID().toUpperCase()}`;
 
 const toMemberResponse = (row: MemberRow, rowNumber: number) => ({
 	rowNumber,
 	values: [
 		row.student_number,
 		row.name,
-		row.nickname || "",
+		row.nickname || '',
 		row.is_joined_line === 1,
-		row.line_name || "",
+		row.line_name || '',
 		row.is_joined_discord === 1,
 		row.is_signed === 1,
 		row.permission,
@@ -336,22 +343,21 @@ const toScheduleResponse = (row: ScheduleRow) => {
 		TIME_HH: startTime.hour,
 		TIME_MM: startTime.minute,
 		TITLE: row.title,
-		WHERE: row.location || "",
-		DETAIL: row.description || "",
+		WHERE: row.location || '',
+		DETAIL: row.description || '',
 		END_YYYY: endDate.year,
 		END_MM: endDate.month,
 		END_DD: endDate.day,
-		COLOR: row.color || "primary",
-		CREATED_BY: row.created_by || "",
-		CREATED_AT: row.created_at || "",
-		UPDATED_BY: row.updated_by || "",
-		UPDATED_AT: row.updated_at || "",
-		ATTENDANCE_MODE: row.attendance_mode || "ABSENCE",
+		COLOR: row.color || 'primary',
+		CREATED_BY: row.created_by || '',
+		CREATED_AT: row.created_at || '',
+		UPDATED_BY: row.updated_by || '',
+		UPDATED_AT: row.updated_at || '',
+		ATTENDANCE_MODE: row.attendance_mode || 'ABSENCE',
 		END_TIME_HH: endTime.hour,
 		END_TIME_MM: endTime.minute,
 		IS_PAST: row.is_past === 1,
-		ATTENDANCE_DEADLINE:
-			row.attendance_mode === "ASSIGNED" ? "" : row.attendance_deadline || getDefaultAttendanceDeadline(row.date) || "",
+		ATTENDANCE_DEADLINE: row.attendance_mode === 'ASSIGNED' ? '' : row.attendance_deadline || getDefaultAttendanceDeadline(row.date) || '',
 	};
 };
 
@@ -361,23 +367,23 @@ const toAbsenceResponse = (row: AbsenceRow) => ({
 	STUDENT_NUMBER: row.student_number,
 	NAME: row.name,
 	TYPE: row.type,
-	REASON: row.reason || "",
-	DETAIL: row.reason_detail || "",
-	TimeLeavingEarly: row.time_leaving_early || "",
-	TimeStepOut: row.time_step_out || "",
-	TimeReturn: row.time_return || "",
+	REASON: row.reason || '',
+	DETAIL: row.reason_detail || '',
+	TimeLeavingEarly: row.time_leaving_early || '',
+	TimeStepOut: row.time_step_out || '',
+	TimeReturn: row.time_return || '',
 });
 
 const toEventAttendanceResponse = (row: EventAttendanceRow) => {
-	const nickname = row.nickname || "";
+	const nickname = row.nickname || '';
 	const name = row.name || row.student_number;
 	return {
 		eventId: row.event_id,
 		studentNumber: row.student_number,
 		name,
 		nickname: nickname || null,
-		displayName: nickname && nickname !== "---" ? nickname : name,
-		permission: row.permission || "",
+		displayName: nickname && nickname !== '---' ? nickname : name,
+		permission: row.permission || '',
 		checkedBy: row.checked_by || null,
 		checkedAt: row.checked_at,
 		updatedAt: row.updated_at,
@@ -387,7 +393,7 @@ const toEventAttendanceResponse = (row: EventAttendanceRow) => {
 const toTaskResponse = (row: TaskRow, assignees: TaskAssigneeRow[]) => ({
 	id: row.id,
 	title: row.title,
-	description: row.description || "",
+	description: row.description || '',
 	status: row.status,
 	dueDate: row.due_date,
 	createdBy: row.created_by,
@@ -397,13 +403,13 @@ const toTaskResponse = (row: TaskRow, assignees: TaskAssigneeRow[]) => ({
 	assignees: assignees
 		.filter((assignee) => assignee.task_id === row.id)
 		.map((assignee) => {
-			const nickname = assignee.nickname || "";
+			const nickname = assignee.nickname || '';
 			const name = assignee.name || assignee.student_number;
 			return {
 				studentNumber: assignee.student_number,
 				name,
 				nickname: nickname || null,
-				displayName: nickname && nickname !== "---" ? nickname : name,
+				displayName: nickname && nickname !== '---' ? nickname : name,
 			};
 		}),
 });
@@ -416,14 +422,13 @@ const getBody = async (request: Request) => {
 	}
 };
 
-const getRequestPath = (url: URL) =>
-	url.searchParams.get("path") || url.pathname.replace(/^\//, "");
+const getRequestPath = (url: URL) => url.searchParams.get('path') || url.pathname.replace(/^\//, '');
 
 const timingSafeEqual = async (a: string, b: string) => {
 	const encoder = new TextEncoder();
 	const [aHash, bHash] = await Promise.all([
-		crypto.subtle.digest("SHA-256", encoder.encode(a)),
-		crypto.subtle.digest("SHA-256", encoder.encode(b)),
+		crypto.subtle.digest('SHA-256', encoder.encode(a)),
+		crypto.subtle.digest('SHA-256', encoder.encode(b)),
 	]);
 	const aBytes = new Uint8Array(aHash);
 	const bBytes = new Uint8Array(bHash);
@@ -446,46 +451,23 @@ const hexToBytes = (hex: string) => {
 	return bytes;
 };
 
-const verifyDiscordSignature = async (
-	request: Request,
-	bodyText: string,
-	env: RuntimeEnv
-) => {
+const verifyDiscordSignature = async (request: Request, bodyText: string, env: RuntimeEnv) => {
 	if (!env.DISCORD_PUBLIC_KEY) return false;
 
-	const signature = request.headers.get("x-signature-ed25519") || "";
-	const timestamp = request.headers.get("x-signature-timestamp") || "";
+	const signature = request.headers.get('x-signature-ed25519') || '';
+	const timestamp = request.headers.get('x-signature-timestamp') || '';
 	const signatureBytes = hexToBytes(signature);
 	const publicKeyBytes = hexToBytes(env.DISCORD_PUBLIC_KEY);
 	if (!signatureBytes || !publicKeyBytes || !timestamp) return false;
 
-	const publicKey = await crypto.subtle.importKey(
-		"raw",
-		publicKeyBytes,
-		"Ed25519",
-		false,
-		["verify"]
-	);
+	const publicKey = await crypto.subtle.importKey('raw', publicKeyBytes, 'Ed25519', false, ['verify']);
 
-	return crypto.subtle.verify(
-		"Ed25519",
-		publicKey,
-		signatureBytes,
-		new TextEncoder().encode(`${timestamp}${bodyText}`)
-	);
+	return crypto.subtle.verify('Ed25519', publicKey, signatureBytes, new TextEncoder().encode(`${timestamp}${bodyText}`));
 };
 
 const discordResponse = (body: unknown, status = 200) => json(body, { status });
 
-const discordMessage = ({
-	content,
-	embeds,
-	ephemeral = true,
-}: {
-	content?: string;
-	embeds?: DiscordEmbed[];
-	ephemeral?: boolean;
-}) =>
+const discordMessage = ({ content, embeds, ephemeral = true }: { content?: string; embeds?: DiscordEmbed[]; ephemeral?: boolean }) =>
 	discordResponse({
 		type: 4,
 		data: {
@@ -497,40 +479,33 @@ const discordMessage = ({
 	});
 
 const isAllowedDiscordGuild = (interaction: DiscordInteraction, env: RuntimeEnv) => {
-	const allowedGuildId = String(env.DISCORD_GUILD_ID ?? "").trim();
+	const allowedGuildId = String(env.DISCORD_GUILD_ID ?? '').trim();
 	return Boolean(allowedGuildId && interaction.guild_id === allowedGuildId);
 };
 
 const hasDiscordMemberRole = (interaction: DiscordInteraction, env: RuntimeEnv) => {
-	const memberRoleId = env.DISCORD_MEMBER_ROLE_ID || "585047138942189603";
+	const memberRoleId = env.DISCORD_MEMBER_ROLE_ID || '585047138942189603';
 	return Boolean(interaction.member?.roles?.includes(memberRoleId));
 };
 
-const getDiscordOptionValue = (
-	options: DiscordInteractionOption[] | undefined,
-	name: string
-) => options?.find((option) => option.name === name)?.value;
+const getDiscordOptionValue = (options: DiscordInteractionOption[] | undefined, name: string) =>
+	options?.find((option) => option.name === name)?.value;
 
-const getDiscordPublicOption = (options: DiscordInteractionOption[] | undefined) =>
-	getDiscordOptionValue(options, "public") === true;
+const getDiscordPublicOption = (options: DiscordInteractionOption[] | undefined) => getDiscordOptionValue(options, 'public') === true;
 
-const authorizeBackendRequest = async (
-	request: Request,
-	url: URL,
-	env: RuntimeEnv
-) => {
+const authorizeBackendRequest = async (request: Request, url: URL, env: RuntimeEnv) => {
 	const path = getRequestPath(url);
-	if (request.method === "GET" && path === "health") {
+	if (request.method === 'GET' && path === 'health') {
 		return null;
 	}
 
 	if (!env.D1_BACKEND_API_KEY) {
-		return error("Backend API key is not configured", 503);
+		return error('Backend API key is not configured', 503);
 	}
 
-	const providedKey = request.headers.get("x-nb-portal-api-key") || "";
+	const providedKey = request.headers.get('x-nb-portal-api-key') || '';
 	if (!(await timingSafeEqual(providedKey, env.D1_BACKEND_API_KEY))) {
-		return error("Unauthorized", 401);
+		return error('Unauthorized', 401);
 	}
 
 	return null;
@@ -542,14 +517,12 @@ const getMembers = async (env: Env) => {
 			is_joined_discord, is_signed, permission
 		FROM members
 		WHERE is_active = 1
-		ORDER BY student_number`
+		ORDER BY student_number`,
 	).all<MemberRow>();
 
 	return ok({
 		headers: [...memberHeaders],
-		members: (rows.results || []).map((row, index) =>
-			toMemberResponse(row, index + 2)
-		),
+		members: (rows.results || []).map((row, index) => toMemberResponse(row, index + 2)),
 	});
 };
 
@@ -561,19 +534,15 @@ const findMemberByRowNumber = async (env: Env, rowNumber: number) => {
 		`SELECT student_number FROM members
 		WHERE is_active = 1
 		ORDER BY student_number
-		LIMIT 1 OFFSET ?`
+		LIMIT 1 OFFSET ?`,
 	)
 		.bind(offset)
 		.first<{ student_number: string }>();
 };
 
-const upsertMemberFromValues = async (
-	env: Env,
-	values: unknown[],
-	existingStudentNumber?: string
-) => {
+const upsertMemberFromValues = async (env: Env, values: unknown[], existingStudentNumber?: string) => {
 	const studentNumber = normalizeStudentId(values[0] ?? existingStudentNumber);
-	if (!studentNumber) throw new Error("StudentNumber is required");
+	if (!studentNumber) throw new Error('StudentNumber is required');
 
 	await env.DB.prepare(
 		`INSERT INTO members (
@@ -590,17 +559,17 @@ const upsertMemberFromValues = async (
 			is_signed = excluded.is_signed,
 			permission = excluded.permission,
 			is_active = 1,
-			updated_at = ${JST_SQL_TIMESTAMP}`
+			updated_at = ${JST_SQL_TIMESTAMP}`,
 	)
 		.bind(
 			studentNumber,
-			String(values[1] ?? "").trim(),
-			String(values[2] ?? "").trim(),
+			String(values[1] ?? '').trim(),
+			String(values[2] ?? '').trim(),
 			toSqlBool(values[3]),
-			String(values[4] ?? "").trim(),
+			String(values[4] ?? '').trim(),
 			toSqlBool(values[5]),
 			toSqlBool(values[6]),
-			String(values[7] ?? "NORMAL").trim() || "NORMAL"
+			String(values[7] ?? 'NORMAL').trim() || 'NORMAL',
 		)
 		.run();
 
@@ -615,21 +584,21 @@ const createMember = async (request: Request, env: Env) => {
 		`SELECT student_number, name, nickname, is_joined_line, line_name,
 			is_joined_discord, is_signed, permission
 		FROM members
-		WHERE student_number = ?`
+		WHERE student_number = ?`,
 	)
 		.bind(studentNumber)
 		.first<MemberRow>();
 	const rowNumberResult = await env.DB.prepare(
 		`SELECT COUNT(*) + 1 AS row_number
 		FROM members
-		WHERE is_active = 1 AND student_number < ?`
+		WHERE is_active = 1 AND student_number < ?`,
 	)
 		.bind(studentNumber)
 		.first<{ row_number: number }>();
 
 	return json({
 		success: true,
-		message: "Member saved",
+		message: 'Member saved',
 		rowNumber: rowNumberResult?.row_number || 2,
 		values: row ? toMemberResponse(row, 2).values : values,
 	});
@@ -639,64 +608,72 @@ const updateMember = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const rowNumber = Number(body.rowNumber);
 	const current = await findMemberByRowNumber(env, rowNumber);
-	if (!current) return error("Member not found", 404);
+	if (!current) return error('Member not found', 404);
 
 	const values = Array.isArray(body.values) ? body.values : [];
 	await upsertMemberFromValues(env, values, current.student_number);
 
 	const nextStudentNumber = normalizeStudentId(values[0] ?? current.student_number);
 	if (nextStudentNumber !== current.student_number) {
-		await env.DB.prepare("UPDATE members SET is_active = 0 WHERE student_number = ?")
-			.bind(current.student_number)
-			.run();
+		await env.DB.prepare('UPDATE members SET is_active = 0 WHERE student_number = ?').bind(current.student_number).run();
 	}
 
-	return ok(null, { message: "Member updated" });
+	return ok(null, { message: 'Member updated' });
 };
 
 const deleteMember = async (request: Request, env: Env) => {
 	const body = await getBody(request);
 	const current = await findMemberByRowNumber(env, Number(body.rowNumber));
-	if (!current) return error("Member not found", 404);
+	if (!current) return error('Member not found', 404);
 
-	await env.DB.prepare("UPDATE members SET is_active = 0 WHERE student_number = ?")
-		.bind(current.student_number)
-		.run();
-	return ok(null, { message: "Member deleted" });
+	await env.DB.prepare('UPDATE members SET is_active = 0 WHERE student_number = ?').bind(current.student_number).run();
+	return ok(null, { message: 'Member deleted' });
 };
 
 const verifyMember = async (url: URL, env: Env) => {
-	const identifier = normalizeStudentId(url.searchParams.get("identifier"));
+	const identifier = normalizeStudentId(url.searchParams.get('identifier'));
 	return json(await readMemberProfile(env.DB, identifier));
 };
 
 const refreshSessionMemberProfile = async (url: URL, env: Env, request: Request) => {
-	const identifier = normalizeStudentId(url.searchParams.get("identifier")).toLowerCase();
-	if (!identifier || identifier.length > 128) return error("Invalid identifier", 400);
-	const header = request.headers.get("x-nb-profile-trace-id") || "";
+	const identifier = normalizeStudentId(url.searchParams.get('identifier')).toLowerCase();
+	if (!identifier || identifier.length > 128) return error('Invalid identifier', 400);
+	const header = request.headers.get('x-nb-profile-trace-id') || '';
 	const traceId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(header) ? header : undefined;
 	const startedAt = performance.now();
 	let result;
 	try {
 		result = await env.MEMBER_PROFILE_REFRESH.getByName(identifier).getProfile(identifier);
 	} catch {
-		console.info(JSON.stringify({
-			event: "member_profile_refresh", traceId, outcome: "rpc-error",
-			rpcMs: Math.max(0, performance.now() - startedAt),
-		}));
-		return error("Member profile temporarily unavailable", 503);
+		console.info(
+			JSON.stringify({
+				event: 'member_profile_refresh',
+				traceId,
+				outcome: 'rpc-error',
+				rpcMs: Math.max(0, performance.now() - startedAt),
+			}),
+		);
+		return error('Member profile temporarily unavailable', 503);
 	}
-	console.info(JSON.stringify({
-		event: "member_profile_refresh", source: result.source, lookupId: result.lookupId,
-		traceId, outcome: result.profile.isMember ? "member" : "not-member",
-		rpcMs: Math.max(0, performance.now() - startedAt),
-		lookupD1Ms: result.lookupD1Ms,
-		d1Ms: result.source === "d1" ? result.lookupD1Ms : 0,
-		cacheAgeMs: Math.max(0, Date.now() - result.fetchedAt),
-	}));
-	return json({ ...result.profile, fetchedAt: result.fetchedAt }, {
-		headers: { "Cache-Control": "no-store" },
-	});
+	console.info(
+		JSON.stringify({
+			event: 'member_profile_refresh',
+			source: result.source,
+			lookupId: result.lookupId,
+			traceId,
+			outcome: result.profile.isMember ? 'member' : 'not-member',
+			rpcMs: Math.max(0, performance.now() - startedAt),
+			lookupD1Ms: result.lookupD1Ms,
+			d1Ms: result.source === 'd1' ? result.lookupD1Ms : 0,
+			cacheAgeMs: Math.max(0, Date.now() - result.fetchedAt),
+		}),
+	);
+	return json(
+		{ ...result.profile, fetchedAt: result.fetchedAt },
+		{
+			headers: { 'Cache-Control': 'no-store' },
+		},
+	);
 };
 
 const getSchedules = async (env: Env) => {
@@ -704,7 +681,7 @@ const getSchedules = async (env: Env) => {
 		`SELECT id, title, date, end_date, start_time, end_time, location, description,
 			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 		FROM schedules
-		ORDER BY date, start_time, id`
+		ORDER BY date, start_time, id`,
 	).all<ScheduleRow>();
 
 	return ok((rows.results || []).map(toScheduleResponse), {
@@ -714,146 +691,143 @@ const getSchedules = async (env: Env) => {
 
 const createSchedule = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const mode = body.attendanceMode ?? "ABSENCE";
-	if (typeof mode !== "string" || !["ABSENCE", "ATTENDANCE", "ASSIGNED"].includes(mode)) return error("出欠方式が正しくありません", 400);
-	const ids = mode === "ASSIGNED" ? normalizeParticipantIds(body.assignedStudentNumbers) : [];
-	if (!ids || (mode !== "ASSIGNED" && body.assignedStudentNumbers !== undefined)) return error("参加者の指定が正しくありません", 400);
-	if (mode === "ASSIGNED" && (!body.createdBy || body.attendanceDeadline)) return error("作成者と出欠方式を確認してください", 400);
-	const eventId =
-		String(body.eventId ?? "").trim() ||
-		generatePrefixedId("E");
-	if (await scheduleOwner(env.DB, eventId)) return error("この予定はすでに登録されています", 409);
-	if (mode === "ASSIGNED" && !await validateParticipantIds(env.DB, eventId, ids)) return error("指定できない部員が含まれています", 400);
+	const mode = body.attendanceMode ?? 'ABSENCE';
+	if (typeof mode !== 'string' || !['ABSENCE', 'ATTENDANCE', 'ASSIGNED'].includes(mode)) return error('出欠方式が正しくありません', 400);
+	const ids = mode === 'ASSIGNED' ? normalizeParticipantIds(body.assignedStudentNumbers) : [];
+	if (!ids || (mode !== 'ASSIGNED' && body.assignedStudentNumbers !== undefined)) return error('参加者の指定が正しくありません', 400);
+	if (mode === 'ASSIGNED' && (!body.createdBy || body.attendanceDeadline)) return error('作成者と出欠方式を確認してください', 400);
+	const eventId = String(body.eventId ?? '').trim() || generatePrefixedId('E');
+	if (await scheduleOwner(env.DB, eventId)) return error('この予定はすでに登録されています', 409);
+	if (mode === 'ASSIGNED' && !(await validateParticipantIds(env.DB, eventId, ids))) return error('指定できない部員が含まれています', 400);
 	const date = buildDate(body.year, body.month, body.date);
 	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
-	if (!date) return error("Schedule date is required", 400);
-	const attendanceDeadline = mode === "ASSIGNED" ? null : normalizeAttendanceDeadline(
-		body.attendanceDeadline,
-		date
-	);
+	if (!date) return error('Schedule date is required', 400);
+	const attendanceDeadline = mode === 'ASSIGNED' ? null : normalizeAttendanceDeadline(body.attendanceDeadline, date);
 
 	const createStatement = env.DB.prepare(
 		`INSERT INTO schedules (
 			id, title, date, end_date, start_time, end_time, location, description,
 			color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 		)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})`
-	)
-		.bind(
-			eventId,
-			String(body.title ?? "").trim(),
-			date,
-			endDate,
-			buildTime(body.timeHH, body.timeMM),
-			buildTime(body.endTimeHH, body.endTimeMM),
-			String(body.where ?? "").trim(),
-			String(body.detail ?? "").trim(),
-			String(body.color ?? "primary").trim() || "primary",
-			String(mode),
-			attendanceDeadline,
-			toScheduleIsPast(date, endDate),
-			String(body.createdBy ?? "").trim(),
-			String(body.createdBy ?? "").trim()
-		);
-	await env.DB.batch([createStatement, ...(mode === "ASSIGNED" ? [
-		participantInsertStatement(env.DB, eventId, ids, String(body.createdBy).toLowerCase()),
-		assertParticipantCount(env.DB, eventId, ids.length),
-	] : [])]);
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ${JST_SQL_TIMESTAMP}, ?, ${JST_SQL_TIMESTAMP})`,
+	).bind(
+		eventId,
+		String(body.title ?? '').trim(),
+		date,
+		endDate,
+		buildTime(body.timeHH, body.timeMM),
+		buildTime(body.endTimeHH, body.endTimeMM),
+		String(body.where ?? '').trim(),
+		String(body.detail ?? '').trim(),
+		String(body.color ?? 'primary').trim() || 'primary',
+		String(mode),
+		attendanceDeadline,
+		toScheduleIsPast(date, endDate),
+		String(body.createdBy ?? '').trim(),
+		String(body.createdBy ?? '').trim(),
+	);
+	await env.DB.batch([
+		createStatement,
+		...(mode === 'ASSIGNED'
+			? [
+					participantInsertStatement(env.DB, eventId, ids, String(body.createdBy).toLowerCase()),
+					assertParticipantCount(env.DB, eventId, ids.length),
+				]
+			: []),
+	]);
 
 	return ok({
 		eventId,
-		year: String(body.year ?? ""),
-		month: String(body.month ?? ""),
-		date: String(body.date ?? ""),
-		timeHH: String(body.timeHH ?? ""),
-		timeMM: String(body.timeMM ?? ""),
-		endTimeHH: String(body.endTimeHH ?? ""),
-		endTimeMM: String(body.endTimeMM ?? ""),
-		title: String(body.title ?? ""),
-		where: String(body.where ?? ""),
-		detail: String(body.detail ?? ""),
-		endYear: String(body.endYear ?? ""),
-		endMonth: String(body.endMonth ?? ""),
-		endDate: String(body.endDate ?? ""),
-		color: String(body.color ?? "primary"),
-		attendanceMode: String(body.attendanceMode ?? "ABSENCE"),
-		attendanceDeadline: attendanceDeadline || "",
+		year: String(body.year ?? ''),
+		month: String(body.month ?? ''),
+		date: String(body.date ?? ''),
+		timeHH: String(body.timeHH ?? ''),
+		timeMM: String(body.timeMM ?? ''),
+		endTimeHH: String(body.endTimeHH ?? ''),
+		endTimeMM: String(body.endTimeMM ?? ''),
+		title: String(body.title ?? ''),
+		where: String(body.where ?? ''),
+		detail: String(body.detail ?? ''),
+		endYear: String(body.endYear ?? ''),
+		endMonth: String(body.endMonth ?? ''),
+		endDate: String(body.endDate ?? ''),
+		color: String(body.color ?? 'primary'),
+		attendanceMode: String(body.attendanceMode ?? 'ABSENCE'),
+		attendanceDeadline: attendanceDeadline || '',
 	});
 };
 
 const updateSchedule = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const eventId = String(body.eventId ?? body.EVENT_ID ?? "").trim();
-	if (!eventId) return error("eventId is required", 400);
+	const eventId = String(body.eventId ?? body.EVENT_ID ?? '').trim();
+	if (!eventId) return error('eventId is required', 400);
 	const existing = await scheduleOwner(env.DB, eventId);
-	if (!existing) return error("予定が見つかりません", 404);
-	if (body.attendanceMode !== undefined && body.attendanceMode !== existing.attendance_mode) return error("作成後の出欠方式は変更できません", 409);
-	if (body.createdBy !== undefined && body.createdBy !== existing.created_by) return error("作成者は変更できません", 403);
-	if (body.assignedStudentNumbers !== undefined) return error("参加者は専用画面から変更してください", 400);
-	if (existing.attendance_mode === "ASSIGNED" && body.attendanceDeadline) return error("参加者指定に出欠連絡期限は設定できません", 400);
+	if (!existing) return error('予定が見つかりません', 404);
+	if (body.attendanceMode !== undefined && body.attendanceMode !== existing.attendance_mode)
+		return error('作成後の出欠方式は変更できません', 409);
+	if (body.createdBy !== undefined && body.createdBy !== existing.created_by) return error('作成者は変更できません', 403);
+	if (body.assignedStudentNumbers !== undefined) return error('参加者は専用画面から変更してください', 400);
+	if (existing.attendance_mode === 'ASSIGNED' && body.attendanceDeadline) return error('参加者指定に出欠連絡期限は設定できません', 400);
 
 	const date = buildDate(body.year, body.month, body.date);
 	const endDate = buildDate(body.endYear, body.endMonth, body.endDate) || null;
-	if (!date) return error("Schedule date is required", 400);
-	const attendanceDeadline = existing.attendance_mode === "ASSIGNED" ? null : normalizeAttendanceDeadline(
-		body.attendanceDeadline,
-		date
-	);
+	if (!date) return error('Schedule date is required', 400);
+	const attendanceDeadline = existing.attendance_mode === 'ASSIGNED' ? null : normalizeAttendanceDeadline(body.attendanceDeadline, date);
 
 	await env.DB.prepare(
 		`UPDATE schedules SET
 			title = ?, date = ?, end_date = ?, start_time = ?, end_time = ?, location = ?,
 			description = ?, color = ?, attendance_deadline = ?, is_past = ?, updated_by = ?, updated_at = ${JST_SQL_TIMESTAMP}
-		WHERE id = ?`
+		WHERE id = ?`,
 	)
 		.bind(
-			String(body.title ?? "").trim(),
+			String(body.title ?? '').trim(),
 			date,
 			endDate,
 			buildTime(body.timeHH, body.timeMM),
 			buildTime(body.endTimeHH, body.endTimeMM),
-			String(body.where ?? "").trim(),
-			String(body.detail ?? "").trim(),
-			String(body.color ?? "primary").trim() || "primary",
+			String(body.where ?? '').trim(),
+			String(body.detail ?? '').trim(),
+			String(body.color ?? 'primary').trim() || 'primary',
 			attendanceDeadline,
 			toScheduleIsPast(date, endDate),
-			String(body.updatedBy ?? "").trim(),
-			eventId
+			String(body.updatedBy ?? '').trim(),
+			eventId,
 		)
 		.run();
 
 	return ok({
 		eventId,
-		year: String(body.year ?? ""),
-		month: String(body.month ?? ""),
-		date: String(body.date ?? ""),
-		timeHH: String(body.timeHH ?? ""),
-		timeMM: String(body.timeMM ?? ""),
-		endTimeHH: String(body.endTimeHH ?? ""),
-		endTimeMM: String(body.endTimeMM ?? ""),
-		title: String(body.title ?? ""),
-		where: String(body.where ?? ""),
-		detail: String(body.detail ?? ""),
-		endYear: String(body.endYear ?? ""),
-		endMonth: String(body.endMonth ?? ""),
-		endDate: String(body.endDate ?? ""),
-		color: String(body.color ?? "primary"),
+		year: String(body.year ?? ''),
+		month: String(body.month ?? ''),
+		date: String(body.date ?? ''),
+		timeHH: String(body.timeHH ?? ''),
+		timeMM: String(body.timeMM ?? ''),
+		endTimeHH: String(body.endTimeHH ?? ''),
+		endTimeMM: String(body.endTimeMM ?? ''),
+		title: String(body.title ?? ''),
+		where: String(body.where ?? ''),
+		detail: String(body.detail ?? ''),
+		endYear: String(body.endYear ?? ''),
+		endMonth: String(body.endMonth ?? ''),
+		endDate: String(body.endDate ?? ''),
+		color: String(body.color ?? 'primary'),
 		attendanceMode: existing.attendance_mode,
-		attendanceDeadline: attendanceDeadline || "",
+		attendanceDeadline: attendanceDeadline || '',
 	});
 };
 
 const deleteSchedule = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const eventId = String(body.eventId ?? body.EVENT_ID ?? "").trim();
-	if (!eventId) return error("eventId is required", 400);
+	const eventId = String(body.eventId ?? body.EVENT_ID ?? '').trim();
+	if (!eventId) return error('eventId is required', 400);
 
-	await env.DB.prepare("DELETE FROM schedules WHERE id = ?").bind(eventId).run();
-	return ok(null, { message: "Schedule deleted" });
+	await env.DB.prepare('DELETE FROM schedules WHERE id = ?').bind(eventId).run();
+	return ok(null, { message: 'Schedule deleted' });
 };
 
 const getAbsences = async (url: URL, env: Env) => {
-	const date = url.searchParams.get("date");
+	const date = url.searchParams.get('date');
 	const query = date
 		? `SELECT a.* FROM absences a
 			LEFT JOIN schedules s ON s.id = a.event_id
@@ -861,9 +835,7 @@ const getAbsences = async (url: URL, env: Env) => {
 			ORDER BY a.submitted_at`
 		: `SELECT * FROM absences ORDER BY submitted_at`;
 	const statement = env.DB.prepare(query);
-	const rows = date
-		? await statement.bind(date).all<AbsenceRow>()
-		: await statement.all<AbsenceRow>();
+	const rows = date ? await statement.bind(date).all<AbsenceRow>() : await statement.all<AbsenceRow>();
 
 	return ok((rows.results || []).map(toAbsenceResponse), {
 		count: rows.results?.length || 0,
@@ -871,12 +843,8 @@ const getAbsences = async (url: URL, env: Env) => {
 };
 
 const getEventAbsences = async (url: URL, env: Env) => {
-	const eventId = String(url.searchParams.get("eventId") ?? "").trim();
-	const rows = await env.DB.prepare(
-		`SELECT * FROM absences WHERE event_id = ? ORDER BY submitted_at`
-	)
-		.bind(eventId)
-		.all<AbsenceRow>();
+	const eventId = String(url.searchParams.get('eventId') ?? '').trim();
+	const rows = await env.DB.prepare(`SELECT * FROM absences WHERE event_id = ? ORDER BY submitted_at`).bind(eventId).all<AbsenceRow>();
 	return ok((rows.results || []).map(toAbsenceResponse), {
 		count: rows.results?.length || 0,
 	});
@@ -884,11 +852,11 @@ const getEventAbsences = async (url: URL, env: Env) => {
 
 const upsertAbsence = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const eventId = String(body.eventId ?? "").trim();
-	if ((await scheduleOwner(env.DB, eventId))?.attendance_mode === "ASSIGNED") return error("この予定では出欠連絡を受け付けていません", 403);
+	const eventId = String(body.eventId ?? '').trim();
+	if ((await scheduleOwner(env.DB, eventId))?.attendance_mode === 'ASSIGNED') return error('この予定では出欠連絡を受け付けていません', 403);
 	const studentNumber = normalizeStudentId(body.studentNumber);
 	if (!eventId || !studentNumber) {
-		return error("eventId and studentNumber are required", 400);
+		return error('eventId and studentNumber are required', 400);
 	}
 
 	await env.DB.prepare(
@@ -910,23 +878,23 @@ const upsertAbsence = async (request: Request, env: Env) => {
 			event_date_label = excluded.event_date_label,
 			event_time_label = excluded.event_time_label,
 			event_where = excluded.event_where,
-			updated_at = ${JST_SQL_TIMESTAMP}`
+			updated_at = ${JST_SQL_TIMESTAMP}`,
 	)
 		.bind(
 			`${eventId}:${studentNumber}`,
 			eventId,
 			studentNumber,
-			String(body.name ?? "").trim(),
-			String(body.type ?? "").trim(),
-			String(body.reason ?? "").trim(),
-			String(body.reasonDetail ?? "").trim(),
-			String(body.timeLeavingEarly ?? "").trim(),
-			String(body.timeStepOut ?? "").trim(),
-			String(body.timeReturn ?? "").trim(),
-			String(body.eventTitle ?? "").trim(),
-			String(body.eventDateLabel ?? "").trim(),
-			String(body.eventTimeLabel ?? "").trim(),
-			String(body.eventWhere ?? "").trim()
+			String(body.name ?? '').trim(),
+			String(body.type ?? '').trim(),
+			String(body.reason ?? '').trim(),
+			String(body.reasonDetail ?? '').trim(),
+			String(body.timeLeavingEarly ?? '').trim(),
+			String(body.timeStepOut ?? '').trim(),
+			String(body.timeReturn ?? '').trim(),
+			String(body.eventTitle ?? '').trim(),
+			String(body.eventDateLabel ?? '').trim(),
+			String(body.eventTimeLabel ?? '').trim(),
+			String(body.eventWhere ?? '').trim(),
 		)
 		.run();
 
@@ -939,18 +907,17 @@ const upsertAbsence = async (request: Request, env: Env) => {
 
 const deleteAbsence = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	if ((await scheduleOwner(env.DB, String(body.eventId ?? "")))?.attendance_mode === "ASSIGNED") return error("この予定では出欠連絡を受け付けていません", 403);
-	await env.DB.prepare(
-		"DELETE FROM absences WHERE event_id = ? AND lower(student_number) = lower(?)"
-	)
-		.bind(String(body.eventId ?? "").trim(), normalizeStudentId(body.studentNumber))
+	if ((await scheduleOwner(env.DB, String(body.eventId ?? '')))?.attendance_mode === 'ASSIGNED')
+		return error('この予定では出欠連絡を受け付けていません', 403);
+	await env.DB.prepare('DELETE FROM absences WHERE event_id = ? AND lower(student_number) = lower(?)')
+		.bind(String(body.eventId ?? '').trim(), normalizeStudentId(body.studentNumber))
 		.run();
-	return ok(null, { message: "Absence deleted" });
+	return ok(null, { message: 'Absence deleted' });
 };
 
 const getEventAttendance = async (url: URL, env: Env) => {
-	const eventId = String(url.searchParams.get("eventId") ?? "").trim();
-	if (!eventId) return error("eventId is required", 400);
+	const eventId = String(url.searchParams.get('eventId') ?? '').trim();
+	if (!eventId) return error('eventId is required', 400);
 
 	const rows = await env.DB.prepare(
 		`SELECT ea.event_id, ea.student_number, m.name, m.nickname, m.permission,
@@ -959,7 +926,7 @@ const getEventAttendance = async (url: URL, env: Env) => {
 		LEFT JOIN members m ON lower(m.student_number) = lower(ea.student_number)
 		WHERE ea.event_id = ?
 			AND COALESCE(m.permission, '') <> 'OBOG'
-		ORDER BY m.student_number, ea.student_number`
+		ORDER BY m.student_number, ea.student_number`,
 	)
 		.bind(eventId)
 		.all<EventAttendanceRow>();
@@ -971,8 +938,8 @@ const getEventAttendance = async (url: URL, env: Env) => {
 
 const replaceEventAttendance = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const eventId = String(body.eventId ?? "").trim();
-	if ((await scheduleOwner(env.DB, eventId))?.attendance_mode === "ASSIGNED") return error("参加者指定では当日の出席確認を行いません", 403);
+	const eventId = String(body.eventId ?? '').trim();
+	if ((await scheduleOwner(env.DB, eventId))?.attendance_mode === 'ASSIGNED') return error('参加者指定では当日の出席確認を行いません', 403);
 	const checkedBy = normalizeStudentId(body.checkedBy).toLowerCase();
 	const studentNumbers = Array.isArray(body.studentNumbers)
 		? body.studentNumbers
@@ -982,7 +949,7 @@ const replaceEventAttendance = async (request: Request, env: Env) => {
 		: [];
 	const uniqueStudentNumbers = Array.from(new Set(studentNumbers));
 
-	if (!eventId) return error("eventId is required", 400);
+	if (!eventId) return error('eventId is required', 400);
 
 	const activeRows = uniqueStudentNumbers.length
 		? await env.DB.prepare(
@@ -990,35 +957,25 @@ const replaceEventAttendance = async (request: Request, env: Env) => {
 				FROM members
 				WHERE is_active = 1
 					AND permission <> 'OBOG'
-					AND lower(student_number) IN (${uniqueStudentNumbers
-						.map(() => "?")
-						.join(",")})`
+					AND lower(student_number) IN (${uniqueStudentNumbers.map(() => '?').join(',')})`,
 			)
 				.bind(...uniqueStudentNumbers)
 				.all<{ student_number: string }>()
 		: { results: [] };
-	const allowedStudentNumbers = new Set(
-		(activeRows.results || []).map((row) => row.student_number)
-	);
-	const filteredStudentNumbers = uniqueStudentNumbers.filter((studentNumber) =>
-		allowedStudentNumbers.has(studentNumber)
-	);
+	const allowedStudentNumbers = new Set((activeRows.results || []).map((row) => row.student_number));
+	const filteredStudentNumbers = uniqueStudentNumbers.filter((studentNumber) => allowedStudentNumbers.has(studentNumber));
 
-	const deleteStatement = env.DB.prepare(
-		"DELETE FROM event_attendance WHERE event_id = ?"
-	).bind(eventId);
+	const deleteStatement = env.DB.prepare('DELETE FROM event_attendance WHERE event_id = ?').bind(eventId);
 	const insertStatement = env.DB.prepare(
 		`INSERT INTO event_attendance (
 			event_id, student_number, checked_by, checked_at, updated_at
 		)
-		VALUES (?, ?, ?, ${JST_SQL_TIMESTAMP}, ${JST_SQL_TIMESTAMP})`
+		VALUES (?, ?, ?, ${JST_SQL_TIMESTAMP}, ${JST_SQL_TIMESTAMP})`,
 	);
 
 	await env.DB.batch([
 		deleteStatement,
-		...filteredStudentNumbers.map((studentNumber) =>
-			insertStatement.bind(eventId, studentNumber, checkedBy)
-		),
+		...filteredStudentNumbers.map((studentNumber) => insertStatement.bind(eventId, studentNumber, checkedBy)),
 	]);
 
 	return ok(
@@ -1028,14 +985,14 @@ const replaceEventAttendance = async (request: Request, env: Env) => {
 			checkedBy,
 			updatedAt: getJstTimestamp(),
 		},
-		{ count: filteredStudentNumbers.length }
+		{ count: filteredStudentNumbers.length },
 	);
 };
 
 const getNextMeeting = async (env: Env) => {
 	const row = await env.DB.prepare(
 		`SELECT event_id, date, time, mode, updated_by, updated_at
-		FROM next_meeting_settings WHERE id = 1`
+		FROM next_meeting_settings WHERE id = 1`,
 	).first<NextMeetingRow>();
 
 	return ok(
@@ -1048,32 +1005,27 @@ const getNextMeeting = async (env: Env) => {
 					updatedBy: row.updated_by,
 					updatedAt: row.updated_at,
 				}
-			: null
+			: null,
 	);
 };
 
 const updateNextMeeting = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const date = String(body.date ?? "").trim();
-	const time = String(body.time ?? "").trim();
-	const mode = String(body.mode ?? "IN_PERSON").trim() || "IN_PERSON";
-	const updatedBy = String(body.updatedBy ?? "").trim();
+	const date = String(body.date ?? '').trim();
+	const time = String(body.time ?? '').trim();
+	const mode = String(body.mode ?? 'IN_PERSON').trim() || 'IN_PERSON';
+	const updatedBy = String(body.updatedBy ?? '').trim();
 	const existing = await env.DB.prepare(
 		`SELECT n.event_id, s.date AS schedule_date
 		FROM next_meeting_settings n
 		LEFT JOIN schedules s ON s.id = n.event_id
-		WHERE n.id = 1`
+		WHERE n.id = 1`,
 	).first<{ event_id: string | null; schedule_date: string | null }>();
-	const existingEventId =
-		String(body.eventId ?? "").trim() || existing?.event_id || "";
-	const eventId =
-		(existingEventId && existing?.schedule_date === date
-			? existingEventId
-			: "") ||
-		generatePrefixedId("MEETING");
+	const existingEventId = String(body.eventId ?? '').trim() || existing?.event_id || '';
+	const eventId = (existingEventId && existing?.schedule_date === date ? existingEventId : '') || generatePrefixedId('MEETING');
 
-	if (!date) return error("Next meeting date is required", 400);
-	if (!time) return error("Next meeting time is required", 400);
+	if (!date) return error('Next meeting date is required', 400);
+	if (!time) return error('Next meeting time is required', 400);
 
 	await env.DB.prepare(
 		`INSERT INTO schedules (
@@ -1093,17 +1045,17 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			attendance_deadline = CASE WHEN schedules.attendance_mode = 'ASSIGNED' THEN NULL ELSE excluded.attendance_deadline END,
 			is_past = excluded.is_past,
 			updated_by = excluded.updated_by,
-			updated_at = ${JST_SQL_TIMESTAMP}`
+			updated_at = ${JST_SQL_TIMESTAMP}`,
 	)
 		.bind(
 			eventId,
 			date,
 			time,
-			mode === "DISCORD" ? "Discord" : "対面",
+			mode === 'DISCORD' ? 'Discord' : '対面',
 			getDefaultAttendanceDeadline(date),
 			toScheduleIsPast(date),
 			updatedBy,
-			updatedBy
+			updatedBy,
 		)
 		.run();
 
@@ -1116,27 +1068,21 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 			time = excluded.time,
 			mode = excluded.mode,
 			updated_by = excluded.updated_by,
-			updated_at = ${JST_SQL_TIMESTAMP}`
+			updated_at = ${JST_SQL_TIMESTAMP}`,
 	)
-		.bind(
-			eventId,
-			date,
-			time,
-			mode,
-			updatedBy
-		)
+		.bind(eventId, date, time, mode, updatedBy)
 		.run();
 
 	const response = await env.DB.prepare(
 		`SELECT event_id, date, time, mode, updated_by, updated_at
-		FROM next_meeting_settings WHERE id = 1`
+		FROM next_meeting_settings WHERE id = 1`,
 	).first<NextMeetingRow>();
 
 	return ok({
 		eventId: response?.event_id || undefined,
-		date: response?.date || String(body.date ?? ""),
-		time: response?.time || String(body.time ?? ""),
-		mode: response?.mode || String(body.mode ?? "IN_PERSON"),
+		date: response?.date || String(body.date ?? ''),
+		time: response?.time || String(body.time ?? ''),
+		mode: response?.mode || String(body.mode ?? 'IN_PERSON'),
 		updatedBy: response?.updated_by || null,
 		updatedAt: response?.updated_at || null,
 	});
@@ -1144,16 +1090,16 @@ const updateNextMeeting = async (request: Request, env: Env) => {
 
 const getDashboardData = async (env: Env) => {
 	const [absences, schedules, nextMeeting] = await Promise.all([
-		env.DB.prepare("SELECT * FROM absences ORDER BY submitted_at").all<AbsenceRow>(),
+		env.DB.prepare('SELECT * FROM absences ORDER BY submitted_at').all<AbsenceRow>(),
 		env.DB.prepare(
 			`SELECT id, title, date, start_time, end_time, location, description,
 				end_date, color, attendance_mode, attendance_deadline, is_past, created_by, created_at, updated_by, updated_at
 			FROM schedules
-			ORDER BY date, start_time, id`
+			ORDER BY date, start_time, id`,
 		).all<ScheduleRow>(),
 		env.DB.prepare(
 			`SELECT event_id, date, time, mode, updated_by, updated_at
-			FROM next_meeting_settings WHERE id = 1`
+			FROM next_meeting_settings WHERE id = 1`,
 		).first<NextMeetingRow>(),
 	]);
 
@@ -1174,7 +1120,7 @@ const getDashboardData = async (env: Env) => {
 };
 
 const getNotifications = async (url: URL, env: Env) => {
-	const limit = Math.min(Math.max(Number(url.searchParams.get("limit") || 50), 1), 100);
+	const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 50), 1), 100);
 	const rows = await env.DB.prepare(
 		`SELECT
 			s.id AS event_id,
@@ -1192,7 +1138,7 @@ const getNotifications = async (url: URL, env: Env) => {
 		LEFT JOIN members updated_member
 			ON lower(updated_member.student_number) = lower(s.updated_by)
 		ORDER BY COALESCE(s.updated_at, s.created_at) DESC
-		LIMIT ?`
+		LIMIT ?`,
 	)
 		.bind(limit)
 		.all<NotificationRow>();
@@ -1202,10 +1148,10 @@ const getNotifications = async (url: URL, env: Env) => {
 			eventId: row.event_id,
 			title: row.title,
 			date: row.date,
-			actionBy: row.created_by || "",
-			actionByName: row.created_by_name || row.created_by || "不明",
+			actionBy: row.created_by || '',
+			actionByName: row.created_by_name || row.created_by || '不明',
 			actionAt: row.created_at,
-			actionType: "created" as const,
+			actionType: 'created' as const,
 		};
 
 		if (!row.updated_at || row.updated_at === row.created_at) {
@@ -1217,10 +1163,10 @@ const getNotifications = async (url: URL, env: Env) => {
 				eventId: row.event_id,
 				title: row.title,
 				date: row.date,
-				actionBy: row.updated_by || "",
-				actionByName: row.updated_by_name || row.updated_by || "不明",
+				actionBy: row.updated_by || '',
+				actionByName: row.updated_by_name || row.updated_by || '不明',
 				actionAt: row.updated_at,
-				actionType: "updated" as const,
+				actionType: 'updated' as const,
 			},
 			created,
 		];
@@ -1237,49 +1183,47 @@ const getTasks = async (env: Env) => {
 			ORDER BY
 				CASE status WHEN 'TODO' THEN 1 WHEN 'IN_PROGRESS' THEN 2 ELSE 3 END,
 				COALESCE(due_date, '9999-12-31'),
-				created_at DESC`
+				created_at DESC`,
 		).all<TaskRow>(),
 		env.DB.prepare(
 			`SELECT ta.task_id, ta.student_number, m.name, m.nickname
 			FROM task_assignees ta
 			LEFT JOIN members m ON lower(m.student_number) = lower(ta.student_number)
-			ORDER BY ta.assigned_at`
+			ORDER BY ta.assigned_at`,
 		).all<TaskAssigneeRow>(),
 	]);
 
 	const assigneeRows = assignees.results || [];
-	return ok((tasks.results || []).map((task) => toTaskResponse(task, assigneeRows)), {
-		count: tasks.results?.length || 0,
-	});
+	return ok(
+		(tasks.results || []).map((task) => toTaskResponse(task, assigneeRows)),
+		{
+			count: tasks.results?.length || 0,
+		},
+	);
 };
 
 const normalizeTaskStatus = (value: unknown): TaskStatus => {
-	const normalized = String(value ?? "TODO").trim().toUpperCase();
-	if (normalized === "IN_PROGRESS" || normalized === "DONE") return normalized;
-	return "TODO";
+	const normalized = String(value ?? 'TODO')
+		.trim()
+		.toUpperCase();
+	if (normalized === 'IN_PROGRESS' || normalized === 'DONE') return normalized;
+	return 'TODO';
 };
 
-const replaceTaskAssignees = async (
-	env: Env,
-	taskId: string,
-	assigneeStudentNumbers: unknown
-) => {
+const replaceTaskAssignees = async (env: Env, taskId: string, assigneeStudentNumbers: unknown) => {
 	const uniqueStudentNumbers = Array.from(
 		new Set(
-			(Array.isArray(assigneeStudentNumbers) ? assigneeStudentNumbers : [])
-				.map((value) => normalizeStudentId(value))
-				.filter(Boolean)
-		)
+			(Array.isArray(assigneeStudentNumbers) ? assigneeStudentNumbers : []).map((value) => normalizeStudentId(value)).filter(Boolean),
+		),
 	);
 
 	const statements = [
-		env.DB.prepare("DELETE FROM task_assignees WHERE task_id = ?").bind(taskId),
+		env.DB.prepare('DELETE FROM task_assignees WHERE task_id = ?').bind(taskId),
 		...uniqueStudentNumbers.map((studentNumber) =>
 			env.DB.prepare(
 				`INSERT INTO task_assignees (task_id, student_number, assigned_at)
-				VALUES (?, ?, ${JST_SQL_TIMESTAMP})`
-			)
-				.bind(taskId, studentNumber)
+				VALUES (?, ?, ${JST_SQL_TIMESTAMP})`,
+			).bind(taskId, studentNumber),
 		),
 	];
 
@@ -1288,14 +1232,12 @@ const replaceTaskAssignees = async (
 
 const upsertTask = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const taskId =
-		String(body.id ?? "").trim() ||
-		generatePrefixedId("TASK");
-	const title = String(body.title ?? "").trim();
-	if (!title) return error("Task title is required", 400);
+	const taskId = String(body.id ?? '').trim() || generatePrefixedId('TASK');
+	const title = String(body.title ?? '').trim();
+	if (!title) return error('Task title is required', 400);
 
-	const dueDate = String(body.dueDate ?? "").trim() || null;
-	const actor = String(body.updatedBy ?? body.createdBy ?? "").trim();
+	const dueDate = String(body.dueDate ?? '').trim() || null;
+	const actor = String(body.updatedBy ?? body.createdBy ?? '').trim();
 
 	await env.DB.prepare(
 		`INSERT INTO tasks (
@@ -1308,17 +1250,9 @@ const upsertTask = async (request: Request, env: Env) => {
 			status = excluded.status,
 			due_date = excluded.due_date,
 			updated_by = excluded.updated_by,
-			updated_at = ${JST_SQL_TIMESTAMP}`
+			updated_at = ${JST_SQL_TIMESTAMP}`,
 	)
-		.bind(
-			taskId,
-			title,
-			String(body.description ?? "").trim(),
-			normalizeTaskStatus(body.status),
-			dueDate,
-			actor,
-			actor
-		)
+		.bind(taskId, title, String(body.description ?? '').trim(), normalizeTaskStatus(body.status), dueDate, actor, actor)
 		.run();
 
 	await replaceTaskAssignees(env, taskId, body.assigneeStudentNumbers);
@@ -1329,25 +1263,23 @@ const upsertTask = async (request: Request, env: Env) => {
 
 const deleteTask = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const taskId = String(body.id ?? "").trim();
-	if (!taskId) return error("Task id is required", 400);
+	const taskId = String(body.id ?? '').trim();
+	if (!taskId) return error('Task id is required', 400);
 
 	await env.DB.batch([
-		env.DB.prepare("DELETE FROM task_assignees WHERE task_id = ?").bind(taskId),
-		env.DB.prepare("DELETE FROM tasks WHERE id = ?").bind(taskId),
+		env.DB.prepare('DELETE FROM task_assignees WHERE task_id = ?').bind(taskId),
+		env.DB.prepare('DELETE FROM tasks WHERE id = ?').bind(taskId),
 	]);
 
-	return ok(null, { message: "Task deleted" });
+	return ok(null, { message: 'Task deleted' });
 };
 
 const savePushSubscription = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	const subscription = body.subscription as
-		| { endpoint?: string; keys?: { p256dh?: string; auth?: string } }
-		| undefined;
+	const subscription = body.subscription as { endpoint?: string; keys?: { p256dh?: string; auth?: string } } | undefined;
 	const studentId = normalizeStudentId(body.studentId);
 	if (!subscription?.endpoint || !studentId) {
-		return error("studentId and subscription are required", 400);
+		return error('studentId and subscription are required', 400);
 	}
 
 	await env.DB.prepare(
@@ -1357,32 +1289,27 @@ const savePushSubscription = async (request: Request, env: Env) => {
 			student_id = excluded.student_id,
 			p256dh = excluded.p256dh,
 			auth = excluded.auth,
-			updated_at = ${JST_SQL_TIMESTAMP}`
+			updated_at = ${JST_SQL_TIMESTAMP}`,
 	)
-		.bind(
-			subscription.endpoint,
-			studentId,
-			subscription.keys?.p256dh || "",
-			subscription.keys?.auth || ""
-		)
+		.bind(subscription.endpoint, studentId, subscription.keys?.p256dh || '', subscription.keys?.auth || '')
 		.run();
 
-	return ok(null, { message: "Subscription saved" });
+	return ok(null, { message: 'Subscription saved' });
 };
 
 const deletePushSubscription = async (request: Request, env: Env) => {
 	const body = await getBody(request);
-	await env.DB.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?")
-		.bind(String(body.endpoint ?? "").trim())
+	await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?')
+		.bind(String(body.endpoint ?? '').trim())
 		.run();
-	return ok(null, { message: "Subscription deleted" });
+	return ok(null, { message: 'Subscription deleted' });
 };
 
 const getPushSubscriptions = async (env: Env) => {
 	const rows = await env.DB.prepare(
 		`SELECT student_id, endpoint, p256dh, auth, created_at
 		FROM push_subscriptions
-		ORDER BY created_at`
+		ORDER BY created_at`,
 	).all<PushSubscriptionRow>();
 
 	return ok(
@@ -1393,7 +1320,7 @@ const getPushSubscriptions = async (env: Env) => {
 			auth: row.auth,
 			createdAt: row.created_at,
 		})),
-		{ count: rows.results?.length || 0 }
+		{ count: rows.results?.length || 0 },
 	);
 };
 
@@ -1407,17 +1334,17 @@ const saveAccessLogs = async (request: Request, env: Env) => {
 				timestamp, client_timestamp, student_id, display_name, permission,
 				path, method, user_agent, ip_hash
 			)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		).bind(
 			String(entry.timestamp ?? getJstTimestamp()),
-			String(entry.clientTimestamp ?? ""),
+			String(entry.clientTimestamp ?? ''),
 			normalizeStudentId(entry.studentId),
-			String(entry.displayName ?? ""),
-			String(entry.permission ?? ""),
-			String(entry.path ?? ""),
-			String(entry.method ?? "GET"),
-			String(entry.userAgent ?? ""),
-			String(entry.ipHash ?? "")
+			String(entry.displayName ?? ''),
+			String(entry.permission ?? ''),
+			String(entry.path ?? ''),
+			String(entry.method ?? 'GET'),
+			String(entry.userAgent ?? ''),
+			String(entry.ipHash ?? ''),
 		);
 	});
 
@@ -1428,10 +1355,8 @@ const saveAccessLogs = async (request: Request, env: Env) => {
 };
 
 const formatDateTime = (value: string | null) => {
-	if (!value) return "";
-	const jstWallClockMatch = value.match(
-		/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?(?:\+09:00)?$/
-	);
+	if (!value) return '';
+	const jstWallClockMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?(?:\+09:00)?$/);
 	if (jstWallClockMatch) {
 		return `${jstWallClockMatch[1]}/${jstWallClockMatch[2]}/${jstWallClockMatch[3]} ${jstWallClockMatch[4]}:${jstWallClockMatch[5]}`;
 	}
@@ -1439,52 +1364,48 @@ const formatDateTime = (value: string | null) => {
 	const date = new Date(value);
 	if (Number.isNaN(date.getTime())) return value;
 
-	return date.toLocaleString("ja-JP", {
-		timeZone: "Asia/Tokyo",
-		year: "numeric",
-		month: "2-digit",
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
+	return date.toLocaleString('ja-JP', {
+		timeZone: 'Asia/Tokyo',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
 	});
 };
 
 const getDateLabel = (dateString: string) => {
 	const date = parseDateInput(dateString);
-	const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-	const weekday = date ? `(${weekdays[date.getDay()]})` : "";
-	return `${dateString.replace(/-/g, "/")}${weekday}`;
+	const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+	const weekday = date ? `(${weekdays[date.getDay()]})` : '';
+	return `${dateString.replace(/-/g, '/')}${weekday}`;
 };
 
 const formatNextMeetingDateLabel = (dateString: string, timeString: string) => {
 	const date = parseDateInput(dateString);
-	const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-	const weekday = date ? `(${weekdays[date.getDay()]})` : "";
-	return `${dateString.replace(/-/g, "/")}${weekday} ${timeString}`;
+	const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+	const weekday = date ? `(${weekdays[date.getDay()]})` : '';
+	return `${dateString.replace(/-/g, '/')}${weekday} ${timeString}`;
 };
 
 const formatScheduleDateRange = (row: ScheduleRow) => {
 	const start = getDateLabel(row.date);
-	const end = row.end_date ? getDateLabel(row.end_date) : "";
+	const end = row.end_date ? getDateLabel(row.end_date) : '';
 	return end && end !== start ? `${start}〜${end}` : start;
 };
 
 const formatScheduleTimeRange = (row: ScheduleRow) => {
-	if (!row.start_time && !row.end_time) return "終日";
+	if (!row.start_time && !row.end_time) return '終日';
 	if (row.start_time && row.end_time) return `${row.start_time}〜${row.end_time}`;
-	return row.start_time || row.end_time || "終日";
+	return row.start_time || row.end_time || '終日';
 };
 
 const buildScheduleField = (row: ScheduleRow) => {
-	const values = [
-		`**${row.title || "無題"}**`,
-		`時間：${formatScheduleTimeRange(row)}`,
-		`場所：${row.location || "未定"}`,
-	];
+	const values = [`**${row.title || '無題'}**`, `時間：${formatScheduleTimeRange(row)}`, `場所：${row.location || '未定'}`];
 
 	return {
 		name: formatScheduleDateRange(row),
-		value: values.join("\n"),
+		value: values.join('\n'),
 		inline: false,
 	};
 };
@@ -1501,10 +1422,7 @@ const getDiscordEmbedCharacterCount = (embed: DiscordEmbed) =>
 	(embed.title?.length || 0) +
 	(embed.description?.length || 0) +
 	(embed.footer?.text.length || 0) +
-	(embed.fields || []).reduce(
-		(total, field) => total + field.name.length + field.value.length,
-		0
-	);
+	(embed.fields || []).reduce((total, field) => total + field.name.length + field.value.length, 0);
 
 const chunkDiscordEmbedsForMessages = (embeds: DiscordEmbed[]) => {
 	const messages: DiscordEmbed[][] = [];
@@ -1515,8 +1433,7 @@ const chunkDiscordEmbedsForMessages = (embeds: DiscordEmbed[]) => {
 		const embedCharacterCount = getDiscordEmbedCharacterCount(embed);
 		const exceedsMessageLimit =
 			currentMessage.length >= DISCORD_MAX_EMBEDS_PER_MESSAGE ||
-			currentCharacterCount + embedCharacterCount >
-				DISCORD_MAX_EMBED_CHARACTERS_PER_MESSAGE;
+			currentCharacterCount + embedCharacterCount > DISCORD_MAX_EMBED_CHARACTERS_PER_MESSAGE;
 
 		if (currentMessage.length > 0 && exceedsMessageLimit) {
 			messages.push(currentMessage);
@@ -1533,40 +1450,38 @@ const chunkDiscordEmbedsForMessages = (embeds: DiscordEmbed[]) => {
 };
 
 const formatAbsenceTypeWithTime = (row: DailyAttendanceSummaryRow) => {
-	if (row.type === "早退" && row.time_leaving_early) {
+	if (row.type === '早退' && row.time_leaving_early) {
 		return `${row.type}（${row.time_leaving_early}）`;
 	}
 
-	if (row.type === "中抜け" && (row.time_step_out || row.time_return)) {
-		return `${row.type}（${row.time_step_out || ""} ~ ${
-			row.time_return || ""
-		}）`;
+	if (row.type === '中抜け' && (row.time_step_out || row.time_return)) {
+		return `${row.type}（${row.time_step_out || ''} ~ ${row.time_return || ''}）`;
 	}
 
-	return row.type || "";
+	return row.type || '';
 };
 
 const sendDiscordViaApp = async (
 	env: RuntimeEnv,
 	{
-		target = "attendance",
+		target = 'attendance',
 		embeds,
 		content,
 	}: {
-		target?: "attendance" | "meeting";
+		target?: 'attendance' | 'meeting';
 		embeds: DiscordEmbed[];
 		content?: string;
-	}
+	},
 ) => {
-	const url = env.APP_DISCORD_SEND_URL || "https://nb-portal.vercel.app/api/discord-send";
+	const url = env.APP_DISCORD_SEND_URL || 'https://nb-portal.vercel.app/api/discord-send';
 	if (!env.PUSH_API_SECRET) {
-		throw new Error("PUSH_API_SECRET is not configured");
+		throw new Error('PUSH_API_SECRET is not configured');
 	}
 
 	const response = await fetch(url, {
-		method: "POST",
+		method: 'POST',
 		headers: {
-			"Content-Type": "application/json",
+			'Content-Type': 'application/json',
 			Authorization: `Bearer ${env.PUSH_API_SECRET}`,
 		},
 		body: JSON.stringify({
@@ -1585,30 +1500,23 @@ const sendDiscordViaApp = async (
 const buildNextMeetingReminderEmbed = (
 	settings: NextMeetingRow,
 	{
-		title = "次回部会のお知らせ",
-		description = "次回の部会をお知らせします。",
+		title = '次回部会のお知らせ',
+		description = '次回の部会をお知らせします。',
 	}: {
 		title?: string;
 		description?: string;
-	} = {}
+	} = {},
 ): DiscordEmbed => {
-	const updatedAtLabel = settings.updated_at
-		? formatDateTime(settings.updated_at)
-		: null;
-	const footerText = [
-		updatedAtLabel ? `更新 ${updatedAtLabel}` : null,
-		settings.updated_by || null,
-	]
-		.filter(Boolean)
-		.join(" / ");
+	const updatedAtLabel = settings.updated_at ? formatDateTime(settings.updated_at) : null;
+	const footerText = [updatedAtLabel ? `更新 ${updatedAtLabel}` : null, settings.updated_by || null].filter(Boolean).join(' / ');
 
 	return {
 		title,
 		description,
-		color: settings.mode === "DISCORD" ? 0x5865f2 : 0x2ecc71,
+		color: settings.mode === 'DISCORD' ? 0x5865f2 : 0x2ecc71,
 		fields: [
 			{
-				name: "日時",
+				name: '日時',
 				value: formatNextMeetingDateLabel(settings.date, settings.time),
 				inline: false,
 			},
@@ -1617,11 +1525,7 @@ const buildNextMeetingReminderEmbed = (
 	};
 };
 
-const getTodayNextMeetingRow = (
-	env: Env,
-	today: string,
-	mode: "IN_PERSON" | "DISCORD"
-) =>
+const getTodayNextMeetingRow = (env: Env, today: string, mode: 'IN_PERSON' | 'DISCORD') =>
 	env.DB.prepare(
 		`SELECT n.event_id, n.date, n.time, n.mode, n.updated_by, n.updated_at
 		FROM next_meeting_settings n
@@ -1631,15 +1535,12 @@ const getTodayNextMeetingRow = (
 			AND n.mode = ?
 			AND s.date = ?
 			AND s.title = '部会'
-		LIMIT 1`
+		LIMIT 1`,
 	)
 		.bind(today, mode, today)
 		.first<NextMeetingRow>();
 
-const getNextMeetingRoleMention = (env: RuntimeEnv) =>
-	env.DISCORD_MEETING_ROLE_MENTION ||
-	env.NEXT_MEETING_ROLE_MENTION ||
-	"@部員";
+const getNextMeetingRoleMention = (env: RuntimeEnv) => env.DISCORD_MEETING_ROLE_MENTION || env.NEXT_MEETING_ROLE_MENTION || '@部員';
 
 const sendNextMeetingInPersonReminder = async (
 	env: RuntimeEnv,
@@ -1647,21 +1548,21 @@ const sendNextMeetingInPersonReminder = async (
 		title,
 	}: {
 		title: string;
-	}
+	},
 ) => {
 	const today = getJstDateParts().date;
-	const settings = await getTodayNextMeetingRow(env, today, "IN_PERSON");
+	const settings = await getTodayNextMeetingRow(env, today, 'IN_PERSON');
 	if (!settings) {
 		return;
 	}
 
 	await sendDiscordViaApp(env, {
-		target: "meeting",
+		target: 'meeting',
 		content: getNextMeetingRoleMention(env),
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
 				title,
-					description: "本日の部会は対面で行います。",
+				description: '本日の部会は対面で行います。',
 			}),
 		],
 	});
@@ -1669,18 +1570,18 @@ const sendNextMeetingInPersonReminder = async (
 
 const sendNextMeetingEveningReminder = async (env: RuntimeEnv) => {
 	const today = getJstDateParts().date;
-	const settings = await getTodayNextMeetingRow(env, today, "DISCORD");
+	const settings = await getTodayNextMeetingRow(env, today, 'DISCORD');
 	if (!settings) {
 		return;
 	}
 
 	await sendDiscordViaApp(env, {
-		target: "meeting",
+		target: 'meeting',
 		content: getNextMeetingRoleMention(env),
 		embeds: [
 			buildNextMeetingReminderEmbed(settings, {
-					title: "本日のDiscord部会のお知らせ",
-					description: "このあとの部会はDiscordで行います。",
+				title: '本日のDiscord部会のお知らせ',
+				description: 'このあとの部会はDiscordで行います。',
 			}),
 		],
 	});
@@ -1712,7 +1613,7 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 		LEFT JOIN scheduled_participants p ON p.event_id = s.id AND s.attendance_mode = 'ASSIGNED'
 		LEFT JOIN members m ON lower(m.student_number) = p.student_number
 		WHERE s.date = ?
-		ORDER BY s.start_time, s.id, a.submitted_at, p.student_number`
+		ORDER BY s.start_time, s.id, a.submitted_at, p.student_number`,
 	)
 		.bind(date)
 		.all<DailyAttendanceSummaryRow>();
@@ -1730,8 +1631,8 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 	for (const row of rows.results || []) {
 		const group = groups.get(row.event_id) || {
 			title: row.event_title,
-			isAttendanceEvent: row.attendance_mode?.toUpperCase() === "ATTENDANCE",
-			isAssignedEvent: row.attendance_mode === "ASSIGNED",
+			isAttendanceEvent: row.attendance_mode?.toUpperCase() === 'ATTENDANCE',
+			isAssignedEvent: row.attendance_mode === 'ASSIGNED',
 			responses: [],
 		};
 		if (row.type) group.responses.push(row);
@@ -1739,29 +1640,26 @@ const buildDailyAttendanceEmbeds = async (env: Env, date: string) => {
 	}
 
 	return Array.from(groups.values()).flatMap((group) => {
-		const responseLabel = group.isAssignedEvent ? "指定参加者" : group.isAttendanceEvent ? "参加者" : "欠席者";
-		const responseChunks = chunkArray(
-			group.responses,
-			DISCORD_MAX_EMBED_FIELDS
-		);
+		const responseLabel = group.isAssignedEvent ? '出席者' : group.isAttendanceEvent ? '参加者' : '欠席者';
+		const responseChunks = chunkArray(group.responses, DISCORD_MAX_EMBED_FIELDS);
 		if (responseChunks.length === 0) responseChunks.push([]);
 
 		return responseChunks.map((responses, index) => {
 			const fields =
 				responses.length > 0
 					? responses.map((row) => ({
-							name: row.name || "不明",
-							value: group.isAssignedEvent ? "参加予定" : formatAbsenceTypeWithTime(row),
+							name: row.name || '不明',
+							value: group.isAssignedEvent ? '参加予定' : formatAbsenceTypeWithTime(row),
 							inline: true,
 						}))
 					: [
 							{
-								name: "情報",
-								value: group.isAssignedEvent ? "参加者は指定されていません" : `${responseLabel}はいません`,
+								name: '情報',
+								value: `${responseLabel}はいません`,
 								inline: false,
 							},
 						];
-			const continuationLabel = index > 0 ? `（${index + 1}）` : "";
+			const continuationLabel = index > 0 ? `（${index + 1}）` : '';
 
 			return {
 				title: `${dateLabel} ${group.title} ${responseLabel}一覧${continuationLabel}`,
@@ -1779,14 +1677,13 @@ const sendTodayAbsences = async (env: RuntimeEnv) => {
 
 	for (const messageEmbeds of chunkDiscordEmbedsForMessages(embeds)) {
 		await sendDiscordViaApp(env, {
-			target: "attendance",
+			target: 'attendance',
 			embeds: messageEmbeds,
 		});
 	}
 };
 
-const getCronExecutionId = (controller: ScheduledController) =>
-	`${controller.cron}:${controller.scheduledTime}`;
+const getCronExecutionId = (controller: ScheduledController) => `${controller.cron}:${controller.scheduledTime}`;
 
 const isStaleCronExecution = (updatedAt: string | null) => {
 	if (!updatedAt) return false;
@@ -1795,19 +1692,12 @@ const isStaleCronExecution = (updatedAt: string | null) => {
 	return Date.now() - updatedAtTime > 30 * 60 * 1000;
 };
 
-const claimCronExecution = async (
-	controller: ScheduledController,
-	env: RuntimeEnv
-) => {
+const claimCronExecution = async (controller: ScheduledController, env: RuntimeEnv) => {
 	const id = getCronExecutionId(controller);
-	const existing = await env.DB.prepare(
-		"SELECT status, updated_at FROM cron_executions WHERE id = ?"
-	)
-		.bind(id)
-		.first<CronExecutionRow>();
+	const existing = await env.DB.prepare('SELECT status, updated_at FROM cron_executions WHERE id = ?').bind(id).first<CronExecutionRow>();
 
-	if (existing?.status === "completed") return false;
-	if (existing?.status === "running" && !isStaleCronExecution(existing.updated_at)) {
+	if (existing?.status === 'completed') return false;
+	if (existing?.status === 'running' && !isStaleCronExecution(existing.updated_at)) {
 		return false;
 	}
 
@@ -1820,7 +1710,7 @@ const claimCronExecution = async (
 				completed_at = NULL,
 				error = NULL,
 				updated_at = ${JST_SQL_TIMESTAMP}
-			WHERE id = ?`
+			WHERE id = ?`,
 		)
 			.bind(id)
 			.run();
@@ -1829,41 +1719,34 @@ const claimCronExecution = async (
 
 	await env.DB.prepare(
 		`INSERT INTO cron_executions (id, cron, scheduled_time, status)
-		VALUES (?, ?, ?, 'running')`
+		VALUES (?, ?, ?, 'running')`,
 	)
 		.bind(id, controller.cron, scheduledTime)
 		.run();
 	return true;
 };
 
-const markCronExecutionCompleted = async (
-	controller: ScheduledController,
-	env: RuntimeEnv
-) => {
+const markCronExecutionCompleted = async (controller: ScheduledController, env: RuntimeEnv) => {
 	await env.DB.prepare(
 		`UPDATE cron_executions
 		SET status = 'completed',
 			completed_at = ${JST_SQL_TIMESTAMP},
 			error = NULL,
 			updated_at = ${JST_SQL_TIMESTAMP}
-		WHERE id = ?`
+		WHERE id = ?`,
 	)
 		.bind(getCronExecutionId(controller))
 		.run();
 };
 
-const markCronExecutionFailed = async (
-	controller: ScheduledController,
-	env: RuntimeEnv,
-	caught: unknown
-) => {
+const markCronExecutionFailed = async (controller: ScheduledController, env: RuntimeEnv, caught: unknown) => {
 	const message = caught instanceof Error ? caught.message : String(caught);
 	await env.DB.prepare(
 		`UPDATE cron_executions
 		SET status = 'failed',
 			error = ?,
 			updated_at = ${JST_SQL_TIMESTAMP}
-		WHERE id = ?`
+		WHERE id = ?`,
 	)
 		.bind(message.slice(0, 1000), getCronExecutionId(controller))
 		.run();
@@ -1878,44 +1761,41 @@ const updateSchedulePastState = async (env: RuntimeEnv) => {
 				WHEN is_past != CASE WHEN COALESCE(end_date, date) < ? THEN 1 ELSE 0 END
 				THEN ${JST_SQL_TIMESTAMP}
 				ELSE updated_at
-			END`
+			END`,
 	)
 		.bind(today, today)
 		.run();
 };
 
 const runScheduledTasks = async (controller: ScheduledController, env: RuntimeEnv) => {
-	if (controller.cron === "0 15 * * *") {
+	if (controller.cron === '0 15 * * *') {
 		await updateSchedulePastState(env);
 		return;
 	}
 
-	if (controller.cron === "0 23 * * *") {
+	if (controller.cron === '0 23 * * *') {
 		await Promise.all([
 			sendTodayAbsences(env),
 			sendNextMeetingInPersonReminder(env, {
-				title: "本日の対面部会のお知らせ",
+				title: '本日の対面部会のお知らせ',
 			}),
 		]);
 		return;
 	}
 
-	if (controller.cron === "30 3 * * *") {
+	if (controller.cron === '30 3 * * *') {
 		await sendNextMeetingInPersonReminder(env, {
-			title: "本日の対面部会のお知らせ",
+			title: '本日の対面部会のお知らせ',
 		});
 		return;
 	}
 
-	if (controller.cron === "0 9 * * *") {
+	if (controller.cron === '0 9 * * *') {
 		await sendNextMeetingEveningReminder(env);
 	}
 };
 
-const runScheduledWithState = async (
-	controller: ScheduledController,
-	env: RuntimeEnv
-) => {
+const runScheduledWithState = async (controller: ScheduledController, env: RuntimeEnv) => {
 	const claimed = await claimCronExecution(controller, env);
 	if (!claimed) {
 		controller.noRetry();
@@ -1932,7 +1812,7 @@ const runScheduledWithState = async (
 };
 
 const parseDiscordDateOption = (value: unknown) => {
-	const date = String(value ?? "").trim();
+	const date = String(value ?? '').trim();
 	return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 };
 
@@ -1950,19 +1830,17 @@ const getScheduleRowsForDiscord = async (env: Env, date: string | null) => {
 		WHERE COALESCE(end_date, date) >= ?
 		ORDER BY date, start_time, id`;
 	const statement = env.DB.prepare(query);
-	const rows = date
-		? await statement.bind(date, date).all<ScheduleRow>()
-		: await statement.bind(getJstDateParts().date).all<ScheduleRow>();
+	const rows = date ? await statement.bind(date, date).all<ScheduleRow>() : await statement.bind(getJstDateParts().date).all<ScheduleRow>();
 	return rows.results || [];
 };
 
 const buildScheduleEmbeds = (rows: ScheduleRow[], date: string | null) => {
-	const title = date ? `${getDateLabel(date)}の予定` : "今後の予定";
+	const title = date ? `${getDateLabel(date)}の予定` : '今後の予定';
 	if (rows.length === 0) {
 		return [
 			{
 				title,
-				description: "該当する予定はありません",
+				description: '該当する予定はありません',
 				color: 0x94a3b8,
 			},
 		] satisfies DiscordEmbed[];
@@ -1974,26 +1852,21 @@ const buildScheduleEmbeds = (rows: ScheduleRow[], date: string | null) => {
 
 	return chunks.map((chunk, index) => ({
 		title: index === 0 ? title : `${title} (${index + 1})`,
-		description:
-				index === 0 && !date ? "今後の予定を日付順に表示します" : undefined,
+		description: index === 0 && !date ? '今後の予定を日付順に表示します' : undefined,
 		color: 0x0ea5e9,
 		fields: chunk,
 		...(omittedCount > 0 && index === chunks.length - 1
-				? { footer: { text: `Discordの表示制限により、ほか${omittedCount}件を省略しました` } }
+			? { footer: { text: `Discordの表示制限により、ほか${omittedCount}件を省略しました` } }
 			: {}),
 	})) satisfies DiscordEmbed[];
 };
 
-const handleDiscordAbsencesCommand = async (
-	options: DiscordInteractionOption[] | undefined,
-	env: RuntimeEnv
-) => {
-	const dateValue =
-		getDiscordOptionValue(options, "date") ?? getDiscordOptionValue(options, "日付");
+const handleDiscordAbsencesCommand = async (options: DiscordInteractionOption[] | undefined, env: RuntimeEnv) => {
+	const dateValue = getDiscordOptionValue(options, 'date') ?? getDiscordOptionValue(options, '日付');
 	const date = dateValue ? parseDiscordDateOption(dateValue) : getJstDateParts().date;
 	if (!date) {
 		return discordMessage({
-				content: "日付はYYYY-MM-DD形式で指定してください。",
+			content: '日付はYYYY-MM-DD形式で指定してください。',
 		});
 	}
 
@@ -2003,10 +1876,7 @@ const handleDiscordAbsencesCommand = async (
 	const omittedEmbedCount = attendanceEmbeds.length - displayedEmbeds.length;
 	return discordMessage({
 		ephemeral: !getDiscordPublicOption(options),
-		content:
-			omittedEmbedCount > 0
-					? `Discordの表示制限により、ほか${omittedEmbedCount}件の一覧を省略しました。`
-				: undefined,
+		content: omittedEmbedCount > 0 ? `Discordの表示制限により、ほか${omittedEmbedCount}件の一覧を省略しました。` : undefined,
 		embeds:
 			displayedEmbeds.length > 0
 				? displayedEmbeds
@@ -2020,16 +1890,12 @@ const handleDiscordAbsencesCommand = async (
 	});
 };
 
-const handleDiscordScheduleCommand = async (
-	options: DiscordInteractionOption[] | undefined,
-	env: RuntimeEnv
-) => {
-	const dateValue =
-		getDiscordOptionValue(options, "date") ?? getDiscordOptionValue(options, "日付");
+const handleDiscordScheduleCommand = async (options: DiscordInteractionOption[] | undefined, env: RuntimeEnv) => {
+	const dateValue = getDiscordOptionValue(options, 'date') ?? getDiscordOptionValue(options, '日付');
 	const date = dateValue ? parseDiscordDateOption(dateValue) : null;
 	if (dateValue && !date) {
 		return discordMessage({
-				content: "日付はYYYY-MM-DD形式で指定してください。",
+			content: '日付はYYYY-MM-DD形式で指定してください。',
 		});
 	}
 
@@ -2040,41 +1906,38 @@ const handleDiscordScheduleCommand = async (
 	});
 };
 
-const handleDiscordApplicationCommand = async (
-	interaction: DiscordInteraction,
-	env: RuntimeEnv
-) => {
+const handleDiscordApplicationCommand = async (interaction: DiscordInteraction, env: RuntimeEnv) => {
 	if (!isAllowedDiscordGuild(interaction, env)) {
-		return discordMessage({ content: "このサーバーでは利用できません。" });
+		return discordMessage({ content: 'このサーバーでは利用できません。' });
 	}
 
 	if (!hasDiscordMemberRole(interaction, env)) {
 		return discordMessage({
-			content: "このコマンドを実行する権限がありません。",
+			content: 'このコマンドを実行する権限がありません。',
 		});
 	}
 
 	const commandName = interaction.data?.name;
 	switch (commandName) {
-		case "absences":
-		case "欠席者":
-		case "欠席":
-		case "出欠状況":
+		case 'absences':
+		case '欠席者':
+		case '欠席':
+		case '出欠状況':
 			return handleDiscordAbsencesCommand(interaction.data?.options, env);
-		case "schedule":
-		case "予定":
+		case 'schedule':
+		case '予定':
 			return handleDiscordScheduleCommand(interaction.data?.options, env);
 		default:
-			return discordMessage({ content: "未対応のコマンドです。" });
+			return discordMessage({ content: '未対応のコマンドです。' });
 	}
 };
 
 const handleDiscordInteraction = async (request: Request, env: RuntimeEnv) => {
-	if (request.method !== "POST") return error("Method not allowed", 405);
+	if (request.method !== 'POST') return error('Method not allowed', 405);
 
 	const bodyText = await request.text();
 	const verified = await verifyDiscordSignature(request, bodyText, env);
-	if (!verified) return error("Invalid Discord request signature", 401);
+	if (!verified) return error('Invalid Discord request signature', 401);
 
 	try {
 		const interaction = JSON.parse(bodyText) as DiscordInteraction;
@@ -2083,21 +1946,21 @@ const handleDiscordInteraction = async (request: Request, env: RuntimeEnv) => {
 			return await handleDiscordApplicationCommand(interaction, env);
 		}
 
-		return discordMessage({ content: "未対応の操作です。" });
+		return discordMessage({ content: '未対応の操作です。' });
 	} catch (caught) {
-		console.error("Discord interaction error:", caught);
+		console.error('Discord interaction error:', caught);
 		return discordMessage({
-			content: "コマンドを実行できませんでした。時間をおいてもう一度お試しください。",
+			content: 'コマンドを実行できませんでした。時間をおいてもう一度お試しください。',
 		});
 	}
 };
 
 const health = async (env: Env) => {
-	await env.DB.prepare("SELECT 1").first();
+	await env.DB.prepare('SELECT 1').first();
 
 	return ok({
-		status: "ok",
-		database: "connected",
+		status: 'ok',
+		database: 'connected',
 	});
 };
 
@@ -2105,36 +1968,36 @@ const routeGet = (url: URL, env: Env, request: Request) => {
 	const path = getRequestPath(url);
 
 	switch (path) {
-		case "health":
+		case 'health':
 			return health(env);
-		case "members":
+		case 'members':
 			return getMembers(env);
-		case "verify-member":
+		case 'verify-member':
 			return verifyMember(url, env);
-		case "session-member-profile":
+		case 'session-member-profile':
 			return refreshSessionMemberProfile(url, env, request);
-		case "schedules":
+		case 'schedules':
 			return getSchedules(env);
-		case "schedule-participants":
-			return getScheduledParticipants(env.DB, url.searchParams.get("eventId") || "");
-		case "absences":
+		case 'schedule-participants':
+			return getScheduledParticipants(env.DB, url.searchParams.get('eventId') || '');
+		case 'absences':
 			return getAbsences(url, env);
-		case "event-absences":
+		case 'event-absences':
 			return getEventAbsences(url, env);
-		case "event-attendance":
+		case 'event-attendance':
 			return getEventAttendance(url, env);
-		case "next-meeting":
+		case 'next-meeting':
 			return getNextMeeting(env);
-		case "dashboard-data":
+		case 'dashboard-data':
 			return getDashboardData(env);
-		case "notifications":
+		case 'notifications':
 			return getNotifications(url, env);
-		case "tasks":
+		case 'tasks':
 			return getTasks(env);
-		case "push-subscriptions":
+		case 'push-subscriptions':
 			return getPushSubscriptions(env);
-		case "items":
-			return ok([], { count: 0, message: "Items are not migrated to D1" });
+		case 'items':
+			return ok([], { count: 0, message: 'Items are not migrated to D1' });
 		default:
 			return notFound();
 	}
@@ -2144,40 +2007,40 @@ const routePost = (request: Request, url: URL, env: Env) => {
 	const path = getRequestPath(url);
 
 	switch (path) {
-		case "members":
+		case 'members':
 			return createMember(request, env);
-		case "members/update":
+		case 'members/update':
 			return updateMember(request, env);
-		case "members/delete":
+		case 'members/delete':
 			return deleteMember(request, env);
-		case "schedules":
+		case 'schedules':
 			return createSchedule(request, env);
-		case "schedule-participants":
-			return getBody(request).then(body => updateScheduledParticipants(env.DB, body));
-		case "schedules/update":
+		case 'schedule-participants':
+			return getBody(request).then((body) => updateScheduledParticipants(env.DB, body));
+		case 'schedules/update':
 			return updateSchedule(request, env);
-		case "schedules/delete":
+		case 'schedules/delete':
 			return deleteSchedule(request, env);
-		case "absences":
-		case "absences/update":
+		case 'absences':
+		case 'absences/update':
 			return upsertAbsence(request, env);
-		case "absences/delete":
+		case 'absences/delete':
 			return deleteAbsence(request, env);
-		case "event-attendance":
-		case "event-attendance/update":
+		case 'event-attendance':
+		case 'event-attendance/update':
 			return replaceEventAttendance(request, env);
-		case "next-meeting":
+		case 'next-meeting':
 			return updateNextMeeting(request, env);
-		case "tasks":
-		case "tasks/update":
+		case 'tasks':
+		case 'tasks/update':
 			return upsertTask(request, env);
-		case "tasks/delete":
+		case 'tasks/delete':
 			return deleteTask(request, env);
-		case "push-subscribe":
+		case 'push-subscribe':
 			return savePushSubscription(request, env);
-		case "push-unsubscribe":
+		case 'push-unsubscribe':
 			return deletePushSubscription(request, env);
-		case "access-logs":
+		case 'access-logs':
 			return saveAccessLogs(request, env);
 		default:
 			return notFound();
@@ -2189,41 +2052,37 @@ export default {
 		const url = new URL(request.url);
 
 		try {
-			if (url.pathname === "/discord/interactions") {
+			if (url.pathname === '/discord/interactions') {
 				return handleDiscordInteraction(request, env as RuntimeEnv);
 			}
 
-			const authorizationError = await authorizeBackendRequest(
-				request,
-				url,
-				env as RuntimeEnv
-			);
+			const authorizationError = await authorizeBackendRequest(request, url, env as RuntimeEnv);
 			if (authorizationError) return authorizationError;
 
-			if (request.method === "GET") {
+			if (request.method === 'GET') {
 				return await routeGet(url, env, request);
 			}
 
-			if (request.method === "POST") {
+			if (request.method === 'POST') {
 				return await routePost(request, url, env);
 			}
 
-			return error("Method not allowed", 405);
+			return error('Method not allowed', 405);
 		} catch (caught) {
-			console.error("Worker API error", caught);
-			return error(caught instanceof Error ? caught.message : "Internal error");
+			console.error('Worker API error', caught);
+			return error(caught instanceof Error ? caught.message : 'Internal error');
 		}
 	},
 	async scheduled(controller, env, ctx): Promise<void> {
 		ctx.waitUntil(
 			runScheduledWithState(controller, env as RuntimeEnv).catch((caught) => {
-				console.error("Scheduled task failed", {
+				console.error('Scheduled task failed', {
 					cron: controller.cron,
 					scheduledTime: controller.scheduledTime,
 					error: caught instanceof Error ? caught.message : String(caught),
 				});
 				throw caught;
-			})
+			}),
 		);
 	},
 } satisfies ExportedHandler<Env>;

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
     normalizeMemberPermission,
     normalizeScheduleAttendanceMode,
+    SCHEDULE_ATTENDANCE_MODE_LABELS,
 } from "./api";
 
 describe("権限の正規化", () => {
@@ -28,6 +29,7 @@ describe("権限の正規化", () => {
 describe("予定の参加形式", () => {
     it("参加者指定を全員参加に変換しない", () => {
         expect(normalizeScheduleAttendanceMode(" assigned ")).toBe("ASSIGNED");
+        expect(SCHEDULE_ATTENDANCE_MODE_LABELS.ASSIGNED).toBe("出席者");
     });
     it("ATTENDANCEだけを希望者参加として扱う", () => {
         expect(normalizeScheduleAttendanceMode(" attendance ")).toBe(
