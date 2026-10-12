@@ -55,16 +55,36 @@ const response = (data: unknown, status = 200) =>
 
 describe("ScheduleCard", () => {
     it("参加者指定は指定された名前だけを表示し、自己申告や当日確認を表示しない", async () => {
-        vi.mocked(fetch).mockResolvedValue(response({ success: true, data: {
-            eventId: "EVENT-001", revision: 0, canManage: false,
-            participants: [{ studentNumber: "b234567", displayName: "はな" }],
-        } }));
-        render(<ScheduleCard {...baseProps} attendanceMode="ASSIGNED" />);
+        vi.mocked(fetch).mockResolvedValue(
+            response({
+                success: true,
+                data: {
+                    eventId: "EVENT-001",
+                    revision: 0,
+                    canManage: false,
+                    participants: [
+                        { studentNumber: "b234567", displayName: "はな" },
+                    ],
+                },
+            })
+        );
+        render(
+            <ScheduleCard
+                {...baseProps}
+                hideCard={false}
+                attendanceMode="ASSIGNED"
+            />
+        );
+        expect(
+            await screen.findByText("参加者指定", { selector: ".badge" })
+        ).toBeInTheDocument();
         expect(await screen.findByText("はな")).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "欠席連絡" })).toBeNull();
         expect(screen.queryByRole("button", { name: "参加登録" })).toBeNull();
         expect(screen.queryByRole("button", { name: "閲覧・編集" })).toBeNull();
-        expect(screen.queryByRole("button", { name: "参加者を編集" })).toBeNull();
+        expect(
+            screen.queryByRole("button", { name: "参加者を編集" })
+        ).toBeNull();
     });
 
     beforeEach(() => {
@@ -80,15 +100,21 @@ describe("ScheduleCard", () => {
 
     it("予定行に共通のホバーアニメーション構造を適用する", () => {
         const { container } = render(
-            <ScheduleCard {...baseProps} hideCard={false} />
+            <ScheduleCard
+                {...baseProps}
+                hideCard={false}
+            />
         );
 
-        expect(screen.getAllByText("夏季活動")[0].closest(".app-event-row"))
-            .toBeInTheDocument();
-        expect(container.querySelector(".app-event-row-accent"))
-            .toBeInTheDocument();
-        expect(container.querySelector(".app-event-row-content"))
-            .toBeInTheDocument();
+        expect(
+            screen.getAllByText("夏季活動")[0].closest(".app-event-row")
+        ).toBeInTheDocument();
+        expect(
+            container.querySelector(".app-event-row-accent")
+        ).toBeInTheDocument();
+        expect(
+            container.querySelector(".app-event-row-content")
+        ).toBeInTheDocument();
     });
 
     it("希望者参加の参加登録を出席連絡として送信する", async () => {
@@ -102,13 +128,21 @@ describe("ScheduleCard", () => {
                 },
             })
         );
-        render(<ScheduleCard {...baseProps} attendanceMode="ATTENDANCE" />);
+        render(
+            <ScheduleCard
+                {...baseProps}
+                attendanceMode="ATTENDANCE"
+            />
+        );
 
         expect(screen.getByText("参加者はいません")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "参加登録" }));
-        fireEvent.change(screen.getByPlaceholderText("補足があれば入力してください"), {
-            target: { value: "途中から参加" },
-        });
+        fireEvent.change(
+            screen.getByPlaceholderText("補足があれば入力してください"),
+            {
+                target: { value: "途中から参加" },
+            }
+        );
         fireEvent.click(screen.getByRole("button", { name: "送信" }));
 
         await waitFor(() =>
@@ -135,16 +169,24 @@ describe("ScheduleCard", () => {
         vi.mocked(fetch).mockResolvedValueOnce(
             response({ success: true, data: { type: "遅刻", reason: "授業" } })
         );
-        render(<ScheduleCard {...baseProps} attendanceMode="ABSENCE" />);
+        render(
+            <ScheduleCard
+                {...baseProps}
+                attendanceMode="ABSENCE"
+            />
+        );
 
         fireEvent.click(screen.getByRole("button", { name: "欠席連絡" }));
         const dialog = screen.getByRole("dialog", { name: "夏季活動" });
         const selects = dialog.querySelectorAll("select");
         fireEvent.change(selects[0], { target: { value: "遅刻" } });
         fireEvent.change(selects[1], { target: { value: "授業" } });
-        fireEvent.change(screen.getByPlaceholderText("補足があれば入力してください"), {
-            target: { value: "授業後に向かいます" },
-        });
+        fireEvent.change(
+            screen.getByPlaceholderText("補足があれば入力してください"),
+            {
+                target: { value: "授業後に向かいます" },
+            }
+        );
         fireEvent.click(screen.getByRole("button", { name: "送信" }));
 
         await waitFor(() => {
@@ -162,7 +204,9 @@ describe("ScheduleCard", () => {
                 reasonDetail: "授業後に向かいます",
             });
         });
-        expect(await screen.findByText("欠席連絡を送信しました")).toBeInTheDocument();
+        expect(
+            await screen.findByText("欠席連絡を送信しました")
+        ).toBeInTheDocument();
     });
 
     it("当日の出席者からOB・OGを除外し、選択した学籍番号を保存する", async () => {
@@ -173,11 +217,29 @@ describe("ScheduleCard", () => {
                 members: [
                     {
                         rowNumber: 2,
-                        values: ["a123456", "放研 太郎", "たろう", "", "", "", "", "NORMAL"],
+                        values: [
+                            "a123456",
+                            "放研 太郎",
+                            "たろう",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "NORMAL",
+                        ],
                     },
                     {
                         rowNumber: 3,
-                        values: ["b234567", "放研 花子", "はな", "", "", "", "", "OBOG"],
+                        values: [
+                            "b234567",
+                            "放研 花子",
+                            "はな",
+                            "",
+                            "",
+                            "",
+                            "",
+                            "OBOG",
+                        ],
                     },
                 ],
             },
@@ -205,7 +267,9 @@ describe("ScheduleCard", () => {
                 screen.queryByPlaceholderText("名前・学籍番号で検索")
             ).toBeNull()
         );
-        expect(screen.getByRole("button", { name: "閲覧・編集" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", { name: "閲覧・編集" })
+        ).toBeInTheDocument();
         expect(screen.getByText("たろう")).toBeInTheDocument();
     });
 
@@ -221,6 +285,8 @@ describe("ScheduleCard", () => {
         expect(
             screen.getByText("出欠連絡期限は2020/01/01 08:00です。")
         ).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "受付時間外" })).toBeDisabled();
+        expect(
+            screen.getByRole("button", { name: "受付時間外" })
+        ).toBeDisabled();
     });
 });

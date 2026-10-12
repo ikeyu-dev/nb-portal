@@ -165,7 +165,9 @@ const resolveAttendanceMembers = (
             const nickname = String(member.values[2] ?? "").trim();
             const permission = String(member.values[7] ?? "").trim();
             const displayName =
-                nickname && nickname !== "---" ? nickname : name || studentNumber;
+                nickname && nickname !== "---"
+                    ? nickname
+                    : name || studentNumber;
 
             return {
                 studentNumber,
@@ -226,20 +228,18 @@ export default function ScheduleCard({
     hideCard = false,
     color = "#2a83a2",
 }: ScheduleCardProps) {
-    const {
-        modal,
-        getModalParam,
-        openModal,
-        replaceModal,
-        closeModal,
-    } = useUrlModal();
+    const { modal, getModalParam, openModal, replaceModal, closeModal } =
+        useUrlModal();
     const ownsUrlModal = getModalParam("event") === eventId;
     const isAssignedEvent = attendanceMode === "ASSIGNED";
     const isAttendanceConfirmOpen =
         !isAssignedEvent && ownsUrlModal && modal === "response-confirm";
-    const isAbsenceFormOpen = !isAssignedEvent && ownsUrlModal && modal === "response-form";
-    const isDeleteConfirmOpen = !isAssignedEvent && ownsUrlModal && modal === "response-delete";
-    const isEventAttendanceOpen = !isAssignedEvent && ownsUrlModal && modal === "event-attendance";
+    const isAbsenceFormOpen =
+        !isAssignedEvent && ownsUrlModal && modal === "response-form";
+    const isDeleteConfirmOpen =
+        !isAssignedEvent && ownsUrlModal && modal === "response-delete";
+    const isEventAttendanceOpen =
+        !isAssignedEvent && ownsUrlModal && modal === "event-attendance";
     const isModalOpen =
         ownsUrlModal &&
         [
@@ -336,9 +336,7 @@ export default function ScheduleCard({
     const checkedAttendanceOnlyMembers = useMemo(
         () =>
             eventAttendanceRecords.map((record) => {
-                const studentNumber = record.studentNumber
-                    .trim()
-                    .toLowerCase();
+                const studentNumber = record.studentNumber.trim().toLowerCase();
                 const member = attendanceMembersById.get(studentNumber);
                 return {
                     studentNumber,
@@ -367,18 +365,17 @@ export default function ScheduleCard({
                 .includes(query)
         );
     }, [eventAttendanceMembers, eventAttendanceSearch]);
-    const ownResponse =
-        normalizedStudentNumber
-            ? displayedAbsences
-                  .map(getAbsenceValues)
-                  .filter(
-                      (absence) =>
-                          absence.eventId === eventId &&
-                          absence.studentNumber.trim().toLowerCase() ===
-                              normalizedStudentNumber
-                  )
-                  .at(-1) || null
-            : null;
+    const ownResponse = normalizedStudentNumber
+        ? displayedAbsences
+              .map(getAbsenceValues)
+              .filter(
+                  (absence) =>
+                      absence.eventId === eventId &&
+                      absence.studentNumber.trim().toLowerCase() ===
+                          normalizedStudentNumber
+              )
+              .at(-1) || null
+        : null;
 
     useEffect(() => {
         if (currentStudentNumber || currentDisplayName) {
@@ -592,9 +589,7 @@ export default function ScheduleCard({
 
     const saveEventAttendance = async () => {
         if (!canSaveEventAttendance) {
-            setEventAttendanceMessage(
-                "現在、出席確認を保存できません。"
-            );
+            setEventAttendanceMessage("現在、出席確認を保存できません。");
             return;
         }
 
@@ -618,10 +613,15 @@ export default function ScheduleCard({
                     return {
                         eventId,
                         studentNumber,
-                        name: member?.name || member?.displayName || studentNumber,
+                        name:
+                            member?.name ||
+                            member?.displayName ||
+                            studentNumber,
                         nickname: member?.nickname || null,
                         displayName:
-                            member?.displayName || member?.name || studentNumber,
+                            member?.displayName ||
+                            member?.name ||
+                            studentNumber,
                         permission: member?.permission || "",
                         checkedBy: normalizedStudentNumber || null,
                         checkedAt: now,
@@ -758,15 +758,16 @@ export default function ScheduleCard({
                     reasonDetail: absenceForm.reasonDetail || undefined,
                     timeStepOut: absenceForm.timeStepOut || undefined,
                     timeReturn: absenceForm.timeReturn || undefined,
-                    timeLeavingEarly:
-                        absenceForm.timeLeavingEarly || undefined,
+                    timeLeavingEarly: absenceForm.timeLeavingEarly || undefined,
                 }),
             });
             const result =
                 (await response.json()) as ApiResponse<AbsenceMutationData>;
 
             if (!response.ok || result?.success !== true) {
-                throw new Error(result?.error || "欠席連絡を送信できませんでした");
+                throw new Error(
+                    result?.error || "欠席連絡を送信できませんでした"
+                );
             }
 
             updateLocalResponse({
@@ -777,14 +778,17 @@ export default function ScheduleCard({
                 reason: result.data?.reason || absenceForm.reasonCategory,
                 reasonDetail:
                     result.data?.reasonDetail || absenceForm.reasonDetail || "",
-                timeStepOut: result.data?.timeStepOut || absenceForm.timeStepOut,
+                timeStepOut:
+                    result.data?.timeStepOut || absenceForm.timeStepOut,
                 timeReturn: result.data?.timeReturn || absenceForm.timeReturn,
                 timeLeavingEarly:
                     result.data?.timeLeavingEarly ||
                     absenceForm.timeLeavingEarly,
             });
             setAbsenceSubmitMessage(
-                ownResponse ? "欠席連絡を更新しました" : "欠席連絡を送信しました"
+                ownResponse
+                    ? "欠席連絡を更新しました"
+                    : "欠席連絡を送信しました"
             );
             resetAbsenceForm();
             replaceModal("schedule-response", { event: eventId });
@@ -817,7 +821,9 @@ export default function ScheduleCard({
             const result = (await response.json()) as ApiResponse<null>;
 
             if (!response.ok || result?.success !== true) {
-                throw new Error(result?.error || "出欠連絡を削除できませんでした");
+                throw new Error(
+                    result?.error || "出欠連絡を削除できませんでした"
+                );
             }
 
             removeLocalResponse();
@@ -872,11 +878,11 @@ export default function ScheduleCard({
                                     <span
                                         className={`badge badge-outline badge-sm ${attendanceModeBadgeClass}`}
                                     >
-                                        {
-                                            SCHEDULE_ATTENDANCE_MODE_LABELS[
-                                                normalizedAttendanceMode
-                                            ]
-                                        }
+                                        {normalizedAttendanceMode === "ASSIGNED"
+                                            ? "参加者指定"
+                                            : SCHEDULE_ATTENDANCE_MODE_LABELS[
+                                                  normalizedAttendanceMode
+                                              ]}
                                     </span>
                                 </div>
                                 {(where || dateLabel || timeLabel) && (
@@ -923,631 +929,592 @@ export default function ScheduleCard({
 
             {/* Modal */}
             <AppModal
-                    open={isModalOpen}
-                    onClose={handleClose}
-                    ariaLabel={title}
-                    boxClassName={`max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)] ${
-                            isEventAttendanceOpen
-                                ? "w-[min(calc(100vw-2rem),46rem)] max-w-none"
-                            : isAttendanceConfirmOpen || isDeleteConfirmOpen
-                                ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
-                                : "max-w-2xl"
-                        }`}
+                open={isModalOpen}
+                onClose={handleClose}
+                ariaLabel={title}
+                boxClassName={`max-h-[calc(100dvh-8rem)] overflow-y-auto p-6 sm:max-h-[calc(100dvh-10rem)] ${
+                    isEventAttendanceOpen
+                        ? "w-[min(calc(100vw-2rem),46rem)] max-w-none"
+                        : isAttendanceConfirmOpen || isDeleteConfirmOpen
+                          ? "w-[min(calc(100vw-2rem),34rem)] max-w-none"
+                          : "max-w-2xl"
+                }`}
+            >
+                <button
+                    onClick={handleClose}
+                    className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
                 >
-                        <button
-                            onClick={handleClose}
-                            className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
-                        >
-                            ✕
-                        </button>
-                        <h3
-                            className="font-bold mb-4 flex items-center gap-3"
-                            style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
-                        >
-                            {isAttendanceConfirmOpen
-                                ? "参加登録"
-                                : isDeleteConfirmOpen
-                                  ? isAttendanceEvent
-                                      ? "参加登録の削除"
-                                      : "欠席連絡の削除"
-                                : isAbsenceFormOpen
-                                  ? "欠席連絡"
-                                : isEventAttendanceOpen
-                                  ? "出席確認"
-                                  : title}
-                        </h3>
-                        {isAttendanceConfirmOpen ? (
-                            <>
-                                <div className="mb-5">
-                                    <p className="text-base font-medium">
-                                        {title}に出席します。
+                    ✕
+                </button>
+                <h3
+                    className="font-bold mb-4 flex items-center gap-3"
+                    style={{ fontSize: "clamp(1.25rem, 3vw, 1.5rem)" }}
+                >
+                    {isAttendanceConfirmOpen
+                        ? "参加登録"
+                        : isDeleteConfirmOpen
+                          ? isAttendanceEvent
+                              ? "参加登録の削除"
+                              : "欠席連絡の削除"
+                          : isAbsenceFormOpen
+                            ? "欠席連絡"
+                            : isEventAttendanceOpen
+                              ? "出席確認"
+                              : title}
+                </h3>
+                {isAttendanceConfirmOpen ? (
+                    <>
+                        <div className="mb-5">
+                            <p className="text-base font-medium">
+                                {title}に出席します。
+                            </p>
+                            {attendanceDateTimeLabel && (
+                                <p className="mt-1 text-sm text-base-content/70">
+                                    {attendanceDateTimeLabel}
+                                </p>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <span className="label-text">備考（任意）</span>
+                            <textarea
+                                className="textarea textarea-bordered min-h-24 w-full"
+                                value={attendanceNote}
+                                onChange={(event) =>
+                                    setAttendanceNote(event.target.value)
+                                }
+                                placeholder="補足があれば入力してください"
+                                maxLength={500}
+                                disabled={isAttendanceSubmitting}
+                            />
+                        </div>
+                        {attendanceSubmitMessage && (
+                            <div className="alert alert-error mt-4">
+                                <span>{attendanceSubmitMessage}</span>
+                            </div>
+                        )}
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={closeAttendanceConfirm}
+                                disabled={isAttendanceSubmitting}
+                            >
+                                キャンセル
+                            </button>
+                            <AsyncButton
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => void submitAttendance()}
+                                loading={isAttendanceSubmitting}
+                                loadingLabel="送信中"
+                            >
+                                送信
+                            </AsyncButton>
+                        </div>
+                    </>
+                ) : isDeleteConfirmOpen ? (
+                    <>
+                        <div className="space-y-3">
+                            <p className="text-base font-medium">
+                                {`自分の${isAttendanceEvent ? "参加登録" : "欠席連絡"}を削除しますか？`}
+                            </p>
+                            <p className="text-sm text-base-content/70">
+                                この操作は取り消せません。
+                            </p>
+                        </div>
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={closeDeleteConfirm}
+                                disabled={isDeletingResponse}
+                            >
+                                キャンセル
+                            </button>
+                            <AsyncButton
+                                type="button"
+                                className="btn btn-error"
+                                onClick={() => void deleteResponse()}
+                                loading={isDeletingResponse}
+                                loadingLabel="削除中"
+                            >
+                                削除
+                            </AsyncButton>
+                        </div>
+                    </>
+                ) : isEventAttendanceOpen ? (
+                    <div className="space-y-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                                <p className="font-semibold text-base-content">
+                                    {title}
+                                </p>
+                                {attendanceDateTimeLabel && (
+                                    <p className="mt-1 text-sm text-base-content/70">
+                                        {attendanceDateTimeLabel}
                                     </p>
-                                    {attendanceDateTimeLabel && (
-                                        <p className="mt-1 text-sm text-base-content/70">
-                                            {attendanceDateTimeLabel}
-                                        </p>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    <span className="label-text">
-                                        備考（任意）
-                                    </span>
-                                    <textarea
-                                        className="textarea textarea-bordered min-h-24 w-full"
-                                        value={attendanceNote}
+                                )}
+                            </div>
+                            <div className="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm">
+                                <span className="text-base-content/60">
+                                    出席者
+                                </span>
+                                <span className="font-semibold tabular-nums">
+                                    {checkedAttendanceCount}
+                                </span>
+                            </div>
+                        </div>
+
+                        {eventAttendanceMessage && (
+                            <div
+                                className={`alert ${
+                                    eventAttendanceMessage.includes(
+                                        "保存しました"
+                                    )
+                                        ? "alert-success"
+                                        : eventAttendanceMessage.includes(
+                                                "未反映"
+                                            )
+                                          ? "alert-warning"
+                                          : "alert-error"
+                                }`}
+                            >
+                                <span>{eventAttendanceMessage}</span>
+                            </div>
+                        )}
+
+                        {isEventAttendanceLoading ? (
+                            <div className="flex items-center justify-center py-12 text-base-content/70">
+                                <span className="loading loading-spinner loading-md mr-3" />
+                                読み込み中
+                            </div>
+                        ) : eventAttendanceMembers.length > 0 ? (
+                            <div className="space-y-3">
+                                <div className="flex flex-col gap-2 sm:flex-row">
+                                    <input
+                                        type="search"
+                                        className="input input-bordered w-full"
+                                        value={eventAttendanceSearch}
                                         onChange={(event) =>
-                                            setAttendanceNote(
+                                            setEventAttendanceSearch(
                                                 event.target.value
                                             )
                                         }
-                                        placeholder="補足があれば入力してください"
-                                        maxLength={500}
-                                        disabled={isAttendanceSubmitting}
+                                        placeholder="名前・学籍番号で検索"
+                                        disabled={isEventAttendanceSaving}
                                     />
-                                </div>
-                                {attendanceSubmitMessage && (
-                                    <div className="alert alert-error mt-4">
-                                        <span>{attendanceSubmitMessage}</span>
-                                    </div>
-                                )}
-                                <div className="modal-action">
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost"
-                                        onClick={closeAttendanceConfirm}
-                                        disabled={isAttendanceSubmitting}
-                                    >
-                                        キャンセル
-                                    </button>
-                                    <AsyncButton
-                                        type="button"
-                                        className="btn btn-primary"
-                                        onClick={() => void submitAttendance()}
-                                        loading={isAttendanceSubmitting}
-                                        loadingLabel="送信中"
-                                    >
-                                        送信
-                                    </AsyncButton>
-                                </div>
-                            </>
-                        ) : isDeleteConfirmOpen ? (
-                            <>
-                                <div className="space-y-3">
-                                    <p className="text-base font-medium">
-                                        {`自分の${isAttendanceEvent ? "参加登録" : "欠席連絡"}を削除しますか？`}
-                                    </p>
-                                    <p className="text-sm text-base-content/70">
-                                        この操作は取り消せません。
-                                    </p>
-                                </div>
-                                <div className="modal-action">
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost"
-                                        onClick={closeDeleteConfirm}
-                                        disabled={isDeletingResponse}
-                                    >
-                                        キャンセル
-                                    </button>
-                                    <AsyncButton
-                                        type="button"
-                                        className="btn btn-error"
-                                        onClick={() => void deleteResponse()}
-                                        loading={isDeletingResponse}
-                                        loadingLabel="削除中"
-                                    >
-                                        削除
-                                    </AsyncButton>
-                                </div>
-                            </>
-                        ) : isEventAttendanceOpen ? (
-                            <div className="space-y-5">
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                                    <div>
-                                        <p className="font-semibold text-base-content">
-                                            {title}
-                                        </p>
-                                        {attendanceDateTimeLabel && (
-                                            <p className="mt-1 text-sm text-base-content/70">
-                                                {attendanceDateTimeLabel}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="inline-flex items-center gap-2 rounded-md border border-base-300 bg-base-100 px-3 py-2 text-sm">
-                                        <span className="text-base-content/60">
-                                            出席者
-                                        </span>
-                                        <span className="font-semibold tabular-nums">
-                                            {checkedAttendanceCount}
-                                        </span>
+                                    <div className="flex shrink-0 gap-2">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline"
+                                            onClick={
+                                                checkFilteredAttendanceMembers
+                                            }
+                                            disabled={
+                                                filteredAttendanceMembers.length ===
+                                                    0 || isEventAttendanceSaving
+                                            }
+                                        >
+                                            表示中を全選択
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost"
+                                            onClick={
+                                                uncheckFilteredAttendanceMembers
+                                            }
+                                            disabled={
+                                                filteredAttendanceMembers.length ===
+                                                    0 || isEventAttendanceSaving
+                                            }
+                                        >
+                                            解除
+                                        </button>
                                     </div>
                                 </div>
 
-                                {eventAttendanceMessage && (
-                                    <div
-                                        className={`alert ${
-                                            eventAttendanceMessage.includes(
-                                                "保存しました"
-                                            )
-                                                ? "alert-success"
-                                                : eventAttendanceMessage.includes(
-                                                        "未反映"
-                                                    )
-                                                  ? "alert-warning"
-                                                : "alert-error"
-                                        }`}
-                                    >
-                                        <span>{eventAttendanceMessage}</span>
-                                    </div>
-                                )}
+                                {filteredAttendanceMembers.length > 0 ? (
+                                    <div className="max-h-[42dvh] overflow-y-auto rounded-lg border border-base-300">
+                                        <div className="divide-y divide-base-300">
+                                            {filteredAttendanceMembers.map(
+                                                (member) => {
+                                                    const checked =
+                                                        checkedAttendanceMembers.has(
+                                                            member.studentNumber
+                                                        );
 
-                                {isEventAttendanceLoading ? (
-                                    <div className="flex items-center justify-center py-12 text-base-content/70">
-                                        <span className="loading loading-spinner loading-md mr-3" />
-                                        読み込み中
-                                    </div>
-                                ) : eventAttendanceMembers.length > 0 ? (
-                                    <div className="space-y-3">
-                                        <div className="flex flex-col gap-2 sm:flex-row">
-                                            <input
-                                                type="search"
-                                                className="input input-bordered w-full"
-                                                value={eventAttendanceSearch}
-                                                onChange={(event) =>
-                                                    setEventAttendanceSearch(
-                                                        event.target.value
-                                                    )
-                                                }
-                                                placeholder="名前・学籍番号で検索"
-                                                disabled={
-                                                    isEventAttendanceSaving
-                                                }
-                                            />
-                                            <div className="flex shrink-0 gap-2">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline"
-                                                    onClick={
-                                                        checkFilteredAttendanceMembers
-                                                    }
-                                                    disabled={
-                                                        filteredAttendanceMembers.length ===
-                                                            0 ||
-                                                        isEventAttendanceSaving
-                                                    }
-                                                >
-                                                    表示中を全選択
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-ghost"
-                                                    onClick={
-                                                        uncheckFilteredAttendanceMembers
-                                                    }
-                                                    disabled={
-                                                        filteredAttendanceMembers.length ===
-                                                            0 ||
-                                                        isEventAttendanceSaving
-                                                    }
-                                                >
-                                                    解除
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {filteredAttendanceMembers.length >
-                                        0 ? (
-                                            <div className="max-h-[42dvh] overflow-y-auto rounded-lg border border-base-300">
-                                                <div className="divide-y divide-base-300">
-                                                    {filteredAttendanceMembers.map(
-                                                        (member) => {
-                                                            const checked =
-                                                                checkedAttendanceMembers.has(
-                                                                    member.studentNumber
-                                                                );
-
-                                                            return (
-                                                                <label
-                                                                    key={
+                                                    return (
+                                                        <label
+                                                            key={
+                                                                member.studentNumber
+                                                            }
+                                                            className={`flex cursor-pointer items-center gap-3 px-3 py-3 transition-colors duration-150 sm:px-4 ${
+                                                                checked
+                                                                    ? "bg-primary/10 hover:bg-primary/15"
+                                                                    : "hover:bg-base-200/60"
+                                                            }`}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                className="checkbox checkbox-primary"
+                                                                checked={
+                                                                    checked
+                                                                }
+                                                                onChange={() =>
+                                                                    toggleEventAttendanceMember(
+                                                                        member.studentNumber
+                                                                    )
+                                                                }
+                                                                disabled={
+                                                                    isEventAttendanceSaving
+                                                                }
+                                                            />
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate font-medium">
+                                                                    {
+                                                                        member.displayName
+                                                                    }
+                                                                </span>
+                                                                <span className="block truncate text-sm text-base-content/60">
+                                                                    {
                                                                         member.studentNumber
                                                                     }
-                                                                    className={`flex cursor-pointer items-center gap-3 px-3 py-3 transition-colors duration-150 sm:px-4 ${
-                                                                        checked
-                                                                            ? "bg-primary/10 hover:bg-primary/15"
-                                                                            : "hover:bg-base-200/60"
-                                                                    }`}
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        className="checkbox checkbox-primary"
-                                                                        checked={
-                                                                            checked
-                                                                        }
-                                                                        onChange={() =>
-                                                                            toggleEventAttendanceMember(
-                                                                                member.studentNumber
-                                                                            )
-                                                                        }
-                                                                        disabled={
-                                                                            isEventAttendanceSaving
-                                                                        }
-                                                                    />
-                                                                    <span className="min-w-0 flex-1">
-                                                                        <span className="block truncate font-medium">
-                                                                            {
-                                                                                member.displayName
-                                                                            }
-                                                                        </span>
-                                                                        <span className="block truncate text-sm text-base-content/60">
-                                                                            {
-                                                                                member.studentNumber
-                                                                            }
-                                                                        </span>
-                                                                    </span>
-                                                                </label>
-                                                            );
-                                                        }
-                                                    )}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <p className="rounded-lg border border-base-300 bg-base-200/40 p-4 text-base-content/70">
-                                                条件に一致する部員が見つかりません。
-                                            </p>
-                                        )}
+                                                                </span>
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                }
+                                            )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="rounded-lg border border-base-300 bg-base-200/40 p-4 text-base-content/70">
-                                        出席確認の対象となる部員が見つかりません。
+                                        条件に一致する部員が見つかりません。
                                     </p>
                                 )}
-
-                                <div className="modal-action">
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost"
-                                        onClick={closeEventAttendance}
-                                        disabled={isEventAttendanceSaving}
-                                    >
-                                        閉じる
-                                    </button>
-                                    <AsyncButton
-                                        type="button"
-                                        className="btn btn-primary"
-                                        onClick={() =>
-                                            void saveEventAttendance()
-                                        }
-                                        disabled={
-                                            isEventAttendanceLoading ||
-                                            !canSaveEventAttendance
-                                        }
-                                        loading={isEventAttendanceSaving}
-                                        loadingLabel="保存中"
-                                    >
-                                        保存
-                                    </AsyncButton>
-                                </div>
                             </div>
-                        ) : isAbsenceFormOpen ? (
-                            <form
-                                onSubmit={(event) => void submitAbsence(event)}
-                                className="space-y-5"
+                        ) : (
+                            <p className="rounded-lg border border-base-300 bg-base-200/40 p-4 text-base-content/70">
+                                出席確認の対象となる部員が見つかりません。
+                            </p>
+                        )}
+
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={closeEventAttendance}
+                                disabled={isEventAttendanceSaving}
                             >
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                学籍番号
-                                                <span className="text-error">
-                                                    *
-                                                </span>
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="input input-bordered w-full"
-                                            value={profile.studentNumber}
-                                            onChange={(event) =>
-                                                setProfile({
-                                                    ...profile,
-                                                    studentNumber:
-                                                        event.target.value,
-                                                })
-                                            }
-                                            required
-                                            disabled={isAbsenceSubmitting}
-                                        />
-                                    </div>
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                氏名・あだ名
-                                                <span className="text-error">
-                                                    *
-                                                </span>
-                                            </span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            className="input input-bordered w-full"
-                                            value={profile.name}
-                                            onChange={(event) =>
-                                                setProfile({
-                                                    ...profile,
-                                                    name: event.target.value,
-                                                })
-                                            }
-                                            required
-                                            disabled={isAbsenceSubmitting}
-                                        />
-                                    </div>
-                                </div>
+                                閉じる
+                            </button>
+                            <AsyncButton
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={() => void saveEventAttendance()}
+                                disabled={
+                                    isEventAttendanceLoading ||
+                                    !canSaveEventAttendance
+                                }
+                                loading={isEventAttendanceSaving}
+                                loadingLabel="保存中"
+                            >
+                                保存
+                            </AsyncButton>
+                        </div>
+                    </div>
+                ) : isAbsenceFormOpen ? (
+                    <form
+                        onSubmit={(event) => void submitAbsence(event)}
+                        className="space-y-5"
+                    >
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text font-semibold">
+                                        学籍番号
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input input-bordered w-full"
+                                    value={profile.studentNumber}
+                                    onChange={(event) =>
+                                        setProfile({
+                                            ...profile,
+                                            studentNumber: event.target.value,
+                                        })
+                                    }
+                                    required
+                                    disabled={isAbsenceSubmitting}
+                                />
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text font-semibold">
+                                        氏名・あだ名
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <input
+                                    type="text"
+                                    className="input input-bordered w-full"
+                                    value={profile.name}
+                                    onChange={(event) =>
+                                        setProfile({
+                                            ...profile,
+                                            name: event.target.value,
+                                        })
+                                    }
+                                    required
+                                    disabled={isAbsenceSubmitting}
+                                />
+                            </div>
+                        </div>
 
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                種別
-                                                <span className="text-error">
-                                                    *
-                                                </span>
-                                            </span>
-                                        </label>
-                                        <select
-                                            className="select select-bordered w-full"
-                                            value={absenceForm.type}
-                                            onChange={(event) =>
-                                                setAbsenceForm({
-                                                    ...absenceForm,
-                                                    type: event.target.value,
-                                                })
-                                            }
-                                            required
-                                            disabled={isAbsenceSubmitting}
-                                        >
-                                            <option value="">
-                                                選択してください
-                                            </option>
-                                            <option value="欠席">欠席</option>
-                                            <option value="遅刻">遅刻</option>
-                                            <option value="中抜け">
-                                                中抜け
-                                            </option>
-                                            <option value="早退">早退</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-control">
-                                        <label className="label">
-                                            <span className="label-text font-semibold">
-                                                理由
-                                                <span className="text-error">
-                                                    *
-                                                </span>
-                                            </span>
-                                        </label>
-                                        <select
-                                            className="select select-bordered w-full"
-                                            value={absenceForm.reasonCategory}
-                                            onChange={(event) =>
-                                                setAbsenceForm({
-                                                    ...absenceForm,
-                                                    reasonCategory:
-                                                        event.target.value,
-                                                })
-                                            }
-                                            required
-                                            disabled={isAbsenceSubmitting}
-                                        >
-                                            <option value="">
-                                                選択してください
-                                            </option>
-                                            <option value="体調不良">
-                                                体調不良
-                                            </option>
-                                            <option value="授業">授業</option>
-                                            <option value="家庭の都合">
-                                                家庭の都合
-                                            </option>
-                                            <option value="その他">
-                                                その他
-                                            </option>
-                                        </select>
-                                    </div>
-                                </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text font-semibold">
+                                        種別
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <select
+                                    className="select select-bordered w-full"
+                                    value={absenceForm.type}
+                                    onChange={(event) =>
+                                        setAbsenceForm({
+                                            ...absenceForm,
+                                            type: event.target.value,
+                                        })
+                                    }
+                                    required
+                                    disabled={isAbsenceSubmitting}
+                                >
+                                    <option value="">選択してください</option>
+                                    <option value="欠席">欠席</option>
+                                    <option value="遅刻">遅刻</option>
+                                    <option value="中抜け">中抜け</option>
+                                    <option value="早退">早退</option>
+                                </select>
+                            </div>
+                            <div className="form-control">
+                                <label className="label">
+                                    <span className="label-text font-semibold">
+                                        理由
+                                        <span className="text-error">*</span>
+                                    </span>
+                                </label>
+                                <select
+                                    className="select select-bordered w-full"
+                                    value={absenceForm.reasonCategory}
+                                    onChange={(event) =>
+                                        setAbsenceForm({
+                                            ...absenceForm,
+                                            reasonCategory: event.target.value,
+                                        })
+                                    }
+                                    required
+                                    disabled={isAbsenceSubmitting}
+                                >
+                                    <option value="">選択してください</option>
+                                    <option value="体調不良">体調不良</option>
+                                    <option value="授業">授業</option>
+                                    <option value="家庭の都合">
+                                        家庭の都合
+                                    </option>
+                                    <option value="その他">その他</option>
+                                </select>
+                            </div>
+                        </div>
 
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text font-semibold">
+                                    詳細
+                                    <span className="text-base-content/50 font-normal ml-2">
+                                        任意
+                                    </span>
+                                </span>
+                            </label>
+                            <textarea
+                                className="textarea textarea-bordered h-24 w-full"
+                                value={absenceForm.reasonDetail}
+                                onChange={(event) =>
+                                    setAbsenceForm({
+                                        ...absenceForm,
+                                        reasonDetail: event.target.value,
+                                    })
+                                }
+                                placeholder="補足があれば入力してください"
+                                maxLength={500}
+                                disabled={isAbsenceSubmitting}
+                            />
+                        </div>
+
+                        {absenceForm.type === "中抜け" && (
+                            <div className="grid gap-4 rounded-lg border border-base-300 bg-base-200/50 p-4 sm:grid-cols-2">
                                 <div className="form-control">
                                     <label className="label">
-                                        <span className="label-text font-semibold">
-                                            詳細
-                                            <span className="text-base-content/50 font-normal ml-2">
-                                                任意
-                                            </span>
+                                        <span className="label-text">
+                                            抜ける時間
                                         </span>
                                     </label>
-                                    <textarea
-                                        className="textarea textarea-bordered h-24 w-full"
-                                        value={absenceForm.reasonDetail}
+                                    <input
+                                        type="time"
+                                        className="input input-bordered w-full"
+                                        value={absenceForm.timeStepOut}
                                         onChange={(event) =>
                                             setAbsenceForm({
                                                 ...absenceForm,
-                                                reasonDetail:
+                                                timeStepOut: event.target.value,
+                                            })
+                                        }
+                                        disabled={isAbsenceSubmitting}
+                                    />
+                                </div>
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            活動に戻る時間
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="time"
+                                        className="input input-bordered w-full"
+                                        value={absenceForm.timeReturn}
+                                        onChange={(event) =>
+                                            setAbsenceForm({
+                                                ...absenceForm,
+                                                timeReturn: event.target.value,
+                                            })
+                                        }
+                                        disabled={isAbsenceSubmitting}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {absenceForm.type === "早退" && (
+                            <div className="rounded-lg border border-base-300 bg-base-200/50 p-4">
+                                <div className="form-control">
+                                    <label className="label">
+                                        <span className="label-text">
+                                            早退する時間
+                                        </span>
+                                    </label>
+                                    <input
+                                        type="time"
+                                        className="input input-bordered w-full"
+                                        value={absenceForm.timeLeavingEarly}
+                                        onChange={(event) =>
+                                            setAbsenceForm({
+                                                ...absenceForm,
+                                                timeLeavingEarly:
                                                     event.target.value,
                                             })
                                         }
-                                        placeholder="補足があれば入力してください"
-                                        maxLength={500}
                                         disabled={isAbsenceSubmitting}
                                     />
                                 </div>
+                            </div>
+                        )}
 
-                                {absenceForm.type === "中抜け" && (
-                                    <div className="grid gap-4 rounded-lg border border-base-300 bg-base-200/50 p-4 sm:grid-cols-2">
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text">
-                                                    抜ける時間
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="time"
-                                                className="input input-bordered w-full"
-                                                value={
-                                                    absenceForm.timeStepOut
-                                                }
-                                                onChange={(event) =>
-                                                    setAbsenceForm({
-                                                        ...absenceForm,
-                                                        timeStepOut:
-                                                            event.target.value,
-                                                    })
-                                                }
-                                                disabled={isAbsenceSubmitting}
+                        {absenceSubmitMessage && (
+                            <div className="alert alert-error">
+                                <span>{absenceSubmitMessage}</span>
+                            </div>
+                        )}
+
+                        <div className="modal-action">
+                            <button
+                                type="button"
+                                className="btn btn-ghost"
+                                onClick={closeAbsenceForm}
+                                disabled={isAbsenceSubmitting}
+                            >
+                                キャンセル
+                            </button>
+                            <AsyncButton
+                                type="submit"
+                                className="btn btn-primary"
+                                loading={isAbsenceSubmitting}
+                                loadingLabel="送信中"
+                            >
+                                送信
+                            </AsyncButton>
+                        </div>
+                    </form>
+                ) : (
+                    <>
+                        {(where || dateLabel || timeLabel) && (
+                            <div
+                                className="flex items-center gap-4 text-base-content/80 mb-4"
+                                style={{
+                                    fontSize: "clamp(0.875rem, 2vw, 1.125rem)",
+                                }}
+                            >
+                                {(dateLabel || timeLabel) && (
+                                    <div className="flex items-center gap-2">
+                                        {dateLabel && (
+                                            <FontAwesomeIcon
+                                                icon={faCalendarDays}
+                                                className="text-xl text-primary"
                                             />
-                                        </div>
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text">
-                                                    活動に戻る時間
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="time"
-                                                className="input input-bordered w-full"
-                                                value={absenceForm.timeReturn}
-                                                onChange={(event) =>
-                                                    setAbsenceForm({
-                                                        ...absenceForm,
-                                                        timeReturn:
-                                                            event.target.value,
-                                                    })
-                                                }
-                                                disabled={isAbsenceSubmitting}
-                                            />
-                                        </div>
+                                        )}
+                                        <span className="font-medium">
+                                            {[dateLabel, timeLabel]
+                                                .filter(Boolean)
+                                                .join(" ")}
+                                        </span>
                                     </div>
                                 )}
-
-                                {absenceForm.type === "早退" && (
-                                    <div className="rounded-lg border border-base-300 bg-base-200/50 p-4">
-                                        <div className="form-control">
-                                            <label className="label">
-                                                <span className="label-text">
-                                                    早退する時間
-                                                </span>
-                                            </label>
-                                            <input
-                                                type="time"
-                                                className="input input-bordered w-full"
-                                                value={
-                                                    absenceForm.timeLeavingEarly
-                                                }
-                                                onChange={(event) =>
-                                                    setAbsenceForm({
-                                                        ...absenceForm,
-                                                        timeLeavingEarly:
-                                                            event.target.value,
-                                                    })
-                                                }
-                                                disabled={isAbsenceSubmitting}
-                                            />
-                                        </div>
+                                {where && (
+                                    <div className="flex items-center gap-2">
+                                        <FontAwesomeIcon
+                                            icon={faLocationDot}
+                                            className="text-xl text-primary"
+                                        />
+                                        <span className="font-medium">
+                                            {where}
+                                        </span>
                                     </div>
                                 )}
+                            </div>
+                        )}
+                        {detail && (
+                            <div className="py-4">
+                                <h4
+                                    className="font-semibold mb-2"
+                                    style={{
+                                        fontSize:
+                                            "clamp(1rem, 2.5vw, 1.125rem)",
+                                    }}
+                                >
+                                    詳細
+                                </h4>
+                                <p
+                                    className="text-base-content/80 leading-relaxed whitespace-pre-wrap break-words"
+                                    style={{
+                                        fontSize: "clamp(0.875rem, 2vw, 1rem)",
+                                    }}
+                                >
+                                    {detail}
+                                </p>
+                            </div>
+                        )}
 
-                                {absenceSubmitMessage && (
-                                    <div className="alert alert-error">
-                                        <span>{absenceSubmitMessage}</span>
-                                    </div>
-                                )}
-
-                                <div className="modal-action">
-                                    <button
-                                        type="button"
-                                        className="btn btn-ghost"
-                                        onClick={closeAbsenceForm}
-                                        disabled={isAbsenceSubmitting}
-                                    >
-                                        キャンセル
-                                    </button>
-                                    <AsyncButton
-                                        type="submit"
-                                        className="btn btn-primary"
-                                        loading={isAbsenceSubmitting}
-                                        loadingLabel="送信中"
-                                    >
-                                        送信
-                                    </AsyncButton>
-                                </div>
-                            </form>
+                        {isAssignedEvent ? (
+                            <AssignedParticipants
+                                key={eventId}
+                                eventId={eventId}
+                                onSaved={handleClose}
+                                onEditSchedule={onEdit}
+                            />
                         ) : (
                             <>
-                                {(where || dateLabel || timeLabel) && (
-                                    <div
-                                        className="flex items-center gap-4 text-base-content/80 mb-4"
-                                        style={{
-                                            fontSize:
-                                                "clamp(0.875rem, 2vw, 1.125rem)",
-                                        }}
-                                    >
-                                        {(dateLabel || timeLabel) && (
-                                            <div className="flex items-center gap-2">
-                                                {dateLabel && (
-                                                    <FontAwesomeIcon
-                                                        icon={faCalendarDays}
-                                                        className="text-xl text-primary"
-                                                    />
-                                                )}
-                                                <span className="font-medium">
-                                                    {[dateLabel, timeLabel]
-                                                        .filter(Boolean)
-                                                        .join(" ")}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {where && (
-                                            <div className="flex items-center gap-2">
-                                                <FontAwesomeIcon
-                                                    icon={faLocationDot}
-                                                    className="text-xl text-primary"
-                                                />
-                                                <span className="font-medium">
-                                                    {where}
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {detail && (
-                                    <div className="py-4">
-                                        <h4
-                                            className="font-semibold mb-2"
-                                            style={{
-                                                fontSize:
-                                                    "clamp(1rem, 2.5vw, 1.125rem)",
-                                            }}
-                                        >
-                                            詳細
-                                        </h4>
-                                        <p
-                                            className="text-base-content/80 leading-relaxed whitespace-pre-wrap break-words"
-                                            style={{
-                                                fontSize:
-                                                    "clamp(0.875rem, 2vw, 1rem)",
-                                            }}
-                                        >
-                                            {detail}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {isAssignedEvent ? (
-                                    <AssignedParticipants
-                                        key={eventId}
-                                        eventId={eventId}
-                                        onSaved={handleClose}
-                                        onEditSchedule={onEdit}
-                                    />
-                                ) : <>
                                 <div className="py-4 border-t border-base-300">
                                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div>
@@ -1619,9 +1586,13 @@ export default function ScheduleCard({
                                             {displayedAbsences.map(
                                                 (absence, index) => {
                                                     const values =
-                                                        getAbsenceValues(absence);
+                                                        getAbsenceValues(
+                                                            absence
+                                                        );
                                                     const absenceTimeLabel =
-                                                        getAbsenceTimeLabel(values);
+                                                        getAbsenceTimeLabel(
+                                                            values
+                                                        );
                                                     const isOwnResponse =
                                                         normalizedStudentNumber &&
                                                         values.studentNumber
@@ -1701,7 +1672,9 @@ export default function ScheduleCard({
                                                                             onClick={() => {
                                                                                 replaceModal(
                                                                                     "response-delete",
-                                                                                    { event: eventId }
+                                                                                    {
+                                                                                        event: eventId,
+                                                                                    }
                                                                                 );
                                                                             }}
                                                                             disabled={
@@ -1732,60 +1705,60 @@ export default function ScheduleCard({
                                         </p>
                                     )}
                                 </div>
-
-                                </>}
-                                <div className="modal-action">
-                                    {onEdit && !isAssignedEvent && (
-                                        <button
-                                            onClick={onEdit}
-                                            className="btn btn-outline btn-primary"
-                                        >
-                                            編集
-                                        </button>
-                                    )}
-                                    {!isAssignedEvent && (isAttendanceEvent ? (
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary"
-                                            onClick={openAttendanceForm}
-                                            disabled={
-                                                !!ownResponse ||
-                                                !canSubmitResponse
-                                            }
-                                        >
-                                            {ownResponse
-                                                ? "登録済み"
-                                                : canSubmitResponse
-                                                  ? actionLabel
-                                                  : "受付時間外"}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary"
-                                            onClick={openAbsenceForm}
-                                            disabled={!canSubmitResponse}
-                                        >
-                                            {ownResponse
-                                                ? "連絡を編集"
-                                                : canSubmitResponse
-                                                  ? actionLabel
-                                                  : "受付時間外"}
-                                        </button>
-                                    ))}
-                                </div>
-                                {attendanceSubmitMessage && (
-                                    <div className="alert alert-success mt-4">
-                                        <span>{attendanceSubmitMessage}</span>
-                                    </div>
-                                )}
-                                {absenceSubmitMessage && (
-                                    <div className="alert alert-success mt-4">
-                                        <span>{absenceSubmitMessage}</span>
-                                    </div>
-                                )}
                             </>
                         )}
+                        <div className="modal-action">
+                            {onEdit && !isAssignedEvent && (
+                                <button
+                                    onClick={onEdit}
+                                    className="btn btn-outline btn-primary"
+                                >
+                                    編集
+                                </button>
+                            )}
+                            {!isAssignedEvent &&
+                                (isAttendanceEvent ? (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={openAttendanceForm}
+                                        disabled={
+                                            !!ownResponse || !canSubmitResponse
+                                        }
+                                    >
+                                        {ownResponse
+                                            ? "登録済み"
+                                            : canSubmitResponse
+                                              ? actionLabel
+                                              : "受付時間外"}
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={openAbsenceForm}
+                                        disabled={!canSubmitResponse}
+                                    >
+                                        {ownResponse
+                                            ? "連絡を編集"
+                                            : canSubmitResponse
+                                              ? actionLabel
+                                              : "受付時間外"}
+                                    </button>
+                                ))}
+                        </div>
+                        {attendanceSubmitMessage && (
+                            <div className="alert alert-success mt-4">
+                                <span>{attendanceSubmitMessage}</span>
+                            </div>
+                        )}
+                        {absenceSubmitMessage && (
+                            <div className="alert alert-success mt-4">
+                                <span>{absenceSubmitMessage}</span>
+                            </div>
+                        )}
+                    </>
+                )}
             </AppModal>
         </>
     );
