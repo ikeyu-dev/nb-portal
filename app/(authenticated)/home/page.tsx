@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { UpcomingSchedulesList } from "./UpcomingSchedulesList";
 import { getDashboardDataServer } from "@/src/shared/api/server";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -23,8 +23,6 @@ import { NextMeetingCard } from "@/src/features/next-meeting";
 import { MobilePWAInstallBanner } from "@/src/features/pwa-install";
 import { auth } from "@/src/auth";
 import { formatJstDateInput, parseDateInput } from "@/src/shared/lib/jst-date";
-
-const MAX_DASHBOARD_SCHEDULES = 7;
 
 const getScheduleAttendanceMode = (
     schedule: Schedule
@@ -153,13 +151,6 @@ export default async function HomePage() {
                 getScheduleStartTimestamp(a) - getScheduleStartTimestamp(b)
         );
 
-    const visibleUpcomingSchedules = upcomingSchedules.slice(
-        0,
-        MAX_DASHBOARD_SCHEDULES
-    );
-    const hasMoreUpcomingSchedules =
-        upcomingSchedules.length > MAX_DASHBOARD_SCHEDULES;
-
     return (
         <>
             <div className="max-w-full p-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
@@ -206,8 +197,8 @@ export default async function HomePage() {
                                 )}
                             </div>
                             {upcomingSchedules.length > 0 ? (
-                                <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
-                                    {visibleUpcomingSchedules.map(
+                                <UpcomingSchedulesList>
+                                    {upcomingSchedules.map(
                                         (schedule: Schedule) => {
                                             const eventId = String(
                                                 getScheduleEventId(schedule)
@@ -395,7 +386,7 @@ export default async function HomePage() {
                                             );
                                         }
                                     )}
-                                </div>
+                                </UpcomingSchedulesList>
                             ) : (
                                 <div className="flex-1 flex items-center justify-center">
                                     <div className="text-center text-base-content/60">
@@ -412,16 +403,6 @@ export default async function HomePage() {
                                             予定はありません
                                         </p>
                                     </div>
-                                </div>
-                            )}
-                            {hasMoreUpcomingSchedules && (
-                                <div className="mt-3 flex justify-end">
-                                    <Link
-                                        href="/calendar"
-                                        className="link link-primary text-sm"
-                                    >
-                                        すべての予定を見る
-                                    </Link>
                                 </div>
                             )}
                         </div>
