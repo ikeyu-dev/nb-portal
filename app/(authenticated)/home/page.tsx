@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDashboardDataServer } from "@/src/shared/api/server";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -22,6 +23,8 @@ import { NextMeetingCard } from "@/src/features/next-meeting";
 import { MobilePWAInstallBanner } from "@/src/features/pwa-install";
 import { auth } from "@/src/auth";
 import { formatJstDateInput, parseDateInput } from "@/src/shared/lib/jst-date";
+
+const MAX_DASHBOARD_SCHEDULES = 7;
 
 const getScheduleAttendanceMode = (
     schedule: Schedule
@@ -119,7 +122,9 @@ export default async function HomePage() {
         nextMeeting = dashboardRes.data?.nextMeeting || null;
     } catch (err) {
         error =
-            err instanceof Error ? err.message : "ダッシュボードを取得できませんでした";
+            err instanceof Error
+                ? err.message
+                : "ダッシュボードを取得できませんでした";
     }
 
     const todayDateInput = formatJstDateInput();
@@ -140,11 +145,20 @@ export default async function HomePage() {
     });
 
     const upcomingSchedules = schedules
-        .filter((schedule) => isScheduleUpcomingOnDate(schedule, todayDateInput))
+        .filter((schedule) =>
+            isScheduleUpcomingOnDate(schedule, todayDateInput)
+        )
         .sort(
             (a, b) =>
                 getScheduleStartTimestamp(a) - getScheduleStartTimestamp(b)
         );
+
+    const visibleUpcomingSchedules = upcomingSchedules.slice(
+        0,
+        MAX_DASHBOARD_SCHEDULES
+    );
+    const hasMoreUpcomingSchedules =
+        upcomingSchedules.length > MAX_DASHBOARD_SCHEDULES;
 
     return (
         <>
@@ -193,7 +207,7 @@ export default async function HomePage() {
                             </div>
                             {upcomingSchedules.length > 0 ? (
                                 <div className="overflow-hidden rounded-xl bg-base-100 ring-1 ring-base-300/70 divide-y divide-base-300/70">
-                                    {upcomingSchedules.map(
+                                    {visibleUpcomingSchedules.map(
                                         (schedule: Schedule) => {
                                             const eventId = String(
                                                 getScheduleEventId(schedule)
@@ -400,6 +414,16 @@ export default async function HomePage() {
                                     </div>
                                 </div>
                             )}
+                            {hasMoreUpcomingSchedules && (
+                                <div className="mt-3 flex justify-end">
+                                    <Link
+                                        href="/calendar"
+                                        className="link link-primary text-sm"
+                                    >
+                                        すべての予定を見る
+                                    </Link>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -413,8 +437,7 @@ export default async function HomePage() {
                                 <h2
                                     className="card-title"
                                     style={{
-                                        fontSize:
-                                            "clamp(1rem, 2.5vw, 1.25rem)",
+                                        fontSize: "clamp(1rem, 2.5vw, 1.25rem)",
                                     }}
                                 >
                                     <DateDisplay />
