@@ -1,5 +1,4 @@
-import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Schedule } from "@/src/shared/types/api";
 
@@ -12,11 +11,6 @@ vi.mock("@/src/auth", () => ({
 }));
 vi.mock("@/src/shared/api/server", () => ({
     getDashboardDataServer: mocks.getDashboardDataServer,
-}));
-vi.mock("next/link", () => ({
-    default: ({ href, children }: { href: string; children: ReactNode }) => (
-        <a href={href}>{children}</a>
-    ),
 }));
 vi.mock("@/features/schedule-card", () => ({
     ScheduleCard: ({ eventId, title }: { eventId: string; title: string }) => (
@@ -73,7 +67,7 @@ describe("ダッシュボードの今後の予定", () => {
     });
 
     it.each([1, 7, 8, 9])(
-        "%i件ある場合、最大7件を表示し、続きがある場合だけリンクを出す",
+        "%i件ある場合、最大7件を表示し、続きがある場合だけ全件表示と切り替えられる",
         async (count) => {
             const schedules = Array.from({ length: count }, (_, index) =>
                 makeSchedule(18 + index)
@@ -89,13 +83,21 @@ describe("ダッシュボードの今後の予定", () => {
                 screen.getByText(String(count), { selector: ".badge" })
             ).toBeInTheDocument();
 
-            const link = screen.queryByRole("link", {
+            const toggle = screen.queryByRole("button", {
                 name: "すべての予定を見る",
             });
             if (count > 7) {
-                expect(link).toHaveAttribute("href", "/calendar");
+                expect(toggle).toHaveAttribute("aria-expanded", "false");
+                fireEvent.click(toggle!);
+                expect(screen.getAllByRole("article")).toHaveLength(count);
+                const collapse = screen.getByRole("button", {
+                    name: "7件表示に戻す",
+                });
+                expect(collapse).toHaveAttribute("aria-expanded", "true");
+                fireEvent.click(collapse);
+                expect(screen.getAllByRole("article")).toHaveLength(7);
             } else {
-                expect(link).toBeNull();
+                expect(toggle).toBeNull();
             }
         }
     );
@@ -145,7 +147,7 @@ describe("ダッシュボードの今後の予定", () => {
         ).toBe(title);
     });
 
-    it("0件の場合は空の表示になり、一覧へのリンクを出さない", async () => {
+    it("0件の場合は空の表示になり、切り替えボタンを出さない", async () => {
         setSchedules([]);
 
         render(await HomePage());
@@ -153,7 +155,7 @@ describe("ダッシュボードの今後の予定", () => {
         expect(screen.getByText("予定はありません")).toBeInTheDocument();
         expect(screen.queryAllByRole("article")).toHaveLength(0);
         expect(
-            screen.queryByRole("link", { name: "すべての予定を見る" })
+            screen.queryByRole("button", { name: "すべての予定を見る" })
         ).toBeNull();
     });
 });
