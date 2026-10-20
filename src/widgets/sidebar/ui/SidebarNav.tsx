@@ -6,12 +6,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faBell,
     faCalendarDays,
-    faClipboardQuestion,
     faFileLines,
     faHouse,
     faListCheck,
     faMicrophone,
     faNoteSticky,
+    faSquarePollVertical,
     faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -19,7 +19,7 @@ const navItems = [
     { href: "/home", label: "ホーム", icon: faHouse },
     { href: "/calendar", label: "カレンダー", icon: faCalendarDays },
     { href: "/tasks", label: "タスク", icon: faListCheck },
-    { href: "/surveys", label: "アンケート", icon: faClipboardQuestion },
+    { href: "/surveys", label: "アンケート", icon: faSquarePollVertical },
     { href: "/items", label: "機材一覧", icon: faMicrophone },
     { href: "/members", label: "名簿", icon: faUsers },
     { href: "/notifications", label: "お知らせ", icon: faBell },
