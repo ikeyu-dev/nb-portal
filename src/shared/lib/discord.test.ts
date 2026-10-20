@@ -22,7 +22,9 @@ describe("sendDiscordWebhook", () => {
     });
 
     it("出欠用WebhookへEmbedと本文を送る", async () => {
-        vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+        vi.mocked(fetch).mockResolvedValueOnce(
+            new Response(null, { status: 204 })
+        );
         const embeds = [{ title: "当日の出欠状況" }];
 
         const result = await sendDiscordWebhook({
@@ -42,7 +44,9 @@ describe("sendDiscordWebhook", () => {
     });
 
     it("meeting指定時は部会用Webhookを使い、空の本文は送らない", async () => {
-        vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+        vi.mocked(fetch).mockResolvedValueOnce(
+            new Response(null, { status: 204 })
+        );
         const embeds = [{ title: "次回部会" }];
 
         await sendDiscordWebhook({ target: "meeting", embeds, content: "" });
@@ -51,6 +55,39 @@ describe("sendDiscordWebhook", () => {
             "https://discord.example.test/meeting",
             expect.objectContaining({ body: JSON.stringify({ embeds }) })
         );
+    });
+
+    it("survey指定時は専用Webhookを使う", async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(
+            new Response(null, { status: 204 })
+        );
+        vi.stubEnv(
+            "DISCORD_SURVEY_WEBHOOK_URL",
+            "https://discord.example.test/survey"
+        );
+        await sendDiscordWebhook({
+            target: "survey",
+            embeds: [{ title: "調査" }],
+        });
+        expect(fetch).toHaveBeenLastCalledWith(
+            "https://discord.example.test/survey",
+            expect.any(Object)
+        );
+    });
+
+    it("survey用Webhookが未設定なら出欠用へフォールバックせず送信しない", async () => {
+        vi.stubEnv("DISCORD_SURVEY_WEBHOOK_URL", "");
+
+        const result = await sendDiscordWebhook({
+            target: "survey",
+            embeds: [{ title: "調査" }],
+        });
+
+        expect(result).toEqual({
+            success: false,
+            error: "DISCORD_SURVEY_WEBHOOK_URL is not configured",
+        });
+        expect(fetch).not.toHaveBeenCalled();
     });
 
     it("Webhook URLが未設定なら送信しない", async () => {

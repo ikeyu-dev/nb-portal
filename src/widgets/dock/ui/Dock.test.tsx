@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const navigationState = vi.hoisted(() => ({ pathname: "/home" }));
 vi.mock("next/navigation", () => ({
-    usePathname: () => "/home",
+    usePathname: () => navigationState.pathname,
 }));
 vi.mock("next/link", () => ({
     default: ({
@@ -15,7 +16,9 @@ vi.mock("next/link", () => ({
     }) => (
         <a
             {...props}
-            data-prefetch={prefetch === undefined ? "default" : String(prefetch)}
+            data-prefetch={
+                prefetch === undefined ? "default" : String(prefetch)
+            }
             onClick={(event) => {
                 onClick?.(event);
                 event.preventDefault();
@@ -29,13 +32,24 @@ vi.mock("next/link", () => ({
 import Dock from "./Dock";
 
 describe("Dock", () => {
-    it("モバイルで優先する5項目を日本語で表示する", () => {
+    beforeEach(() => {
+        navigationState.pathname = "/home";
+    });
+
+    it("モバイルで優先する6項目を日本語で表示する", () => {
         render(<Dock />);
 
-        expect(screen.getAllByRole("link")).toHaveLength(5);
+        expect(screen.getAllByRole("link")).toHaveLength(6);
         expect(
-            screen.getAllByRole("link").map((link) => link.textContent),
-        ).toEqual(["ホーム", "予定", "名簿", "部会メモ", "その他"]);
+            screen.getAllByRole("link").map((link) => link.textContent)
+        ).toEqual([
+            "ホーム",
+            "予定",
+            "名簿",
+            "アンケート",
+            "部会メモ",
+            "その他",
+        ]);
         expect(screen.queryByRole("link", { name: "タスク" })).toBeNull();
         expect(screen.queryByRole("link", { name: "機材一覧" })).toBeNull();
     });
@@ -52,13 +66,25 @@ describe("Dock", () => {
         expect(home).toHaveAttribute("aria-current", "page");
         expect(navigation).toHaveAttribute("data-active-index", "0");
         expect(navigation.querySelector(".app-dock-indicator")).toBeNull();
-        expect(navigation.querySelectorAll(".app-dock-icon")).toHaveLength(5);
+        expect(navigation.querySelectorAll(".app-dock-icon")).toHaveLength(6);
 
         fireEvent.click(calendar);
 
         expect(calendar).toHaveAttribute("aria-busy", "true");
         expect(calendar).toHaveAttribute("data-active", "true");
         expect(navigation).toHaveAttribute("data-active-index", "1");
+    });
+
+    it("アンケートの詳細・回答状況でもアンケートを現在地にする", () => {
+        navigationState.pathname = "/surveys/survey-1/responses";
+        render(<Dock />);
+
+        const surveys = screen.getByRole("link", { name: "アンケート" });
+        expect(surveys).toHaveAttribute("aria-current", "page");
+        expect(surveys).toHaveAttribute("data-active", "true");
+        expect(surveys.querySelector("svg")).toHaveClass(
+            "fa-square-poll-vertical"
+        );
     });
 
     it("モバイルの遷移先にNext.js標準のprefetch設定を使う", () => {

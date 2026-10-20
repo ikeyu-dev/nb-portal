@@ -1,5 +1,6 @@
-declare module "cloudflare:test" {
+declare module 'cloudflare:test' {
 	interface ProvidedEnv extends Env {
-		TEST_ASSIGNED_MIGRATIONS: import("cloudflare:test").D1Migration[];
+		TEST_ASSIGNED_MIGRATIONS: import('cloudflare:test').D1Migration[];
+		TEST_SURVEY_MIGRATIONS: import('cloudflare:test').D1Migration[];
 	}
 }
