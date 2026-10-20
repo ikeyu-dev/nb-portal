@@ -9,6 +9,7 @@ import {
     faEllipsis,
     faHouse,
     faNoteSticky,
+    faSquarePollVertical,
     faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -16,6 +17,7 @@ const dockItems = [
     { href: "/home", label: "ホーム", icon: faHouse },
     { href: "/calendar", label: "予定", icon: faCalendarDays },
     { href: "/members", label: "名簿", icon: faUsers },
+    { href: "/surveys", label: "アンケート", icon: faSquarePollVertical },
     { href: "/memo", label: "部会メモ", icon: faNoteSticky },
     { href: "/more", label: "その他", icon: faEllipsis },
 ];
@@ -30,6 +32,8 @@ const moreRoutes = new Set([
 
 const resolveCurrentHref = (pathname: string) => {
     if (pathname === "/absence") return "/calendar";
+    if (pathname === "/surveys" || pathname.startsWith("/surveys/"))
+        return "/surveys";
     if (moreRoutes.has(pathname)) return "/more";
     return dockItems.find((item) => item.href === pathname)?.href ?? "/home";
 };
@@ -45,7 +49,7 @@ export default function Dock() {
     const activeHref = pendingHref ?? currentHref;
     const activeIndex = Math.max(
         0,
-        dockItems.findIndex((item) => item.href === activeHref),
+        dockItems.findIndex((item) => item.href === activeHref)
     );
 
     useEffect(() => {

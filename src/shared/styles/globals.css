@@ -91,8 +91,7 @@ div {
 
 :where(.btn) {
     touch-action: manipulation;
-    transition-property:
-        color, background-color, border-color, opacity, scale;
+    transition-property: color, background-color, border-color, opacity, scale;
     transition-duration: var(--motion-duration-fast);
     transition-timing-function: var(--motion-ease-standard);
 }
@@ -131,7 +130,7 @@ div {
 }
 
 .app-mobile-dock {
-    --dock-item-count: 5;
+    --dock-item-count: 6;
     --dock-bottom-space: max(1rem, env(safe-area-inset-bottom, 0px));
     display: grid;
     grid-template-columns: repeat(var(--dock-item-count), minmax(0, 1fr));
