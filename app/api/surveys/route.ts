@@ -63,7 +63,17 @@ async function backend(request: NextRequest, method: "GET" | "POST") {
             );
         }
         try {
-            body = JSON.stringify({ ...JSON.parse(raw), actor });
+            const submitted = JSON.parse(raw) as Record<string, unknown>;
+            body = JSON.stringify({
+                ...submitted,
+                ...(submitted.action === "submit"
+                    ? {
+                          respondentName: session.memberName ?? null,
+                          respondentNickname: session.nickname ?? null,
+                      }
+                    : {}),
+                actor,
+            });
         } catch {
             return NextResponse.json(
                 { success: false, error: "入力が不正です" },

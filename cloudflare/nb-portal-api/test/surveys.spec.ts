@@ -17,7 +17,7 @@ describe('general surveys', () => {
 	beforeAll(async () => {
 		await env.DB.prepare('CREATE TABLE members (student_number TEXT PRIMARY KEY, name TEXT NOT NULL, nickname TEXT)').run();
 		await env.DB.prepare(
-			"INSERT INTO members (student_number, name, nickname) VALUES ('member1', '部員一', 'あお'), ('member2', '部員二', 'みどり')",
+			"INSERT INTO members (student_number, name, nickname) VALUES ('MEMBER1', '部員一', 'あお'), ('MEMBER2', '部員二', 'みどり')",
 		).run();
 		await applyD1Migrations(env.DB, env.TEST_SURVEY_MIGRATIONS);
 	});
@@ -94,8 +94,20 @@ describe('general surveys', () => {
 		]);
 		await post('member2', { action: 'draft', id, answers: { q1: 'b' } });
 		expect((await body(await get('member1', id))).data.responses).toMatchObject([{ answers: { q1: 'a' } }]);
-		expect((await post('member2', { action: 'submit', id, answers: { q1: 'b' } })).status).toBe(200);
-		expect((await body(await get('member1', id))).data.responses).toMatchObject([{ answers: { q1: 'b' } }]);
+		expect(
+			(
+				await post('member2', {
+					action: 'submit',
+					id,
+					answers: { q1: 'b' },
+					respondentName: 'セッション氏名',
+					respondentNickname: 'セッションあだ名',
+				})
+			).status,
+		).toBe(200);
+		expect((await body(await get('member1', id))).data.responses).toMatchObject([
+			{ answers: { q1: 'b' }, name: 'セッション氏名', nickname: 'セッションあだ名' },
+		]);
 		expect((await post('member2', { action: 'save', ...settings })).status).toBe(403);
 		expect((await post('member1', { action: 'save', ...settings, questions: [] })).status).toBe(400);
 		expect(

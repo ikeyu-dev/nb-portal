@@ -24,6 +24,8 @@ type ResponseRow = {
 	updated_at: string;
 	submitted_at: string | null;
 	current_section_id: string | null;
+	respondent_name?: string | null;
+	respondent_nickname?: string | null;
 	name?: string | null;
 	nickname?: string | null;
 };
@@ -171,14 +173,14 @@ export async function getSurveys(db: D1Database, url: URL): Promise<Response> {
 	if (canSeeResults) {
 		const rows = await db
 			.prepare(
-				"SELECT r.student_id, r.submitted_answers_json, r.submitted_at, m.name, m.nickname FROM survey_responses r LEFT JOIN members m ON m.student_number = r.student_id WHERE r.survey_id = ? AND r.status = 'submitted' ORDER BY r.submitted_at",
+				"SELECT r.student_id, r.submitted_answers_json, r.submitted_at, r.respondent_name, r.respondent_nickname, m.name, m.nickname FROM survey_responses r LEFT JOIN members m ON lower(m.student_number) = lower(r.student_id) WHERE r.survey_id = ? AND r.status = 'submitted' ORDER BY r.submitted_at",
 			)
 			.bind(id)
 			.all<ResponseRow>();
 		responses = rows.results.map((r) => ({
 			studentId: r.student_id,
-			nickname: r.nickname ?? null,
-			name: r.name || r.student_id,
+			nickname: r.respondent_nickname || r.nickname || null,
+			name: r.respondent_name || r.name || r.student_id,
 			answers: parsed(r.submitted_answers_json, {}),
 			submittedAt: r.submitted_at,
 		}));
@@ -320,11 +322,13 @@ export async function postSurveys(db: D1Database, request: Request): Promise<Res
 				.bind(id, actor, answers, currentSectionId)
 				.run();
 		} else {
+			const respondentName = typeof body.respondentName === 'string' ? body.respondentName : null;
+			const respondentNickname = typeof body.respondentNickname === 'string' ? body.respondentNickname : null;
 			await db
 				.prepare(
-					"INSERT INTO survey_responses (survey_id, student_id, draft_answers_json, submitted_answers_json, status, submitted_at, current_section_id) VALUES (?, ?, ?, ?, 'submitted', CURRENT_TIMESTAMP, ?) ON CONFLICT(survey_id, student_id) DO UPDATE SET draft_answers_json = excluded.draft_answers_json, submitted_answers_json = excluded.submitted_answers_json, status = 'submitted', submitted_at = CURRENT_TIMESTAMP, current_section_id = excluded.current_section_id, updated_at = CURRENT_TIMESTAMP",
+					"INSERT INTO survey_responses (survey_id, student_id, draft_answers_json, submitted_answers_json, status, submitted_at, current_section_id, respondent_name, respondent_nickname) VALUES (?, ?, ?, ?, 'submitted', CURRENT_TIMESTAMP, ?, ?, ?) ON CONFLICT(survey_id, student_id) DO UPDATE SET draft_answers_json = excluded.draft_answers_json, submitted_answers_json = excluded.submitted_answers_json, status = 'submitted', submitted_at = CURRENT_TIMESTAMP, current_section_id = excluded.current_section_id, respondent_name = excluded.respondent_name, respondent_nickname = excluded.respondent_nickname, updated_at = CURRENT_TIMESTAMP",
 				)
-				.bind(id, actor, answers, answers, currentSectionId)
+				.bind(id, actor, answers, answers, currentSectionId, respondentName, respondentNickname)
 				.run();
 		}
 		return reply({ success: true });

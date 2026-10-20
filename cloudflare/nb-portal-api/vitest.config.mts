@@ -9,7 +9,9 @@ export default defineWorkersConfig({
 				miniflare: {
 					bindings: {
 						TEST_ASSIGNED_MIGRATIONS: migrations.filter((m) => m.name === '0011_assigned_participants.sql'),
-						TEST_SURVEY_MIGRATIONS: migrations.filter((m) => ['0012_general_surveys.sql', '0013_survey_sections.sql'].includes(m.name)),
+						TEST_SURVEY_MIGRATIONS: migrations.filter((m) =>
+							['0012_general_surveys.sql', '0013_survey_sections.sql', '0014_survey_response_profile.sql'].includes(m.name),
+						),
 					},
 				},
 				wrangler: { configPath: './wrangler.jsonc' },
