@@ -11,7 +11,6 @@ import {
     faArrowUp,
     faCalendarDays,
     faPlus,
-    faTable,
     faTrash,
 } from "@fortawesome/free-solid-svg-icons";
 import { getSurvey, updateSurvey } from "./api";
@@ -23,6 +22,8 @@ import type {
     Survey,
     SurveySection,
 } from "./types";
+
+const MAX_SURVEY_DESCRIPTION_LENGTH = 4096;
 
 const questionTypes: { value: QuestionType; label: string }[] = [
     { value: "short", label: "短文" },
@@ -547,8 +548,11 @@ export function SurveyDetail({ id }: { id: string }) {
         if (action === "publish" || next.status === "published") {
             if (!next.title.trim())
                 nextErrors.title = "タイトルを入力してください。";
+            if (next.description.length > MAX_SURVEY_DESCRIPTION_LENGTH)
+                nextErrors.description =
+                    "説明は4,096文字以内で入力してください。";
             if (!next.deadlineAt || Date.parse(next.deadlineAt) <= Date.now())
-                nextErrors.deadline = "未来の回答締切を設定してください。";
+                nextErrors.deadline = "回答締切を設定してください。";
             for (const section of next.sections) {
                 if (!section.title.trim())
                     nextErrors[`section-title:${section.id}`] =
@@ -868,15 +872,26 @@ export function SurveyDetail({ id }: { id: string }) {
                             <textarea
                                 className="textarea textarea-bordered mt-1 w-full"
                                 rows={2}
+                                data-survey-field="description"
+                                aria-invalid={!!editorErrors.description}
                                 value={survey.description}
-                                onChange={(event) =>
+                                onChange={(event) => {
+                                    clearEditorError("description");
                                     setSurvey({
                                         ...survey,
                                         description: event.target.value,
-                                    })
-                                }
-                                maxLength={5000}
+                                    });
+                                }}
+                                maxLength={MAX_SURVEY_DESCRIPTION_LENGTH}
                             />
+                            <span className="mt-1 text-xs text-base-content/60">
+                                最大4,096文字
+                            </span>
+                            {editorErrors.description && (
+                                <span className="mt-1 block text-sm text-error">
+                                    {editorErrors.description}
+                                </span>
+                            )}
                         </label>
                     </div>
                     <div className="flex flex-wrap items-end gap-x-8 gap-y-4 pb-6">
@@ -1765,74 +1780,90 @@ export function SurveyDetail({ id }: { id: string }) {
                 </div>
             ) : (
                 <>
-                    <header className="space-y-2">
-                        <h1 className="text-xl font-bold">{survey.title}</h1>
-                        {survey.description && (
-                            <p className="whitespace-pre-wrap text-base-content/75">
-                                {survey.description}
+                    <header className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-2">
+                            <h1 className="text-xl font-bold">
+                                {survey.title}
+                            </h1>
+                            {survey.description && (
+                                <p className="whitespace-pre-wrap text-base-content/75">
+                                    {survey.description}
+                                </p>
+                            )}
+                            <p className="text-sm text-base-content/60">
+                                締切{" "}
+                                {survey.deadlineAt &&
+                                    new Date(survey.deadlineAt).toLocaleString(
+                                        "ja-JP",
+                                        {
+                                            year: "numeric",
+                                            month: "2-digit",
+                                            day: "2-digit",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                        }
+                                    )}
                             </p>
-                        )}
-                        <p className="text-sm text-base-content/60">
-                            締切{" "}
-                            {survey.deadlineAt &&
-                                new Date(survey.deadlineAt).toLocaleString(
-                                    "ja-JP"
-                                )}
-                        </p>
-                        {!survey.open && (
-                            <span className="badge badge-outline">
-                                受付終了
-                            </span>
-                        )}
-                    </header>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                        {survey.responses && (
-                            <Link
-                                href={`/surveys/${id}/responses`}
-                                className="btn btn-outline btn-sm"
-                            >
-                                <FontAwesomeIcon icon={faTable} />
-                                回答状況
-                            </Link>
-                        )}
-                        {canEdit && (
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    className="btn btn-outline btn-sm"
-                                    onClick={() => setEditing(true)}
-                                >
-                                    編集
-                                </button>
-                                {survey.open && (
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                            {!survey.open && (
+                                <span className="badge badge-outline">
+                                    受付終了
+                                </span>
+                            )}
+                            {canEdit && (
+                                <>
                                     <button
                                         type="button"
                                         className="btn btn-outline btn-sm"
-                                        disabled={busy}
-                                        onClick={() => setConfirmClose(true)}
+                                        onClick={() => setEditing(true)}
                                     >
-                                        受付を終了
+                                        編集
                                     </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                    {survey.open && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline btn-sm"
+                                            disabled={busy}
+                                            onClick={() =>
+                                                setConfirmClose(true)
+                                            }
+                                        >
+                                            受付を終了
+                                        </button>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </header>
+                    {survey.responses && (
+                        <div
+                            role="tablist"
+                            className="tabs tabs-bordered"
+                        >
+                            <Link
+                                href={`/surveys/${id}`}
+                                role="tab"
+                                aria-selected="true"
+                                className="tab tab-active"
+                            >
+                                回答画面
+                            </Link>
+                            <Link
+                                href={`/surveys/${id}/responses`}
+                                role="tab"
+                                aria-selected="false"
+                                className="tab"
+                            >
+                                回答状況
+                            </Link>
+                        </div>
+                    )}
                     <form
                         className="space-y-6"
                         onSubmit={submit}
                     >
-                        <div className="space-y-2">
-                            <p className="text-sm text-base-content/65">
-                                セクション {currentSectionIndex + 1} /{" "}
-                                {survey.sections.length}
-                            </p>
-                            <progress
-                                className="progress progress-primary w-full"
-                                value={currentSectionIndex + 1}
-                                max={survey.sections.length}
-                            />
-                        </div>
-                        <header className="space-y-2 border-t-4 border-primary bg-base-100 px-5 py-4">
+                        <header className="space-y-2 bg-base-100 py-4">
                             <h2 className="text-lg font-bold">
                                 {currentSection?.title}
                             </h2>
@@ -1870,6 +1901,17 @@ export function SurveyDetail({ id }: { id: string }) {
                         {sectionError && (
                             <p className="alert alert-error">{sectionError}</p>
                         )}
+                        <div className="space-y-2">
+                            <p className="text-sm text-base-content/65">
+                                セクション {currentSectionIndex + 1} /{" "}
+                                {survey.sections.length}
+                            </p>
+                            <progress
+                                className="progress progress-primary w-full"
+                                value={currentSectionIndex + 1}
+                                max={survey.sections.length}
+                            />
+                        </div>
                         <div className="flex flex-wrap justify-between gap-2 border-t border-base-300 pt-4">
                             <button
                                 type="button"
@@ -1920,165 +1962,6 @@ export function SurveyDetail({ id }: { id: string }) {
                         </div>
                     </form>
                     <SaveStatus message={saveState} />
-                    {survey.responses && (
-                        <section className="border-t border-base-300 pt-6">
-                            <h2 className="mb-4 text-lg font-bold">
-                                回答結果{" "}
-                                <span className="badge badge-primary ml-2">
-                                    {survey.responses.length}
-                                </span>
-                            </h2>
-                            <div className="space-y-6">
-                                {survey.sections.map(
-                                    (section, sectionIndex) => (
-                                        <section
-                                            key={section.id}
-                                            className="space-y-3"
-                                        >
-                                            <h3 className="border-b border-base-300 pb-2 font-bold">
-                                                セクション {sectionIndex + 1}:{" "}
-                                                {section.title}
-                                            </h3>
-                                            {survey.questions
-                                                .filter(
-                                                    (question) =>
-                                                        question.sectionId ===
-                                                        section.id
-                                                )
-                                                .map((q) => (
-                                                    <div key={q.id}>
-                                                        <h4 className="font-semibold">
-                                                            {q.label}
-                                                        </h4>
-                                                        {(q.type === "single" ||
-                                                            q.type ===
-                                                                "multiple") && (
-                                                            <div className="mt-2 flex flex-wrap gap-2">
-                                                                {q.options.map(
-                                                                    (
-                                                                        option
-                                                                    ) => (
-                                                                        <span
-                                                                            key={
-                                                                                option.id
-                                                                            }
-                                                                            className="badge badge-outline"
-                                                                        >
-                                                                            {
-                                                                                option.label
-                                                                            }{" "}
-                                                                            {
-                                                                                survey.responses!.filter(
-                                                                                    (
-                                                                                        response
-                                                                                    ) => {
-                                                                                        const answer =
-                                                                                            response
-                                                                                                .answers[
-                                                                                                q
-                                                                                                    .id
-                                                                                            ];
-                                                                                        return Array.isArray(
-                                                                                            answer
-                                                                                        )
-                                                                                            ? answer.includes(
-                                                                                                  option.id
-                                                                                              )
-                                                                                            : answer ===
-                                                                                                  option.id;
-                                                                                    }
-                                                                                )
-                                                                                    .length
-                                                                            }
-                                                                        </span>
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                        </section>
-                                    )
-                                )}
-                            </div>
-                            <h3 className="mb-2 mt-6 font-semibold">
-                                回答一覧
-                            </h3>
-                            <div className="divide-y divide-base-300 border-y border-base-300">
-                                {survey.responses.map((response) => (
-                                    <div
-                                        key={response.studentId}
-                                        className="py-3"
-                                    >
-                                        <p className="font-medium">
-                                            {response.name}
-                                        </p>
-                                        {survey.sections.map((section) => (
-                                            <div
-                                                key={section.id}
-                                                className="mt-3"
-                                            >
-                                                <p className="font-semibold">
-                                                    {section.title}
-                                                </p>
-                                                {survey.questions
-                                                    .filter(
-                                                        (question) =>
-                                                            question.sectionId ===
-                                                            section.id
-                                                    )
-                                                    .map((q) => {
-                                                        const value =
-                                                            response.answers[
-                                                                q.id
-                                                            ];
-                                                        const labels =
-                                                            Array.isArray(value)
-                                                                ? value
-                                                                      .map(
-                                                                          (
-                                                                              id
-                                                                          ) =>
-                                                                              q.options.find(
-                                                                                  (
-                                                                                      o
-                                                                                  ) =>
-                                                                                      o.id ===
-                                                                                      id
-                                                                              )
-                                                                                  ?.label ||
-                                                                              id
-                                                                      )
-                                                                      .join(
-                                                                          "、"
-                                                                      )
-                                                                : q.options.find(
-                                                                      (o) =>
-                                                                          o.id ===
-                                                                          value
-                                                                  )?.label ||
-                                                                  value;
-                                                        return (
-                                                            <p
-                                                                key={q.id}
-                                                                className="mt-1 text-sm"
-                                                            >
-                                                                <span className="text-base-content/60">
-                                                                    {q.label}
-                                                                    :{" "}
-                                                                </span>
-                                                                {labels ||
-                                                                    "未回答"}
-                                                            </p>
-                                                        );
-                                                    })}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
                 </>
             )}
         </main>

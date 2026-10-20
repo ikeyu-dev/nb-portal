@@ -7,6 +7,31 @@ import type { Question, Survey } from "./types";
 
 type AnswerBucket = { value: string; label: string };
 
+const jstDateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+});
+
+const formatSubmittedAt = (value: string) => {
+    const utcValue = value.includes("T")
+        ? value
+        : `${value.replace(" ", "T")}Z`;
+    const date = new Date(utcValue);
+    if (Number.isNaN(date.getTime())) return value;
+
+    const parts = jstDateTimeFormatter.formatToParts(date);
+    const part = (type: Intl.DateTimeFormatPartTypes) =>
+        parts.find((item) => item.type === type)?.value || "";
+
+    return `${part("year")}/${part("month")}/${part("day")} ${part("hour")}:${part("minute")}:${part("second")}`;
+};
+
 const answerLabel = (
     question: Question,
     value: string | string[] | undefined
@@ -141,6 +166,28 @@ export function SurveyResponses({ id }: { id: string }) {
                 role="tablist"
                 className="tabs tabs-bordered"
             >
+                <Link
+                    href={`/surveys/${id}`}
+                    role="tab"
+                    aria-selected="false"
+                    className="tab"
+                >
+                    回答画面
+                </Link>
+                <Link
+                    href={`/surveys/${id}/responses`}
+                    role="tab"
+                    aria-selected="true"
+                    className="tab tab-active"
+                >
+                    回答状況
+                </Link>
+            </div>
+
+            <div
+                role="tablist"
+                className="tabs tabs-bordered"
+            >
                 <button
                     role="tab"
                     aria-selected={view === "responses"}
@@ -190,9 +237,9 @@ export function SurveyResponses({ id }: { id: string }) {
                                               </td>
                                               <td>{response.name}</td>
                                               <td className="whitespace-nowrap">
-                                                  {new Date(
+                                                  {formatSubmittedAt(
                                                       response.submittedAt
-                                                  ).toLocaleString("ja-JP")}
+                                                  )}
                                               </td>
                                               {survey.questions.map((item) => (
                                                   <td

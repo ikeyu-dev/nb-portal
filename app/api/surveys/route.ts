@@ -104,10 +104,15 @@ async function backend(request: NextRequest, method: "GET" | "POST") {
                         target: "survey",
                         embeds: [
                             {
+                                author: {
+                                    name: "新規アンケートが作成されました",
+                                },
                                 title: String(
                                     submitted.title || "新しいアンケート"
                                 ),
-                                url: surveyUrl,
+                                description: submitted.description
+                                    ? String(submitted.description)
+                                    : undefined,
                                 color: 0x0ea5e9,
                                 fields: [
                                     {

@@ -57,10 +57,10 @@ describe("sendDiscordWebhook", () => {
         );
     });
 
-    it("survey指定時は専用Webhookを使い、未設定なら出欠Webhookへ送る", async () => {
-        vi.mocked(fetch)
-            .mockResolvedValueOnce(new Response(null, { status: 204 }))
-            .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    it("survey指定時は専用Webhookを使う", async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(
+            new Response(null, { status: 204 })
+        );
         vi.stubEnv(
             "DISCORD_SURVEY_WEBHOOK_URL",
             "https://discord.example.test/survey"
@@ -73,16 +73,21 @@ describe("sendDiscordWebhook", () => {
             "https://discord.example.test/survey",
             expect.any(Object)
         );
+    });
 
+    it("survey用Webhookが未設定なら出欠用へフォールバックせず送信しない", async () => {
         vi.stubEnv("DISCORD_SURVEY_WEBHOOK_URL", "");
-        await sendDiscordWebhook({
+
+        const result = await sendDiscordWebhook({
             target: "survey",
             embeds: [{ title: "調査" }],
         });
-        expect(fetch).toHaveBeenLastCalledWith(
-            "https://discord.example.test/attendance",
-            expect.any(Object)
-        );
+
+        expect(result).toEqual({
+            success: false,
+            error: "DISCORD_SURVEY_WEBHOOK_URL is not configured",
+        });
+        expect(fetch).not.toHaveBeenCalled();
     });
 
     it("Webhook URLが未設定なら送信しない", async () => {

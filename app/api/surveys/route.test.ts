@@ -120,8 +120,9 @@ describe("/api/surveys", () => {
             target: "survey",
             embeds: [
                 {
+                    author: { name: "新規アンケートが作成されました" },
                     title: "練習日程アンケート",
-                    url: "https://portal.example.test/surveys/survey-1",
+                    description: undefined,
                     color: 0x0ea5e9,
                     fields: [
                         {

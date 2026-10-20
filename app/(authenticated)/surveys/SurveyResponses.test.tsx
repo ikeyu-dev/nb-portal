@@ -8,10 +8,25 @@ vi.mock("next/link", () => ({
     default: ({
         href,
         children,
+        role,
+        "aria-selected": ariaSelected,
+        className,
     }: {
         href: string;
         children: React.ReactNode;
-    }) => <a href={href}>{children}</a>,
+        role?: string;
+        "aria-selected"?: boolean;
+        className?: string;
+    }) => (
+        <a
+            href={href}
+            role={role}
+            aria-selected={ariaSelected}
+            className={className}
+        >
+            {children}
+        </a>
+    ),
 }));
 
 import { SurveyResponses } from "./SurveyResponses";
@@ -49,7 +64,7 @@ const survey: Survey = {
             nickname: "あお",
             name: "青木",
             answers: { q1: ["mon"] },
-            submittedAt: "2098-01-01T00:00:00.000Z",
+            submittedAt: "2098-01-01 00:00:00",
         },
         {
             studentId: "s200",
@@ -71,6 +86,14 @@ describe("アンケート回答状況", () => {
         render(<SurveyResponses id="survey1" />);
 
         expect(
+            await screen.findByRole("tab", { name: "回答状況" })
+        ).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByRole("tab", { name: "回答画面" })).toHaveAttribute(
+            "href",
+            "/surveys/survey1"
+        );
+
+        expect(
             await screen.findByRole("columnheader", { name: "学籍番号" })
         ).toBeInTheDocument();
         expect(
@@ -82,6 +105,14 @@ describe("アンケート回答状況", () => {
         expect(screen.getByRole("cell", { name: "s100" })).toBeInTheDocument();
         expect(screen.getByRole("cell", { name: "あお" })).toBeInTheDocument();
         expect(screen.getByRole("cell", { name: "青木" })).toBeInTheDocument();
+    });
+
+    it("タイムゾーン表記のないUTC回答日時をJSTに変換して表示する", async () => {
+        render(<SurveyResponses id="survey1" />);
+
+        expect(
+            await screen.findByRole("cell", { name: /2098\/01\/01 09:00:00/ })
+        ).toBeInTheDocument();
     });
 
     it("質問と回答を選ぶと該当する回答者だけ表示する", async () => {

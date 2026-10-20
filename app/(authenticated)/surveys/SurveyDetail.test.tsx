@@ -11,14 +11,23 @@ vi.mock("next/link", () => ({
         href,
         children,
         onClick,
+        role,
+        "aria-selected": ariaSelected,
+        className,
     }: {
         href: string;
         children: React.ReactNode;
         onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+        role?: string;
+        "aria-selected"?: boolean;
+        className?: string;
     }) => (
         <a
             href={href}
             onClick={onClick}
+            role={role}
+            aria-selected={ariaSelected}
+            className={className}
         >
             {children}
         </a>
@@ -92,6 +101,102 @@ describe("回答の自動保存", () => {
                 currentSectionId: "section-1",
             })
         );
+    });
+
+    it("セクション表示と進捗バーを回答操作の直前に表示する", async () => {
+        render(<SurveyDetail id="survey1" />);
+        const answer = await screen.findByRole("textbox", { name: "ご意見" });
+        const progress = screen.getByRole("progressbar");
+        const submit = screen.getByRole("button", { name: "回答を送信" });
+
+        expect(
+            answer.compareDocumentPosition(progress) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+        expect(
+            progress.compareDocumentPosition(submit) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+        expect(progress.parentElement).toHaveTextContent("セクション 1 / 1");
+    });
+});
+
+describe("アンケート詳細の表示", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mocks.getSurvey.mockResolvedValue({
+            ...survey,
+            status: "closed",
+            open: false,
+            deadlineAt: "2026-10-20T14:30:45.000Z",
+            resultsPublic: true,
+            responses: [
+                {
+                    studentId: "member2",
+                    name: "部員二",
+                    nickname: "みどり",
+                    answers: { q1: "回答内容" },
+                    submittedAt: "2026-10-20T14:00:00.000Z",
+                },
+            ],
+        });
+    });
+
+    it("締切から秒を省き、終了バッジをヘッダー右上に置く", async () => {
+        render(<SurveyDetail id="survey1" />);
+        const badge = await screen.findByText("受付終了");
+        const header = badge.closest("header");
+        const deadline = screen.getByText(/締切/);
+
+        expect(header).toHaveClass("justify-between");
+        expect(deadline.textContent).not.toMatch(/:\d{2}:\d{2}/);
+    });
+
+    it("個別回答一覧は詳細画面に表示せず、回答状況ページへ案内する", async () => {
+        render(<SurveyDetail id="survey1" />);
+
+        const sectionTitle = await screen.findByRole("heading", {
+            name: "セクション1",
+        });
+        expect(
+            await screen.findByRole("tab", { name: /回答状況/ })
+        ).toHaveAttribute("href", "/surveys/survey1/responses");
+        expect(screen.getByRole("tab", { name: "回答画面" })).toHaveAttribute(
+            "aria-selected",
+            "true"
+        );
+        expect(screen.getByRole("tab", { name: "回答状況" })).toHaveAttribute(
+            "aria-selected",
+            "false"
+        );
+        expect(sectionTitle.parentElement).not.toHaveClass("px-5");
+        expect(
+            screen.queryByRole("heading", { name: "回答一覧" })
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("回答内容")).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("heading", { name: /回答結果/ })
+        ).not.toBeInTheDocument();
+    });
+
+    it("編集と受付終了をタイトルヘッダー右側に配置する", async () => {
+        mocks.getSurvey.mockResolvedValue({
+            ...survey,
+            canEdit: true,
+            responses: [],
+        });
+        render(<SurveyDetail id="survey1" />);
+
+        const title = await screen.findByRole("heading", {
+            name: "アンケート",
+        });
+        const header = title.closest("header");
+        const editButton = screen.getByRole("button", { name: "編集" });
+        const closeButton = screen.getByRole("button", { name: "受付を終了" });
+
+        expect(header).toContainElement(editButton);
+        expect(header).toContainElement(closeButton);
+        expect(header).toHaveClass("justify-between");
     });
 });
 
@@ -203,11 +308,34 @@ describe("作成中のアンケート", () => {
             await screen.findByText("タイトルを入力してください。")
         ).toBeInTheDocument();
         expect(
-            screen.getByText("未来の回答締切を設定してください。")
+            screen.getByText("回答締切を設定してください。")
         ).toBeInTheDocument();
         await waitFor(() => expect(title).toHaveFocus());
         expect(title.parentElement).toContainElement(
             screen.getByText("タイトルを入力してください。")
+        );
+    });
+
+    it("説明文を4,096文字に制限し、超過時は公開を止めて欄にエラーを出す", async () => {
+        render(<SurveyDetail id="survey1" />);
+        await screen.findByText("説明", { selector: "span" });
+        const description = screen
+            .getByText("説明", { selector: "span" })
+            .closest("label")
+            ?.querySelector("textarea");
+        expect(description).not.toBeNull();
+
+        expect(description).toHaveAttribute("maxLength", "4096");
+        fireEvent.change(description, {
+            target: { value: "あ".repeat(4097) },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "公開する" }));
+
+        expect(
+            await screen.findByText("説明は4,096文字以内で入力してください。")
+        ).toBeInTheDocument();
+        expect(mocks.updateSurvey).not.toHaveBeenCalledWith(
+            expect.objectContaining({ action: "publish" })
         );
     });
 

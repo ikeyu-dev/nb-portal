@@ -245,7 +245,7 @@ export async function postSurveys(db: D1Database, request: Request): Promise<Res
 		const complete = action === 'publish' || survey.status === 'published';
 		if (
 			!text(title, 200) ||
-			!text(description, 5000) ||
+			!text(description, 4096) ||
 			typeof resultsPublic !== 'boolean' ||
 			!validateSections(sections) ||
 			!validateQuestions(questions, complete)
@@ -264,7 +264,7 @@ export async function postSurveys(db: D1Database, request: Request): Promise<Res
 				sections.some((section) => !questions.some((question) => question.sectionId === section.id)) ||
 				questions.some((q) => !q.label.trim()))
 		)
-			return fail('タイトル・質問・未来の締切日時が必要です');
+			return fail('タイトル・質問・締切日時が必要です');
 		const oldQuestions = parsed<Question[]>(survey.questions_json, []);
 		const rows = await db
 			.prepare('SELECT draft_answers_json, submitted_answers_json FROM survey_responses WHERE survey_id = ?')

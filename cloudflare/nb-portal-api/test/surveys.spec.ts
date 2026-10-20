@@ -75,6 +75,8 @@ describe('general surveys', () => {
 			sections,
 			questions,
 		};
+		expect((await post('member1', { action: 'save', ...settings, description: 'あ'.repeat(4097) })).status).toBe(400);
+		expect((await post('member1', { action: 'save', ...settings, description: 'あ'.repeat(4096) })).status).toBe(200);
 		expect((await post('member1', { action: 'save', ...settings })).status).toBe(200);
 		const published = await post('member1', { action: 'publish', ...settings });
 		expect(published.status).toBe(200);

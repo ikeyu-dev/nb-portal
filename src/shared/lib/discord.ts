@@ -1,4 +1,7 @@
 export type DiscordEmbed = {
+    author?: {
+        name: string;
+    };
     title?: string;
     url?: string;
     description?: string;
@@ -21,10 +24,7 @@ const getDiscordWebhookUrl = (target: DiscordWebhookTarget) => {
     }
 
     if (target === "survey") {
-        return (
-            process.env.DISCORD_SURVEY_WEBHOOK_URL ||
-            process.env.DISCORD_ATTENDANCE_WEBHOOK_URL
-        );
+        return process.env.DISCORD_SURVEY_WEBHOOK_URL;
     }
 
     return process.env.DISCORD_ATTENDANCE_WEBHOOK_URL;
@@ -47,7 +47,9 @@ export const sendDiscordWebhook = async ({
             error:
                 target === "meeting"
                     ? "DISCORD_MEETING_WEBHOOK_URL is not configured"
-                    : "DISCORD_ATTENDANCE_WEBHOOK_URL is not configured",
+                    : target === "survey"
+                      ? "DISCORD_SURVEY_WEBHOOK_URL is not configured"
+                      : "DISCORD_ATTENDANCE_WEBHOOK_URL is not configured",
         };
     }
 
