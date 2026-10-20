@@ -299,7 +299,9 @@ export async function postSurveys(db: D1Database, request: Request): Promise<Res
 				id,
 			)
 			.run();
-		return reply({ success: true });
+		return action === 'publish'
+			? reply({ success: true, data: { id, publishedNow: survey.status === 'draft' } })
+			: reply({ success: true });
 	}
 	if (action === 'draft' || action === 'submit') {
 		if (!isOpen(survey)) return fail('回答の受付は終了しました', 409);

@@ -1,10 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/src/auth";
 import { validateWriteRequest } from "@/src/shared/lib/csrf";
+import { sendDiscordWebhook } from "@/src/shared/lib/discord";
 import {
     getBackendApiHeaders,
     getBackendApiUrl,
 } from "@/src/shared/lib/server-env";
+
+const formatSurveyDeadline = (value: unknown) => {
+    if (typeof value !== "string") return "日時未設定";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat("ja-JP", {
+        timeZone: "Asia/Tokyo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+    })
+        .format(date)
+        .replaceAll("-", "/");
+};
 
 async function backend(request: NextRequest, method: "GET" | "POST") {
     if (method === "POST") {
@@ -62,7 +80,64 @@ async function backend(request: NextRequest, method: "GET" | "POST") {
             body,
             cache: "no-store",
         });
-        return new NextResponse(response.body, {
+        const responseBody = await response.text();
+        if (method === "POST" && response.ok) {
+            try {
+                const submitted = JSON.parse(body || "{}") as Record<
+                    string,
+                    unknown
+                >;
+                const result = JSON.parse(responseBody) as {
+                    data?: { id?: string; publishedNow?: boolean };
+                };
+                const id = result.data?.id;
+                if (
+                    submitted.action === "publish" &&
+                    result.data?.publishedNow &&
+                    id
+                ) {
+                    const surveyUrl = new URL(
+                        `/surveys/${encodeURIComponent(id)}`,
+                        request.nextUrl.origin
+                    ).toString();
+                    const notification = await sendDiscordWebhook({
+                        target: "survey",
+                        embeds: [
+                            {
+                                title: String(
+                                    submitted.title || "新しいアンケート"
+                                ),
+                                url: surveyUrl,
+                                color: 0x0ea5e9,
+                                fields: [
+                                    {
+                                        name: "回答期限",
+                                        value: formatSurveyDeadline(
+                                            submitted.deadlineAt
+                                        ),
+                                        inline: true,
+                                    },
+                                    {
+                                        name: "アンケートのリンク",
+                                        value: surveyUrl,
+                                        inline: false,
+                                    },
+                                ],
+                            },
+                        ],
+                    });
+                    if (!notification.success) {
+                        console.error(
+                            "Survey Discord notification failed:",
+                            notification.error
+                        );
+                    }
+                }
+            } catch (error) {
+                console.error("Survey Discord notification failed:", error);
+            }
+        }
+        return new NextResponse(responseBody, {
             status: response.status,
             headers: {
                 "Content-Type": "application/json; charset=utf-8",

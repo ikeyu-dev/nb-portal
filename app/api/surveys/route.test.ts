@@ -5,11 +5,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
     auth: vi.fn(),
+    sendDiscordWebhook: vi.fn(),
     getBackendApiUrl: vi.fn(() => "https://backend.example.test/api"),
     getBackendApiHeaders: vi.fn(() => ({ "x-nb-portal-api-key": "test-key" })),
 }));
 
 vi.mock("@/src/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/src/shared/lib/discord", () => ({
+    sendDiscordWebhook: mocks.sendDiscordWebhook,
+}));
 vi.mock("@/src/shared/lib/server-env", () => ({
     getBackendApiUrl: mocks.getBackendApiUrl,
     getBackendApiHeaders: mocks.getBackendApiHeaders,
@@ -21,6 +25,7 @@ describe("/api/surveys", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mocks.auth.mockResolvedValue({ studentId: "member1" });
+        mocks.sendDiscordWebhook.mockResolvedValue({ success: true });
         vi.stubGlobal(
             "fetch",
             vi
@@ -84,5 +89,81 @@ describe("/api/surveys", () => {
             action: "create",
             actor: "member1",
         });
+    });
+
+    it("アンケートを初回公開したときだけDiscordへ内容とリンクを送る", async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(
+            Response.json({
+                success: true,
+                data: { id: "survey-1", publishedNow: true },
+            })
+        );
+        const response = await POST(
+            new NextRequest("https://portal.example.test/api/surveys", {
+                method: "POST",
+                headers: {
+                    host: "portal.example.test",
+                    origin: "https://portal.example.test",
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    action: "publish",
+                    id: "survey-1",
+                    title: "練習日程アンケート",
+                    deadlineAt: "2026-10-20T14:30:00.000Z",
+                }),
+            })
+        );
+
+        expect(response.status).toBe(200);
+        expect(mocks.sendDiscordWebhook).toHaveBeenCalledWith({
+            target: "survey",
+            embeds: [
+                {
+                    title: "練習日程アンケート",
+                    url: "https://portal.example.test/surveys/survey-1",
+                    color: 0x0ea5e9,
+                    fields: [
+                        {
+                            name: "回答期限",
+                            value: "2026/10/20 23:30",
+                            inline: true,
+                        },
+                        {
+                            name: "アンケートのリンク",
+                            value: "https://portal.example.test/surveys/survey-1",
+                            inline: false,
+                        },
+                    ],
+                },
+            ],
+        });
+    });
+
+    it("公開済みアンケートの更新ではDiscordへ再通知しない", async () => {
+        vi.mocked(fetch).mockResolvedValueOnce(
+            Response.json({
+                success: true,
+                data: { id: "survey-1", publishedNow: false },
+            })
+        );
+        await POST(
+            new NextRequest("https://portal.example.test/api/surveys", {
+                method: "POST",
+                headers: {
+                    host: "portal.example.test",
+                    origin: "https://portal.example.test",
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    action: "publish",
+                    id: "survey-1",
+                    title: "更新後タイトル",
+                    deadlineAt: "2026-10-20T14:30:00.000Z",
+                }),
+            })
+        );
+
+        expect(mocks.sendDiscordWebhook).not.toHaveBeenCalled();
     });
 });

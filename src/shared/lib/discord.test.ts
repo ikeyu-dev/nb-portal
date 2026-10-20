@@ -22,7 +22,9 @@ describe("sendDiscordWebhook", () => {
     });
 
     it("出欠用WebhookへEmbedと本文を送る", async () => {
-        vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+        vi.mocked(fetch).mockResolvedValueOnce(
+            new Response(null, { status: 204 })
+        );
         const embeds = [{ title: "当日の出欠状況" }];
 
         const result = await sendDiscordWebhook({
@@ -42,7 +44,9 @@ describe("sendDiscordWebhook", () => {
     });
 
     it("meeting指定時は部会用Webhookを使い、空の本文は送らない", async () => {
-        vi.mocked(fetch).mockResolvedValueOnce(new Response(null, { status: 204 }));
+        vi.mocked(fetch).mockResolvedValueOnce(
+            new Response(null, { status: 204 })
+        );
         const embeds = [{ title: "次回部会" }];
 
         await sendDiscordWebhook({ target: "meeting", embeds, content: "" });
@@ -50,6 +54,34 @@ describe("sendDiscordWebhook", () => {
         expect(fetch).toHaveBeenCalledWith(
             "https://discord.example.test/meeting",
             expect.objectContaining({ body: JSON.stringify({ embeds }) })
+        );
+    });
+
+    it("survey指定時は専用Webhookを使い、未設定なら出欠Webhookへ送る", async () => {
+        vi.mocked(fetch)
+            .mockResolvedValueOnce(new Response(null, { status: 204 }))
+            .mockResolvedValueOnce(new Response(null, { status: 204 }));
+        vi.stubEnv(
+            "DISCORD_SURVEY_WEBHOOK_URL",
+            "https://discord.example.test/survey"
+        );
+        await sendDiscordWebhook({
+            target: "survey",
+            embeds: [{ title: "調査" }],
+        });
+        expect(fetch).toHaveBeenLastCalledWith(
+            "https://discord.example.test/survey",
+            expect.any(Object)
+        );
+
+        vi.stubEnv("DISCORD_SURVEY_WEBHOOK_URL", "");
+        await sendDiscordWebhook({
+            target: "survey",
+            embeds: [{ title: "調査" }],
+        });
+        expect(fetch).toHaveBeenLastCalledWith(
+            "https://discord.example.test/attendance",
+            expect.any(Object)
         );
     });
 

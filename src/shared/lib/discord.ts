@@ -1,5 +1,6 @@
 export type DiscordEmbed = {
     title?: string;
+    url?: string;
     description?: string;
     color?: number;
     fields?: Array<{
@@ -12,11 +13,18 @@ export type DiscordEmbed = {
     };
 };
 
-type DiscordWebhookTarget = "attendance" | "meeting";
+type DiscordWebhookTarget = "attendance" | "meeting" | "survey";
 
 const getDiscordWebhookUrl = (target: DiscordWebhookTarget) => {
     if (target === "meeting") {
         return process.env.DISCORD_MEETING_WEBHOOK_URL;
+    }
+
+    if (target === "survey") {
+        return (
+            process.env.DISCORD_SURVEY_WEBHOOK_URL ||
+            process.env.DISCORD_ATTENDANCE_WEBHOOK_URL
+        );
     }
 
     return process.env.DISCORD_ATTENDANCE_WEBHOOK_URL;

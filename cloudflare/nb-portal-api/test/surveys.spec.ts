@@ -76,7 +76,13 @@ describe('general surveys', () => {
 			questions,
 		};
 		expect((await post('member1', { action: 'save', ...settings })).status).toBe(200);
-		expect((await post('member1', { action: 'publish', ...settings })).status).toBe(200);
+		const published = await post('member1', { action: 'publish', ...settings });
+		expect(published.status).toBe(200);
+		expect((await body(published)).data).toEqual({ id, publishedNow: true });
+		expect((await body(await post('member1', { action: 'publish', ...settings }))).data).toEqual({
+			id,
+			publishedNow: false,
+		});
 		expect((await post('member2', { action: 'draft', id, answers: { q1: 'a' } })).status).toBe(200);
 		expect((await body(await get('member1', id))).data.responses).toEqual([]);
 		expect((await post('member2', { action: 'submit', id, answers: {} })).status).toBe(400);
