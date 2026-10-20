@@ -9,6 +9,7 @@ import {
     faBookOpen,
     faCircleInfo,
     faCircleQuestion,
+    faClipboardQuestion,
     faFileLines,
     faListCheck,
     faMicrophone,
@@ -66,6 +67,11 @@ export default function MoreClient({
                                     href: "/tasks",
                                     label: "タスク",
                                     icon: faListCheck,
+                                },
+                                {
+                                    href: "/surveys",
+                                    label: "アンケート",
+                                    icon: faClipboardQuestion,
                                 },
                                 {
                                     href: "/notifications",
