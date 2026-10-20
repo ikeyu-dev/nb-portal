@@ -24,7 +24,11 @@ import { GET, POST } from "./route";
 describe("/api/surveys", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mocks.auth.mockResolvedValue({ studentId: "member1" });
+        mocks.auth.mockResolvedValue({
+            studentId: "member1",
+            memberName: "部員一",
+            nickname: "あお",
+        });
         mocks.sendDiscordWebhook.mockResolvedValue({ success: true });
         vi.stubGlobal(
             "fetch",
@@ -87,6 +91,39 @@ describe("/api/surveys", () => {
         const [, init] = vi.mocked(fetch).mock.calls[0];
         expect(JSON.parse(String(init?.body))).toEqual({
             action: "create",
+            actor: "member1",
+        });
+    });
+
+    it("回答送信時は氏名とあだ名をセッションからWorkerへ渡す", async () => {
+        const request = new NextRequest(
+            "https://portal.example.test/api/surveys",
+            {
+                method: "POST",
+                headers: {
+                    host: "portal.example.test",
+                    origin: "https://portal.example.test",
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    action: "submit",
+                    id: "survey-1",
+                    answers: { q1: "a" },
+                    respondentName: "偽装氏名",
+                    respondentNickname: "偽装あだ名",
+                }),
+            }
+        );
+
+        await POST(request);
+
+        const [, init] = vi.mocked(fetch).mock.calls[0];
+        expect(JSON.parse(String(init?.body))).toEqual({
+            action: "submit",
+            id: "survey-1",
+            answers: { q1: "a" },
+            respondentName: "部員一",
+            respondentNickname: "あお",
             actor: "member1",
         });
     });

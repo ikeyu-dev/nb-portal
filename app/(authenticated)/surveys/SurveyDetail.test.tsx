@@ -198,6 +198,26 @@ describe("アンケート詳細の表示", () => {
         expect(header).toContainElement(closeButton);
         expect(header).toHaveClass("justify-between");
     });
+
+    it("複数選択肢の間に十分な縦間隔を設ける", async () => {
+        mocks.getSurvey.mockResolvedValue({
+            ...survey,
+            questions: [
+                {
+                    ...survey.questions[0],
+                    type: "multiple",
+                    options: [
+                        { id: "option-1", label: "候補1" },
+                        { id: "option-2", label: "候補2" },
+                    ],
+                },
+            ],
+        });
+        render(<SurveyDetail id="survey1" />);
+
+        const choices = await screen.findByRole("group", { name: "ご意見" });
+        expect(choices).toHaveClass("space-y-3");
+    });
 });
 
 describe("セクション移動時の入力検証", () => {

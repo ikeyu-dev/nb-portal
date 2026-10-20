@@ -104,10 +104,11 @@ function QuestionInput({
     }
     if (question.type === "single" || question.type === "multiple") {
         return (
-            <div className="space-y-2">
+            <div>
                 <div
                     role="group"
                     aria-label={question.label}
+                    className="space-y-3"
                     aria-describedby={
                         error ? `answer-error-${question.id}` : undefined
                     }
