@@ -126,7 +126,15 @@ export function SurveyResponses({ id }: { id: string }) {
 
     if (loading)
         return (
-            <main className="mx-auto max-w-6xl p-4 lg:p-6">読み込み中...</main>
+            <main className="mx-auto max-w-6xl p-4 lg:p-6">
+                <div className="flex items-center justify-center py-16">
+                    <span
+                        className="loading loading-spinner loading-lg text-primary"
+                        role="status"
+                        aria-label="回答状況を読み込み中"
+                    />
+                </div>
+            </main>
         );
     if (!survey || !survey.responses)
         return (
