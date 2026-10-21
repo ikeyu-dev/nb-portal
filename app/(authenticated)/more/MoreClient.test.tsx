@@ -20,19 +20,24 @@ describe("MoreClient", () => {
     it("Dockから外した機能へのリンクを表示する", () => {
         render(<MoreClient user={undefined} />);
 
-        expect(
-            screen.getByRole("link", { name: /機材一覧/ }),
-        ).toHaveAttribute("href", "/items");
+        expect(screen.getByRole("link", { name: /機材一覧/ })).toHaveAttribute(
+            "href",
+            "/items"
+        );
         expect(screen.getByRole("link", { name: /タスク/ })).toHaveAttribute(
             "href",
-            "/tasks",
+            "/tasks"
         );
-        expect(
-            screen.getByRole("link", { name: /お知らせ/ }),
-        ).toHaveAttribute("href", "/notifications");
+        expect(screen.getByRole("link", { name: /お知らせ/ })).toHaveAttribute(
+            "href",
+            "/notifications"
+        );
         expect(screen.getByRole("link", { name: /資料/ })).toHaveAttribute(
             "href",
-            "/documents",
+            "/documents"
         );
+        expect(
+            screen.queryByRole("link", { name: /アンケート/ })
+        ).not.toBeInTheDocument();
     });
 });

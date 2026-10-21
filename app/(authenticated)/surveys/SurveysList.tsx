@@ -56,7 +56,13 @@ export function SurveysList() {
             </div>
             {error && <p className="alert alert-error mb-4">{error}</p>}
             {loading ? (
-                <p className="text-base-content/60">読み込み中...</p>
+                <div className="flex items-center justify-center py-16">
+                    <span
+                        className="loading loading-spinner loading-lg text-primary"
+                        role="status"
+                        aria-label="アンケートを読み込み中"
+                    />
+                </div>
             ) : surveys.length === 0 ? (
                 <p className="py-12 text-center text-base-content/60">
                     アンケートはまだありません
