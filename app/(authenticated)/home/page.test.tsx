@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Schedule } from "@/src/shared/types/api";
+import type { Absence, Schedule } from "@/src/shared/types/api";
 
 const mocks = vi.hoisted(() => ({
     getDashboardDataServer: vi.fn(),
@@ -48,10 +48,10 @@ function makeSchedule(day: number, title = `予定${day}`): Schedule {
     };
 }
 
-function setSchedules(schedules: Schedule[]) {
+function setSchedules(schedules: Schedule[], absences: Absence[] = []) {
     mocks.getDashboardDataServer.mockResolvedValue({
         success: true,
-        data: { schedules, absences: [], nextMeeting: null },
+        data: { schedules, absences, nextMeeting: null },
     });
 }
 
@@ -157,5 +157,34 @@ describe("ダッシュボードの今後の予定", () => {
         expect(
             screen.queryByRole("button", { name: "すべての予定を見る" })
         ).toBeNull();
+    });
+
+    it("早退の時間欄には理由詳細ではなく早退時間を表示する", async () => {
+        setSchedules(
+            [makeSchedule(17)],
+            [
+                {
+                    TIMESTAMP: "2026-10-17T02:00:00.000Z",
+                    EVENT_ID: "EVENT-17",
+                    STUDENT_NUMBER: "126D000",
+                    NAME: "あだ名",
+                    TYPE: "早退",
+                    REASON: "体調不良",
+                    DETAIL: "通院の為",
+                    TimeLeavingEarly: "1899-12-30T09:30:00.000Z",
+                    TimeStepOut: "",
+                    TimeReturn: "",
+                },
+            ]
+        );
+
+        render(await HomePage());
+
+        const row = screen.getByRole("table").querySelector("tbody tr");
+        expect(row).toHaveTextContent("126D000");
+        expect(row).toHaveTextContent("あだ名");
+        expect(row).toHaveTextContent("早退");
+        expect(row).toHaveTextContent("18:30");
+        expect(row).not.toHaveTextContent("通院の為");
     });
 });
