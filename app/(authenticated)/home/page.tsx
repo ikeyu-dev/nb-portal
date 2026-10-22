@@ -37,11 +37,7 @@ const getScheduleValue = (
     fallbackIndex: number
 ) => schedule[key] ?? Object.values(schedule)[fallbackIndex] ?? "";
 
-const getAbsenceValue = (
-    absence: Absence,
-    key: string,
-    fallbackIndex: number
-) => absence[key] ?? Object.values(absence)[fallbackIndex] ?? "";
+const getAbsenceValue = (absence: Absence, key: string) => absence[key] ?? "";
 
 const buildDateInput = (
     yearValue: unknown,
@@ -100,10 +96,10 @@ const getScheduleStartTimestamp = (schedule: Schedule) => {
 };
 
 const getAbsenceEventId = (absence: Absence) =>
-    String(getAbsenceValue(absence, "EVENT_ID", 1));
+    String(getAbsenceValue(absence, "EVENT_ID"));
 
 const getAbsenceType = (absence: Absence) =>
-    String(getAbsenceValue(absence, "TYPE", 4));
+    String(getAbsenceValue(absence, "TYPE"));
 
 export default async function HomePage() {
     const session = await auth();
@@ -343,15 +339,13 @@ export default async function HomePage() {
                                                     : undefined;
 
                                             // このイベントの欠席者をフィルタリング
-                                            // absence_data シートの列構成: A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名...
                                             const eventAbsences =
                                                 absences.filter((absence) => {
-                                                    const absenceValues =
-                                                        Object.values(absence);
                                                     return (
-                                                        absenceValues[1] ===
-                                                        eventId
-                                                    ); // B列のEVENT_IDで比較
+                                                        getAbsenceEventId(
+                                                            absence
+                                                        ) === eventId
+                                                    );
                                                 });
 
                                             return (
@@ -475,22 +469,40 @@ export default async function HomePage() {
                                         <tbody>
                                             {todayAbsences.map(
                                                 (absence, index) => {
-                                                    const values =
-                                                        Object.values(absence);
-                                                    // A:タイムスタンプ, B:EVENT_ID, C:学籍番号, D:氏名, E:種別, F:理由, G:早退時間, H:抜ける時間, I:戻る時間
                                                     const studentNumber =
-                                                        String(values[2] ?? "");
+                                                        String(
+                                                            getAbsenceValue(
+                                                                absence,
+                                                                "STUDENT_NUMBER"
+                                                            )
+                                                        );
                                                     const name = String(
-                                                        values[3] ?? ""
+                                                        getAbsenceValue(
+                                                            absence,
+                                                            "NAME"
+                                                        )
                                                     );
                                                     const type = String(
-                                                        values[4] ?? ""
+                                                        getAbsenceValue(
+                                                            absence,
+                                                            "TYPE"
+                                                        )
                                                     );
                                                     const earlyLeaveTime =
-                                                        values[6]; // G: 早退時間
-                                                    const leaveTime = values[7]; // H: 抜ける時間
+                                                        getAbsenceValue(
+                                                            absence,
+                                                            "TimeLeavingEarly"
+                                                        );
+                                                    const leaveTime =
+                                                        getAbsenceValue(
+                                                            absence,
+                                                            "TimeStepOut"
+                                                        );
                                                     const returnTime =
-                                                        values[8]; // I: 戻る時間
+                                                        getAbsenceValue(
+                                                            absence,
+                                                            "TimeReturn"
+                                                        );
 
                                                     // ISO形式の時間をHH:MM（JST）に変換する関数
                                                     const formatTime = (
