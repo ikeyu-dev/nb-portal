@@ -1,5 +1,6 @@
 import { readMemberProfile } from './member-profile';
 import { getSurveys, postSurveys } from './surveys';
+import { getExecutiveMeetings, postExecutiveMeetings } from './executive-meetings';
 import {
 	normalizeParticipantIds,
 	validateParticipantIds,
@@ -1997,6 +1998,8 @@ const routeGet = (url: URL, env: Env, request: Request) => {
 			return getTasks(env);
 		case 'surveys':
 			return getSurveys(env.DB, url);
+		case 'executive-meetings':
+			return getExecutiveMeetings(env.DB, url);
 		case 'push-subscriptions':
 			return getPushSubscriptions(env);
 		case 'items':
@@ -2041,6 +2044,8 @@ const routePost = (request: Request, url: URL, env: Env) => {
 			return deleteTask(request, env);
 		case 'surveys':
 			return postSurveys(env.DB, request);
+		case 'executive-meetings':
+			return postExecutiveMeetings(env.DB, request);
 		case 'push-subscribe':
 			return savePushSubscription(request, env);
 		case 'push-unsubscribe':

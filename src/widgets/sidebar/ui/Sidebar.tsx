@@ -34,7 +34,7 @@ export default function Sidebar({ session }: SidebarProps) {
                 />
             </div>
 
-            <SidebarNav />
+            <SidebarNav permission={session?.permission} />
 
             <div className="p-4 border-t border-base-300">
                 <ThemeToggle showLabel={true} />
@@ -52,8 +52,7 @@ export default function Sidebar({ session }: SidebarProps) {
                             <p
                                 className="font-medium truncate"
                                 style={{
-                                    fontSize:
-                                        "clamp(0.75rem, 1.2vw, 0.875rem)",
+                                    fontSize: "clamp(0.75rem, 1.2vw, 0.875rem)",
                                 }}
                             >
                                 {displayName}
@@ -61,8 +60,7 @@ export default function Sidebar({ session }: SidebarProps) {
                             <p
                                 className="text-base-content/60 truncate"
                                 style={{
-                                    fontSize:
-                                        "clamp(0.625rem, 1vw, 0.75rem)",
+                                    fontSize: "clamp(0.625rem, 1vw, 0.75rem)",
                                 }}
                             >
                                 {session.user.email}

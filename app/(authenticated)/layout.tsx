@@ -27,7 +27,7 @@ export default async function AuthenticatedLayout({
                 </div>
             </div>
 
-            <Dock />
+            <Dock permission={session?.permission} />
         </>
     );
 }

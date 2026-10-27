@@ -27,19 +27,32 @@ const navItems = [
     { href: "/memo", label: "部会メモ", icon: faNoteSticky },
 ];
 
-export function SidebarNav() {
+export function SidebarNav({ permission }: { permission?: string }) {
     const pathname = usePathname();
+    const visibleItems =
+        permission === "HEAD" ||
+        permission === "SUB_HEAD" ||
+        permission === "ACCOUNTANT"
+            ? [
+                  ...navItems,
+                  {
+                      href: "/executive-meetings",
+                      label: "議事録",
+                      icon: faNoteSticky,
+                  },
+              ]
+            : navItems;
 
     return (
         <ul
             className="menu p-4 flex-1 w-full"
             style={{ fontSize: "clamp(0.875rem, 1.5vw, 1rem)" }}
         >
-            {navItems.map((item) => (
+            {visibleItems.map((item) => (
                 <li key={item.href}>
                     <Link
                         href={item.href}
-                        className={`app-nav-item ${pathname === item.href ? "text-primary" : ""}`}
+                        className={`app-nav-item ${pathname === item.href || (item.href === "/executive-meetings" && pathname.startsWith("/executive-meetings/")) ? "text-primary" : ""}`}
                     >
                         <FontAwesomeIcon
                             icon={item.icon}

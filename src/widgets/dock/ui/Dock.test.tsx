@@ -54,6 +54,17 @@ describe("Dock", () => {
         expect(screen.queryByRole("link", { name: "機材一覧" })).toBeNull();
     });
 
+    it("幹部役員は議事録をDockの独立した7番目の項目から開ける", () => {
+        render(<Dock permission="HEAD" />);
+
+        expect(screen.getAllByRole("link")).toHaveLength(7);
+        expect(screen.getByRole("link", { name: "議事録" })).toHaveAttribute(
+            "href",
+            "/executive-meetings"
+        );
+        expect(screen.queryByRole("link", { name: "その他" })).not.toBeNull();
+    });
+
     it("現在地と遷移開始後の移動先を区別して示す", () => {
         render(<Dock />);
 
