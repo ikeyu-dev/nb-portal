@@ -22,6 +22,12 @@ const dockItems = [
     { href: "/more", label: "その他", icon: faEllipsis },
 ];
 
+const executiveItem = {
+    href: "/executive-meetings",
+    label: "議事録",
+    icon: faNoteSticky,
+};
+
 const moreRoutes = new Set([
     "/documents",
     "/help",
@@ -34,12 +40,20 @@ const resolveCurrentHref = (pathname: string) => {
     if (pathname === "/absence") return "/calendar";
     if (pathname === "/surveys" || pathname.startsWith("/surveys/"))
         return "/surveys";
+    if (pathname.startsWith("/executive-meetings"))
+        return "/executive-meetings";
     if (moreRoutes.has(pathname)) return "/more";
     return dockItems.find((item) => item.href === pathname)?.href ?? "/home";
 };
 
-export default function Dock() {
+export default function Dock({ permission }: { permission?: string }) {
     const pathname = usePathname();
+    const visibleItems =
+        permission === "HEAD" ||
+        permission === "SUB_HEAD" ||
+        permission === "ACCOUNTANT"
+            ? [...dockItems.slice(0, 4), executiveItem, ...dockItems.slice(4)]
+            : dockItems;
     const [navigation, setNavigation] = useState<{
         href: string;
         from: string;
@@ -49,7 +63,7 @@ export default function Dock() {
     const activeHref = pendingHref ?? currentHref;
     const activeIndex = Math.max(
         0,
-        dockItems.findIndex((item) => item.href === activeHref)
+        visibleItems.findIndex((item) => item.href === activeHref)
     );
 
     useEffect(() => {
@@ -64,8 +78,13 @@ export default function Dock() {
             aria-label="メインナビゲーション"
             className="app-mobile-dock fixed bottom-0 left-0 right-0 z-30"
             data-active-index={activeIndex}
+            style={
+                {
+                    "--dock-item-count": visibleItems.length,
+                } as React.CSSProperties
+            }
         >
-            {dockItems.map((item) => {
+            {visibleItems.map((item) => {
                 const isCurrent = currentHref === item.href;
                 const isActive = activeHref === item.href;
                 const isPending = pendingHref === item.href;
