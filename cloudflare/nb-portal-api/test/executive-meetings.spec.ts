@@ -1,6 +1,6 @@
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { getExecutiveMeetings, postExecutiveMeetings } from '../src/executive-meetings';
+import { agendaBodyToMarkdown, getExecutiveMeetings, postExecutiveMeetings } from '../src/executive-meetings';
 
 const HEAD = '126D000';
 const SUB_HEAD = '126E000';
@@ -34,6 +34,44 @@ const completeMeeting = (id: string) => ({
 		agendas: [{ id: 'agenda-1', title: '議題', body: '議事録本文' }],
 		other: 'その他の内容',
 	},
+});
+
+describe('rich text markdown conversion', () => {
+	it('converts bold text and nested lists to Discord Markdown', () => {
+		const document = {
+			type: 'doc',
+			content: [
+				{
+					type: 'paragraph',
+					content: [
+						{ type: 'text', text: '決定事項 ' },
+						{ type: 'text', text: '重要', marks: [{ type: 'bold' }] },
+					],
+				},
+				{
+					type: 'bulletList',
+					content: [
+						{
+							type: 'listItem',
+							content: [
+								{ type: 'paragraph', content: [{ type: 'text', text: '親項目' }] },
+								{
+									type: 'bulletList',
+									content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: '子項目' }] }] }],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+
+		expect(agendaBodyToMarkdown(`tiptap-json-v1:${JSON.stringify(document)}`)).toBe('決定事項 **重要**\n\n- 親項目\n  - 子項目');
+	});
+
+	it('keeps existing plain-text records readable', () => {
+		expect(agendaBodyToMarkdown('既存の本文\n次の行')).toBe('既存の本文\n次の行');
+	});
 });
 
 describe('executive meetings', () => {
@@ -121,6 +159,40 @@ describe('executive meetings', () => {
 		expect((await post(HEAD, { ...completeMeeting(id), meetingDate: '2026-02-30' })).status).toBe(400);
 	});
 
+	it('saves rich-text documents and converts their formatting for the exported Markdown', async () => {
+		const created = await responseData(await post(HEAD, { action: 'create' }));
+		const id = created.data.id as string;
+		const document = {
+			type: 'doc',
+			content: [
+				{
+					type: 'paragraph',
+					content: [
+						{ type: 'text', text: '本文' },
+						{ type: 'text', text: '重要', marks: [{ type: 'bold' }] },
+					],
+				},
+				{
+					type: 'bulletList',
+					content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: '決定事項' }] }] }],
+				},
+			],
+		};
+		const response = await post(HEAD, {
+			...completeMeeting(id),
+			content: {
+				agendas: [{ id: 'agenda-1', title: '議題', body: `tiptap-json-v1:${JSON.stringify(document)}` }],
+				other: `tiptap-json-v1:${JSON.stringify(document)}`,
+			},
+		});
+
+		expect(response.status).toBe(200);
+		const detail = await responseData(await get(HEAD, `&id=${id}`));
+		expect(detail.data.markdown).toContain('本文**重要**');
+		expect(detail.data.markdown).toContain('- 決定事項');
+		expect(detail.data.markdown).toContain('### その他\n\n本文**重要**\n\n- 決定事項');
+	});
+
 	it('validates required fields when Discord sending begins', async () => {
 		const created = await responseData(await post(HEAD, { action: 'create' }));
 		const id = created.data.id as string;
@@ -129,6 +201,20 @@ describe('executive meetings', () => {
 		const claim = await post(HEAD, { action: 'claim-discord', id });
 		expect(claim.status).toBe(200);
 		expect(await responseData(claim)).toMatchObject({ data: { part: 'embed' } });
+	});
+
+	it('rejects malformed rich-text documents', async () => {
+		const created = await responseData(await post(HEAD, { action: 'create' }));
+		const id = created.data.id as string;
+		const invalid = {
+			...completeMeeting(id),
+			content: {
+				agendas: [{ id: 'agenda-1', title: '議題', body: 'tiptap-json-v1:{invalid' }],
+				other: '',
+			},
+		};
+
+		expect((await post(HEAD, invalid)).status).toBe(400);
 	});
 
 	it('sends the embed before the body and retries only a failed part with current content', async () => {

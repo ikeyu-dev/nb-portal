@@ -15,6 +15,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { getMeeting, updateMeeting } from "../api";
 import type { Agenda, MeetingRecord } from "../types";
+import { AgendaRichTextEditor } from "./AgendaRichTextEditor";
 
 type SaveState = "saved" | "saving" | "error";
 
@@ -352,7 +353,7 @@ export function ExecutiveMeetingDetail({
                 <div className="space-y-6">
                     <section className="space-y-4 border-b border-base-300 px-2 pb-8 sm:px-4">
                         <h2 className="text-base font-semibold">基本情報</h2>
-                        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,18rem),1fr))]">
+                        <div className="grid gap-4 sm:grid-cols-2">
                             <div className="space-y-2">
                                 <label className="block text-sm font-medium text-base-content/70">
                                     日付
@@ -385,7 +386,7 @@ export function ExecutiveMeetingDetail({
                                     }
                                 />
                             </div>
-                            <div className="space-y-2 [grid-column:1/-1]">
+                            <div className="space-y-2">
                                 <label className="block text-sm font-medium text-base-content/70">
                                     場所
                                 </label>
@@ -422,54 +423,49 @@ export function ExecutiveMeetingDetail({
                                     />
                                 )}
                             </div>
-                        </div>
-                        <fieldset className="space-y-3">
-                            <legend className="mb-3 text-sm font-medium">
-                                出席者
-                            </legend>
-                            <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-                                {meeting.availableOfficers.map((person) => (
-                                    <label
-                                        key={person.studentNumber}
-                                        className="label min-h-14 cursor-pointer justify-start gap-3 rounded border border-base-300 px-4 py-3"
-                                    >
-                                        <input
-                                            className="checkbox checkbox-primary"
-                                            type="checkbox"
-                                            checked={meeting.attendeeStudentNumbers.includes(
-                                                person.studentNumber
-                                            )}
-                                            disabled={
-                                                person.studentNumber ===
-                                                meeting.createdBy
-                                            }
-                                            onChange={(e) =>
-                                                mutate((m) => ({
-                                                    ...m,
-                                                    attendeeStudentNumbers: e
-                                                        .target.checked
-                                                        ? [
-                                                              ...m.attendeeStudentNumbers,
-                                                              person.studentNumber,
-                                                          ]
-                                                        : m.attendeeStudentNumbers.filter(
-                                                              (n) =>
-                                                                  n !==
-                                                                  person.studentNumber
-                                                          ),
-                                                }))
-                                            }
-                                        />
-                                        <span>
+                            <fieldset className="min-w-0">
+                                <legend className="mb-2 text-sm font-medium">
+                                    出席者
+                                </legend>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1">
+                                    {meeting.availableOfficers.map((person) => (
+                                        <label
+                                            key={person.studentNumber}
+                                            className="flex min-h-9 cursor-pointer items-center gap-1.5 text-sm"
+                                        >
+                                            <input
+                                                className="checkbox checkbox-primary checkbox-sm"
+                                                type="checkbox"
+                                                checked={meeting.attendeeStudentNumbers.includes(
+                                                    person.studentNumber
+                                                )}
+                                                disabled={
+                                                    person.studentNumber ===
+                                                    meeting.createdBy
+                                                }
+                                                onChange={(e) =>
+                                                    mutate((m) => ({
+                                                        ...m,
+                                                        attendeeStudentNumbers:
+                                                            e.target.checked
+                                                                ? [
+                                                                      ...m.attendeeStudentNumbers,
+                                                                      person.studentNumber,
+                                                                  ]
+                                                                : m.attendeeStudentNumbers.filter(
+                                                                      (n) =>
+                                                                          n !==
+                                                                          person.studentNumber
+                                                                  ),
+                                                    }))
+                                                }
+                                            />
                                             {person.nickname || person.name}
-                                        </span>
-                                    </label>
-                                ))}
-                            </div>
-                            <p className="text-xs text-base-content/60">
-                                作成者は出席者に含まれます。
-                            </p>
-                        </fieldset>
+                                        </label>
+                                    ))}
+                                </div>
+                            </fieldset>
+                        </div>
                     </section>
                     <section className="space-y-8">
                         {meeting.content.agendas.map((agenda, index) => (
@@ -479,7 +475,7 @@ export function ExecutiveMeetingDetail({
                             >
                                 <div className="flex items-center justify-between">
                                     <h2 className="font-semibold">
-                                        Agenda {index + 1}
+                                        議題{index + 1}
                                     </h2>
                                     <div className="flex gap-1">
                                         <button
@@ -546,7 +542,7 @@ export function ExecutiveMeetingDetail({
                                         </button>
                                         <button
                                             className="btn btn-ghost btn-sm text-error"
-                                            aria-label="Agendaを削除"
+                                            aria-label="議題を削除"
                                             disabled={
                                                 meeting.content.agendas
                                                     .length === 1
@@ -572,7 +568,7 @@ export function ExecutiveMeetingDetail({
                                 </div>
                                 <input
                                     className="input input-bordered w-full"
-                                    aria-label={`Agenda ${index + 1} の議題名`}
+                                    aria-label={`議題${index + 1}の議題名`}
                                     placeholder="議題名"
                                     value={agenda.title}
                                     onChange={(e) =>
@@ -581,56 +577,58 @@ export function ExecutiveMeetingDetail({
                                         })
                                     }
                                 />
-                                <textarea
-                                    className="textarea textarea-bordered min-h-32 w-full"
-                                    aria-label={`Agenda ${index + 1} の議事録`}
-                                    placeholder="議事録本文"
+                                <AgendaRichTextEditor
                                     value={agenda.body}
-                                    onChange={(e) =>
+                                    editable
+                                    onChange={(body) =>
                                         updateAgenda(mutate, agenda.id, {
-                                            body: e.target.value,
+                                            body,
                                         })
                                     }
                                 />
                             </article>
                         ))}
-                        <button
-                            className="btn btn-ghost"
-                            onClick={() =>
-                                mutate((m) => ({
-                                    ...m,
-                                    content: {
-                                        ...m.content,
-                                        agendas: [
-                                            ...m.content.agendas,
-                                            {
-                                                id: crypto.randomUUID(),
-                                                title: "",
-                                                body: "",
-                                            },
-                                        ],
-                                    },
-                                }))
-                            }
-                        >
-                            <FontAwesomeIcon icon={faPlus} /> Agendaを追加
-                        </button>
-                        <label className="form-control">
-                            <span className="label-text mb-1">その他</span>
-                            <textarea
-                                className="textarea textarea-bordered min-h-28"
-                                value={meeting.content.other}
-                                onChange={(e) =>
+                        <div className="space-y-4 border-t border-base-300 pt-4">
+                            <button
+                                className="btn btn-ghost"
+                                onClick={() =>
                                     mutate((m) => ({
                                         ...m,
                                         content: {
                                             ...m.content,
-                                            other: e.target.value,
+                                            agendas: [
+                                                ...m.content.agendas,
+                                                {
+                                                    id: crypto.randomUUID(),
+                                                    title: "",
+                                                    body: "",
+                                                },
+                                            ],
                                         },
                                     }))
                                 }
-                            />
-                        </label>
+                            >
+                                <FontAwesomeIcon icon={faPlus} /> 議題を追加
+                            </button>
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-medium text-base-content/70">
+                                    その他
+                                </h3>
+                                <AgendaRichTextEditor
+                                    value={meeting.content.other}
+                                    editable
+                                    onChange={(other) =>
+                                        mutate((m) => ({
+                                            ...m,
+                                            content: {
+                                                ...m.content,
+                                                other,
+                                            },
+                                        }))
+                                    }
+                                />
+                            </div>
+                        </div>
                     </section>
                     <div className="flex flex-wrap gap-3 border-t border-base-300 pt-4">
                         {!discordDone ? (
@@ -707,9 +705,12 @@ export function ExecutiveMeetingDetail({
                             className="border-b border-base-300 py-5"
                         >
                             <h2 className="mb-3 text-lg font-semibold">
-                                {agenda.title || `Agenda ${index + 1}`}
+                                {agenda.title || `議題${index + 1}`}
                             </h2>
-                            <p className="whitespace-pre-wrap">{agenda.body}</p>
+                            <AgendaRichTextEditor
+                                value={agenda.body}
+                                editable={false}
+                            />
                         </section>
                     ))}
                     {meeting.content.other && (
@@ -717,9 +718,10 @@ export function ExecutiveMeetingDetail({
                             <h2 className="mb-3 text-lg font-semibold">
                                 その他
                             </h2>
-                            <p className="whitespace-pre-wrap">
-                                {meeting.content.other}
-                            </p>
+                            <AgendaRichTextEditor
+                                value={meeting.content.other}
+                                editable={false}
+                            />
                         </section>
                     )}
                     <div className="mt-5 flex flex-wrap items-center gap-3">

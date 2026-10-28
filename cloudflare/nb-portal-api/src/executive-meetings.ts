@@ -3,6 +3,14 @@ type MeetingContent = {
 	other: string;
 };
 
+type RichTextNode = {
+	type: string;
+	text?: string;
+	marks?: Array<{ type: string }>;
+	attrs?: { start?: number };
+	content?: RichTextNode[];
+};
+
 type MeetingRow = {
 	id: string;
 	series_id: string;
@@ -56,11 +64,58 @@ const parseJson = <T>(value: string, fallback: T): T => {
 		return fallback;
 	}
 };
+
+const richTextPrefix = 'tiptap-json-v1:';
+const richTextChildren: Record<string, string[]> = {
+	doc: ['paragraph', 'bulletList', 'orderedList'],
+	paragraph: ['text', 'hardBreak'],
+	bulletList: ['listItem'],
+	orderedList: ['listItem'],
+	listItem: ['paragraph', 'bulletList', 'orderedList'],
+	text: [],
+	hardBreak: [],
+};
+
+const validateRichTextNode = (value: unknown, depth: number, state: { nodes: number; characters: number }): value is RichTextNode => {
+	if (!value || typeof value !== 'object' || depth > 12) return false;
+	const node = value as RichTextNode;
+	if (!Object.hasOwn(richTextChildren, node.type)) return false;
+	state.nodes += 1;
+	if (state.nodes > 2000) return false;
+	if (node.type === 'text') {
+		if (typeof node.text !== 'string') return false;
+		state.characters += node.text.length;
+		if (state.characters > 20000) return false;
+		return !node.marks || node.marks.every((mark) => mark.type === 'bold');
+	}
+	if (
+		node.type === 'orderedList' &&
+		node.attrs?.start !== undefined &&
+		(!Number.isInteger(node.attrs.start) || node.attrs.start < 1 || node.attrs.start > 100000)
+	)
+		return false;
+	if (node.content !== undefined && !Array.isArray(node.content)) return false;
+	const children = node.content ?? [];
+	if (node.type === 'listItem' && children[0]?.type !== 'paragraph') return false;
+	return children.every((child) => richTextChildren[node.type].includes(child.type) && validateRichTextNode(child, depth + 1, state));
+};
+
+const normalizeAgendaBody = (value: unknown): string | null => {
+	if (typeof value !== 'string' || value.length > 100000) return null;
+	if (!value.startsWith(richTextPrefix)) return value.length <= 20000 ? value : null;
+	try {
+		const document = JSON.parse(value.slice(richTextPrefix.length)) as unknown;
+		return validateRichTextNode(document, 0, { nodes: 0, characters: 0 }) && document.type === 'doc' ? value : null;
+	} catch {
+		return null;
+	}
+};
 const normalizeContent = (value: unknown): MeetingContent | null => {
 	if (!value || typeof value !== 'object') return null;
 	const content = value as Record<string, unknown>;
-	if (!Array.isArray(content.agendas) || content.agendas.length > 100 || typeof content.other !== 'string' || content.other.length > 20000)
-		return null;
+	if (!Array.isArray(content.agendas) || content.agendas.length > 100) return null;
+	const other = normalizeAgendaBody(content.other);
+	if (other === null) return null;
 	const agendas: MeetingContent['agendas'] = [];
 	const ids = new Set<string>();
 	for (const item of content.agendas) {
@@ -71,15 +126,15 @@ const normalizeContent = (value: unknown): MeetingContent | null => {
 			!/^[\w-]{1,80}$/.test(agenda.id) ||
 			ids.has(agenda.id) ||
 			typeof agenda.title !== 'string' ||
-			agenda.title.length > 300 ||
-			typeof agenda.body !== 'string' ||
-			agenda.body.length > 20000
+			agenda.title.length > 300
 		)
 			return null;
+		const body = normalizeAgendaBody(agenda.body);
+		if (body === null) return null;
 		ids.add(agenda.id);
-		agendas.push({ id: agenda.id, title: agenda.title, body: agenda.body });
+		agendas.push({ id: agenda.id, title: agenda.title, body });
 	}
-	return { agendas, other: content.other };
+	return { agendas, other };
 };
 const isDate = (value: string) => {
 	const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
@@ -271,7 +326,7 @@ const validateForDiscord = async (
 	if ((validAttendees?.count ?? 0) !== new Set(attendees.map((value) => value.toLowerCase())).size)
 		return '出席者に現在の幹部役員以外が含まれています';
 	if (!content.agendas.length || content.agendas.some((agenda) => !agenda.title.trim()))
-		return 'Agendaを1件以上作成し、議題名を入力してください';
+		return '議題を1件以上作成し、議題名を入力してください';
 	return null;
 };
 
@@ -280,6 +335,52 @@ const locationLabel = (row: MeetingRow) =>
 	(({ MEETING_ROOM: '会議室', DISCORD: 'Discord', CLUB_ROOM: '部室', OTHER: row.location_detail }) as Record<string, string>)[
 		row.location_type ?? ''
 	] ?? '';
+
+const escapeMarkdown = (value: string) => value.replace(/([\\`*_{}\[\]()#+\-.!|>~])/g, '\\$1');
+
+const richTextInlineMarkdown = (nodes: RichTextNode[] = []) =>
+	nodes
+		.map((node) => {
+			if (node.type === 'hardBreak') return '\n';
+			if (node.type !== 'text') return '';
+			const text = escapeMarkdown(node.text ?? '');
+			return node.marks?.some((mark) => mark.type === 'bold') ? `**${text}**` : text;
+		})
+		.join('');
+
+const richTextListMarkdown = (node: RichTextNode, depth = 0): string =>
+	(node.content ?? [])
+		.map((item, index) => {
+			const indent = '  '.repeat(depth);
+			const ordered = node.type === 'orderedList';
+			const number = (node.attrs?.start ?? 1) + index;
+			const marker = ordered ? `${number}. ` : '- ';
+			const blocks = item.content ?? [];
+			const firstParagraph = blocks[0];
+			const lines = [`${indent}${marker}${richTextInlineMarkdown(firstParagraph?.content)}`];
+			for (const block of blocks.slice(1)) {
+				if (block.type === 'bulletList' || block.type === 'orderedList') {
+					lines.push(richTextListMarkdown(block, depth + 1));
+				} else if (block.type === 'paragraph') {
+					lines.push(`${'  '.repeat(depth + 1)}${richTextInlineMarkdown(block.content)}`);
+				}
+			}
+			return lines.join('\n');
+		})
+		.join('\n');
+
+export const agendaBodyToMarkdown = (body: string) => {
+	if (!body.startsWith(richTextPrefix)) return body;
+	try {
+		const document = JSON.parse(body.slice(richTextPrefix.length)) as RichTextNode;
+		if (!validateRichTextNode(document, 0, { nodes: 0, characters: 0 }) || document.type !== 'doc') return body;
+		return (document.content ?? [])
+			.map((node) => (node.type === 'paragraph' ? richTextInlineMarkdown(node.content) : richTextListMarkdown(node)))
+			.join('\n\n');
+	} catch {
+		return body;
+	}
+};
 
 export const buildMeetingMarkdown = (
 	row: MeetingRow,
@@ -301,8 +402,8 @@ export const buildMeetingMarkdown = (
 		`出席者：${attendeeNames}`,
 		`記録者：${creator?.nickname || creator?.name || row.creator_student_number}`,
 		'',
-		...data.content.agendas.flatMap((agenda) => [`### ${agenda.title}`, '', agenda.body, '']),
-		...(data.content.other ? ['### その他', '', data.content.other, ''] : []),
+		...data.content.agendas.flatMap((agenda) => [`### ${agenda.title}`, '', agendaBodyToMarkdown(agenda.body), '']),
+		...(data.content.other ? ['### その他', '', agendaBodyToMarkdown(data.content.other), ''] : []),
 	]
 		.join('\n')
 		.trim();
