@@ -34,6 +34,7 @@ const moreRoutes = new Set([
     "/items",
     "/notifications",
     "/tasks",
+    "/line-relay",
 ]);
 
 const resolveCurrentHref = (pathname: string) => {

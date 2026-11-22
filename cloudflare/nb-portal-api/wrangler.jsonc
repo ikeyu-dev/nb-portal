@@ -8,44 +8,41 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2026-06-12",
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"upload_source_maps": true,
 	"durable_objects": {
-		"bindings": [{ "name": "MEMBER_PROFILE_REFRESH", "class_name": "MemberProfileRefresh" }]
+		"bindings": [{ "name": "MEMBER_PROFILE_REFRESH", "class_name": "MemberProfileRefresh" }],
 	},
 	"migrations": [{ "tag": "member-profile-refresh-v1", "new_sqlite_classes": ["MemberProfileRefresh"] }],
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
+	"compatibility_flags": ["nodejs_compat"],
 	"vars": {
 		"APP_DISCORD_SEND_URL": "https://nb-portal.vercel.app/api/discord-send",
 		"NEXT_MEETING_ROLE_MENTION": "@部員",
 		"DISCORD_GUILD_ID": "1415328783333986430",
 		"DISCORD_DEVELOPMENT_GUILD_ID": "1415328783333986430",
 		"DISCORD_PRODUCTION_GUILD_ID": "585040080817618955",
-		"DISCORD_MEMBER_ROLE_ID": "585047138942189603"
+		"DISCORD_MEMBER_ROLE_ID": "585047138942189603",
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "nb_portal_dev",
-			"database_id": "194eb1a7-df10-4f66-b11c-bfc60fa95a8b"
-		}
+			"database_id": "194eb1a7-df10-4f66-b11c-bfc60fa95a8b",
+		},
 	],
+	"queues": {
+		"producers": [{ "binding": "LINE_RELAY_QUEUE", "queue": "nb-portal-line-relay-dev" }],
+		"consumers": [{ "queue": "nb-portal-line-relay-dev", "max_batch_size": 1, "max_retries": 3, "retry_delay": 600 }],
+	},
 	"env": {
 		"production": {
 			"name": "nb-portal-api-production",
 			"durable_objects": {
-				"bindings": [{ "name": "MEMBER_PROFILE_REFRESH", "class_name": "MemberProfileRefresh" }]
+				"bindings": [{ "name": "MEMBER_PROFILE_REFRESH", "class_name": "MemberProfileRefresh" }],
 			},
 			"triggers": {
-				"crons": [
-					"0 15 * * *",
-					"0 23 * * *",
-					"30 3 * * *",
-					"0 9 * * *"
-				]
+				"crons": ["0 15 * * *", "0 23 * * *", "30 3 * * *", "0 9 * * *"],
 			},
 			"vars": {
 				"APP_DISCORD_SEND_URL": "https://nb-portal.vercel.app/api/discord-send",
@@ -53,17 +50,21 @@
 				"DISCORD_GUILD_ID": "585040080817618955",
 				"DISCORD_DEVELOPMENT_GUILD_ID": "1415328783333986430",
 				"DISCORD_PRODUCTION_GUILD_ID": "585040080817618955",
-				"DISCORD_MEMBER_ROLE_ID": "585047138942189603"
+				"DISCORD_MEMBER_ROLE_ID": "585047138942189603",
 			},
 			"d1_databases": [
 				{
 					"binding": "DB",
 					"database_name": "nb_portal_prod",
-					"database_id": "ee3f7745-3712-4da2-b3bf-d2dbacf7f868"
-				}
-			]
-		}
-	}
+					"database_id": "ee3f7745-3712-4da2-b3bf-d2dbacf7f868",
+				},
+			],
+			"queues": {
+				"producers": [{ "binding": "LINE_RELAY_QUEUE", "queue": "nb-portal-line-relay-prod" }],
+				"consumers": [{ "queue": "nb-portal-line-relay-prod", "max_batch_size": 1, "max_retries": 3, "retry_delay": 600 }],
+			},
+		},
+	},
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

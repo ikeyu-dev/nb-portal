@@ -13,6 +13,7 @@ export default defineWorkersConfig({
 						TEST_SURVEY_MIGRATIONS: migrations.filter((m) =>
 							['0012_general_surveys.sql', '0013_survey_sections.sql', '0014_survey_response_profile.sql'].includes(m.name),
 						),
+						TEST_LINE_RELAY_MIGRATIONS: migrations.filter((m) => /^001[678]_line_/.test(m.name)),
 					},
 				},
 				wrangler: { configPath: './wrangler.jsonc' },
