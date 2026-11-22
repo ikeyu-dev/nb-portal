@@ -205,6 +205,51 @@ describe('LINE to Discord relay', () => {
 		expect(lineRelayRetryPolicy).toEqual({ maxRetries: 3, retryDelaySeconds: 600 });
 	});
 
+	it('sends file metadata as an embed alongside the original attachment', async () => {
+		const fileName = '資料.pdf';
+		const fetchMock = vi.fn(async (input: string | URL, init?: RequestInit) => {
+			if (String(input).startsWith('https://api-data.line.me/')) {
+				return new Response('test PDF', { headers: { 'Content-Type': 'application/pdf' } });
+			}
+			const form = init?.body as FormData;
+			const payload = JSON.parse(String(form.get('payload_json')));
+			expect(payload.content).toBeUndefined();
+			expect(payload.embeds).toMatchObject([
+				{
+					title: '[友遊部長]部長二',
+					fields: [{ name: 'ファイル名', value: fileName }],
+					footer: { text: expect.stringMatching(/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}$/) },
+				},
+			]);
+			const attachment = form.get('files[0]') as File;
+			expect(attachment.name).toBe(fileName);
+			expect(await attachment.text()).toBe('test PDF');
+			return new Response(null, { status: 204 });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const message = makeQueueMessage({
+			eventId: `pdf-${testRunId}`,
+			organizationKey: 'YUYU',
+			userId: lineUserId,
+			messageId: 'pdf-message',
+			receivedAt: 1790000000000,
+			kind: 'pdf',
+			fileName,
+		});
+		await handleLineRelayQueue(
+			{ messages: [message] } as unknown as MessageBatch<LineRelayJob>,
+			{
+				...env,
+				LINE_CHANNEL_ACCESS_TOKEN: 'test-token',
+				DISCORD_LINE_RELAY_WEBHOOK_URL: 'https://discord.com/api/webhooks/123456/secret',
+				DISCORD_LINE_RELAY_THREAD_ID: '987654321',
+			} as LineRelayEnv,
+		);
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(message.ack).toHaveBeenCalledOnce();
+		expect(message.retry).not.toHaveBeenCalled();
+	});
+
 	it('splits long LINE text into Discord-sized messages and retries network errors', async () => {
 		const job: LineRelayJob = {
 			eventId: `long-text-${testRunId}`,

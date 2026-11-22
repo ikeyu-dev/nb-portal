@@ -533,7 +533,17 @@ const processRelayJob = async (db: D1Database, env: LineRelayEnv, job: LineRelay
 	const fileName = safeFileName(job.fileName || '音声メッセージ.m4a');
 	const result = await discordPost(
 		url,
-		{ content: `${header(contact, job)}\nファイル名: ${fileName}`, allowed_mentions: { parse: [] } },
+		{
+			embeds: [
+				{
+					title: senderLabel(contact),
+					color: 0x06c755,
+					fields: [{ name: 'ファイル名', value: fileName }],
+					footer: { text: receivedDateLabel(job.receivedAt) },
+				},
+			],
+			allowed_mentions: { parse: [] },
+		},
 		{ bytes: content.bytes, name: fileName, type: content.type },
 	);
 	if (result === 'too-large') {
