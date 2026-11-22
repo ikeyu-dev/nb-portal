@@ -3,5 +3,6 @@ declare module 'cloudflare:test' {
 		TEST_ASSIGNED_MIGRATIONS: import('cloudflare:test').D1Migration[];
 		TEST_EXECUTIVE_MEETINGS_MIGRATIONS: import('cloudflare:test').D1Migration[];
 		TEST_SURVEY_MIGRATIONS: import('cloudflare:test').D1Migration[];
+		TEST_LINE_RELAY_MIGRATIONS: import('cloudflare:test').D1Migration[];
 	}
 }

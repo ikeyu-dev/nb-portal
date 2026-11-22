@@ -1,6 +1,8 @@
 import { readMemberProfile } from './member-profile';
 import { getSurveys, postSurveys } from './surveys';
 import { getExecutiveMeetings, postExecutiveMeetings } from './executive-meetings';
+import { getLineRelayContacts, handleLineRelayQueue, handleLineWebhook, updateLineRelayContacts } from './line-relay';
+import type { LineRelayEnv, LineRelayJob } from './line-relay';
 import {
 	normalizeParticipantIds,
 	validateParticipantIds,
@@ -32,6 +34,11 @@ type RuntimeEnv = Env & {
 	DISCORD_DEVELOPMENT_GUILD_ID?: string;
 	DISCORD_PRODUCTION_GUILD_ID?: string;
 	NEXT_MEETING_ROLE_MENTION?: string;
+	LINE_CHANNEL_SECRET?: string;
+	LINE_CHANNEL_ACCESS_TOKEN?: string;
+	DISCORD_LINE_RELAY_WEBHOOK_URL?: string;
+	DISCORD_LINE_RELAY_THREAD_ID?: string;
+	DISCORD_LINE_RELAY_MAX_FILE_BYTES?: string;
 };
 
 type DiscordEmbed = {
@@ -2000,6 +2007,8 @@ const routeGet = (url: URL, env: Env, request: Request) => {
 			return getSurveys(env.DB, url);
 		case 'executive-meetings':
 			return getExecutiveMeetings(env.DB, url);
+		case 'line-relay-contacts':
+			return getLineRelayContacts(env.DB, url);
 		case 'push-subscriptions':
 			return getPushSubscriptions(env);
 		case 'items':
@@ -2046,6 +2055,8 @@ const routePost = (request: Request, url: URL, env: Env) => {
 			return postSurveys(env.DB, request);
 		case 'executive-meetings':
 			return postExecutiveMeetings(env.DB, request);
+		case 'line-relay-contacts':
+			return updateLineRelayContacts(env.DB, request);
 		case 'push-subscribe':
 			return savePushSubscription(request, env);
 		case 'push-unsubscribe':
@@ -2062,6 +2073,10 @@ export default {
 		const url = new URL(request.url);
 
 		try {
+			if (url.pathname === '/line/webhook') {
+				return await handleLineWebhook(request, env as LineRelayEnv);
+			}
+
 			if (url.pathname === '/discord/interactions') {
 				return handleDiscordInteraction(request, env as RuntimeEnv);
 			}
@@ -2082,6 +2097,9 @@ export default {
 			console.error('Worker API error', caught);
 			return error(caught instanceof Error ? caught.message : 'Internal error');
 		}
+	},
+	async queue(batch, env): Promise<void> {
+		await handleLineRelayQueue(batch as MessageBatch<LineRelayJob>, env as LineRelayEnv);
 	},
 	async scheduled(controller, env, ctx): Promise<void> {
 		ctx.waitUntil(

@@ -13,6 +13,7 @@ import {
     faListCheck,
     faMicrophone,
     faRightFromBracket,
+    faRightLeft,
     faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import packageJson from "@/package.json";
@@ -27,12 +28,14 @@ interface MoreClientProps {
     user: User | undefined;
     displayName?: string | null;
     profileImage?: string | null;
+    isOfficer?: boolean;
 }
 
 export default function MoreClient({
     user,
     displayName,
     profileImage,
+    isOfficer = false,
 }: MoreClientProps) {
     const resolvedDisplayName = displayName || user?.name || null;
 
@@ -90,6 +93,18 @@ export default function MoreClient({
                                     {item.label}
                                 </Link>
                             ))}
+                            {isOfficer && (
+                                <Link
+                                    href="/line-relay"
+                                    className="btn btn-ghost h-auto min-h-14 justify-start gap-3 bg-base-100 px-3"
+                                >
+                                    <FontAwesomeIcon
+                                        icon={faRightLeft}
+                                        className="w-5 text-lg text-primary"
+                                    />
+                                    LINE転送設定
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </section>

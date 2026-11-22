@@ -11,6 +11,7 @@ import {
     faListCheck,
     faMicrophone,
     faNoteSticky,
+    faRightLeft,
     faSquarePollVertical,
     faUsers,
 } from "@fortawesome/free-solid-svg-icons";
@@ -40,6 +41,11 @@ export function SidebarNav({ permission }: { permission?: string }) {
                       label: "議事録",
                       icon: faNoteSticky,
                   },
+                  {
+                      href: "/line-relay",
+                      label: "LINE転送設定",
+                      icon: faRightLeft,
+                  },
               ]
             : navItems;
 
@@ -52,7 +58,7 @@ export function SidebarNav({ permission }: { permission?: string }) {
                 <li key={item.href}>
                     <Link
                         href={item.href}
-                        className={`app-nav-item ${pathname === item.href || (item.href === "/executive-meetings" && pathname.startsWith("/executive-meetings/")) ? "text-primary" : ""}`}
+                        className={`app-nav-item ${pathname === item.href || (item.href === "/executive-meetings" && pathname.startsWith("/executive-meetings/")) || (item.href === "/line-relay" && pathname.startsWith("/line-relay/")) ? "text-primary" : ""}`}
                     >
                         <FontAwesomeIcon
                             icon={item.icon}

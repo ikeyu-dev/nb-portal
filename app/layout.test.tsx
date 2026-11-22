@@ -31,9 +31,9 @@ describe("RootLayout", () => {
         );
 
         expect(body).toBeDefined();
-        expect(isValidElement(body) && body.props.className).toContain(
-            "zen-maru-gothic"
-        );
+        expect(
+            isValidElement<{ className?: string }>(body) && body.props.className
+        ).toContain("zen-maru-gothic");
         expect(mocks.zenMaruGothic).toHaveBeenCalledWith(
             expect.objectContaining({ weight: ["400"] })
         );

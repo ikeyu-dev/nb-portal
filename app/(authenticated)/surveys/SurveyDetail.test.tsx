@@ -343,7 +343,7 @@ describe("作成中のアンケート", () => {
             .getByText("説明", { selector: "span" })
             .closest("label")
             ?.querySelector("textarea");
-        expect(description).not.toBeNull();
+        if (!description) throw new Error("説明欄が見つかりません");
 
         expect(description).toHaveAttribute("maxLength", "4096");
         fireEvent.change(description, {
